@@ -966,11 +966,13 @@ void printhistograms (FILE * outfile, long int recordsteps,
     numhist += nummigrateparams;
   init_print_histogram (numhist);
   numstepsrecorded = recordsteps;
-  //  calculate the average mutation rate scalar 
+  /* jh 1/2/2018  this was the wrong place for this,  needs to be done when smthmaxvals have the mutation scalars , after first call to writehistogram()
+  //calculate the average mutation rate scalar 
   if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
   {
     uratecount = getdemogscale (scaleumeaninput);
   }
+  */
   //FP "\n");
   //FP "==========\n");
   //FP "HISTOGRAMS\n");
@@ -1032,12 +1034,12 @@ void printhistograms (FILE * outfile, long int recordsteps,
       FP "  IMa LOAD TREES MODE  - splittime values loaded from *.ti file, mutation rate scalar histograms are not available \n");
     writehistogram (outfile, numhistprint,1);
 
-    //  calculate the average mutation rate scalar 
-    //if (PRINTDEMOGHIST)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
-    //{
-    //  uratecount = getdemogscale (scaleumeaninput);
-    //  //numhistsets += ((runoptions[LOADRUN] && (scaleumeaninput <= 0)) || uratecount == 0); // don't think this does anything, as numhistsets not used after this
-    //}
+    //  calculate the average mutation rate scalar, need to do this here because scalars have just been estimated by writehistogram() 
+    if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
+    {
+      uratecount = getdemogscale (scaleumeaninput);
+      //numhistsets += ((runoptions[LOADRUN] && (scaleumeaninput <= 0)) || uratecount == 0); // don't think this does anything, as numhistsets not used after this
+    }
     numhistprint = 0;
     histsetcount++;
   }
