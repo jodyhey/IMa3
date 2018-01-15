@@ -343,8 +343,14 @@ static int iminarg1, iminarg2;
 
 /* Macro LogDiff approximately computes the value of v of the following
  * equation:
+ *  v = Log
  * exp(v) = exp(a) - exp(b) 
- * where a > b. */
+ * where a > b. 
+ *  typically use when a and b are logarithms and we want the logarithm of 
+ *  the difference between what they are logarithms of.
+ *  Use if you want the logarithm of the difference, ax-bx
+ *  and a is the log of ax  and b is the log of bx
+ */
  // added parentheses around (a) - (b)  4/27/2017 just to be sure
 #define LogDiff(v,a,b) \
     if ((a) <= (b)) \
@@ -1548,6 +1554,7 @@ void printmigratehist (FILE * outfile, int recordsteps);
 void printtmrcahist (FILE * outfile, int recordsteps);
 void print_means_variances_correlations (FILE * outfile);
 void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *poptopologyproposedlist_rec, char *topologypriorinfostring); /* for printing population tree posteriors,  sorts and prints */
+
 /**** GLOBAL FUNCTIONS IN readata.cpp ****/
 void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[]);
 void readdata (char infilename[], int *fpstri,

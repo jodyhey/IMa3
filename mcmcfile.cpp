@@ -1178,7 +1178,6 @@ void readmcf (char mcffilename[],long *recordsteps,double *hilike,double *hiprob
         XFREE(tempa); 
       }
     }
-
   }
   fclose (mcffile);
 #ifdef TURNONCHECKS

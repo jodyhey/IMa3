@@ -3,7 +3,9 @@
 #undef GLOBVARS
 #include "ima.hpp"
 
-/* calculate the probability density of the product 2NM  */
+/* calculate the probability density of the product 2NM  
+  see 2Nm section in IMa_Multiple_Populations.nb  
+  cleaned this up some on 1/10/2018*/
 double
 calc_popmig (int thetai, int mi, double x, int prob_or_like)
 {
@@ -24,59 +26,59 @@ calc_popmig (int thetai, int mi, double x, int prob_or_like)
   for (sum = 0, ei = 0; ei < genealogiessaved; ei++)
 
   {
-    cc = (int) gsampinf[ei][ccp];
-    fc = (double) gsampinf[ei][fcp];
-    hc = (double) gsampinf[ei][hcp];
-    mc = (int) gsampinf[ei][mcp];
-    fm = (double) gsampinf[ei][fmp];
-    qintg = (double) gsampinf[ei][qip];
-    mintg = (double) gsampinf[ei][mip];
-    if (fc == 0 && cc == 0 && fm > 0)
+    cc = (int) gsampinf[ei][ccp]; // coalescent count
+    fc = (double) gsampinf[ei][fcp];  // coalescent weight
+    hc = (double) gsampinf[ei][hcp];  // inheritance weight
+    mc = (int) gsampinf[ei][mcp];    // migration count  (W in mathematica notebook)
+    fm = (double) gsampinf[ei][fmp];   // migration weight
+    qintg = (double) gsampinf[ei][qip];  // integrated term for q
+    mintg = (double) gsampinf[ei][mip];   // integrated term for m 
+    assert ( (fc > 0.0 && cc >= 0) || (fc == 0.0  && cc == 0));
+    assert ( (fm > 0.0 && mc >= 0) || (fm == 0.0  && mc == 0));
+    if (fc == 0 && fm == 0)  //  special case 5 in IMa_Multiple_Populations.nb
     {
-      temp1 = LOG2 - (mc * log (fm)) - hc - qintg - mintg;
-      temp2 = log (exp (uppergamma (mc, 2 * fm * x / qmax)) - exp (uppergamma (mc, mmax * fm)));
+      temp1 = log (2 * log (mmax * qmax / (2 * x))) - hc - qintg - mintg;
+      temp2 = 0;
     }
     else
     {
-      if (fm == 0 && mc == 0 && fc > 0)
+        /* the difference between two upppergamma()s is the negative of 
+           the difference between two lowergamma()s.  However numbers   
+           for a or b sometimes come out to be very large and equal   
+           under uppergamma  or underlowergramma, in which case it is   
+           necessary to trap this and use the other function            
+        */
+      temp1 = LOG2 + (mc * log (x)) - ((cc + mc) * log (fc + fm * x)) - hc - qintg - mintg;
+      a = uppergamma (cc + mc, 2 * (fc + fm * x) / qmax);   // a is a log of uppergamma
+      b = uppergamma (cc + mc, mmax * (fm + fc / x));     // b is a log of uppergamms
+      if (a<=b)   // can happen that a==b,  should not happen that a < b,  but trap it here anyway
       {
-        temp1 = LOG2 - (cc * log (fc)) - hc - qintg - mintg;
-        temp2 = log (exp (uppergamma (cc, 2 * fc / qmax)) - exp (uppergamma (cc, fc * mmax / x)));
+        b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);  // b is a log of lowergama
+        a = lowergamma (cc + mc, mmax * (fm + fc / x));      // a is a log of lowergama 
+      } 
+/*     if (cc + mc > 0)   // was playing around with doing lowergamma as the default,  got same #'s 
+      {
+        b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);  // b is a log of lowergama
+        a = lowergamma (cc + mc, mmax * (fm + fc / x));      // a is a log of lowergama 
       }
       else
+        a = b= 1.0;  // just to force uppergamma calculations 
+      if (a<=b)   // can happen that a==b,  should not happen that a < b,  but trap it here anyway
       {
-        if (fc == 0 && cc == 0 && mc == 0 && fm == 0)
-        {
-          temp1 = log (2 * log (mmax * qmax / (2 * x))) - hc - qintg - mintg;;
-          temp2 = 0;
-        }
-        else// fc>0, cc>0, mc> 0, fm> 0
-        {
-          temp1 = LOG2 + (mc * log (x)) - ((cc + mc) * log (fc + fm * x)) - hc - qintg - mintg;
-          //temp2 = log ( exp(uppergamma (cc + mc, 2 * (fc + fm * x) / qmax)) - exp(uppergamma (cc + mc, mmax * (fm + fc / x))) );
-          a = uppergamma (cc + mc, 2 * (fc + fm * x) / qmax);
-          b = uppergamma (cc + mc, mmax * (fm + fc / x));
-          /* the difference between two upppergamma()s is the negative of */
-          /* the difference between two lowergamma()s.  However numbers   */
-          /* for a or b often come out to be very large and equal under   */
-          /* under uppergamma  or underlowergramma, in which case it is   */
-          /* necessary to trap this and use the other function            */
-          if (a==b)
-          {
-            b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);
-            a = lowergamma (cc + mc, mmax * (fm + fc / x));
-          }
-		        if (a>b)
-          {
-			        LogDiff(temp2,a,b);
-          }
-		        else
-          {
-              temp1 = temp2 = 0.0;
-          }
-        }
+        a = uppergamma (cc + mc, 2 * (fc + fm * x) / qmax);   // a is a log of uppergamma
+        b = uppergamma (cc + mc, mmax * (fm + fc / x));     // b is a log of uppergamms
+      }   */
+
+      if (a>b)
+      {
+			     LogDiff(temp2,a,b); // temp2 is the log of the difference between what a and b are logs of
+      }
+		    else
+      {
+          temp1 = temp2 = 0.0;
       }
     }
+    // at this point temp1 and temp2 are logarithms,  need to exp() their sum 
     if ((temp1 + temp2 < 700 ) && (temp1 + temp2 > -700 )) // skip things that cannot be exped
       sum += exp (temp1 + temp2);
   }
@@ -88,6 +90,96 @@ calc_popmig (int thetai, int mi, double x, int prob_or_like)
   }
   return sum;
 }                               //calc_popmig
+
+/* calculate the probability density of the product 2NM  
+  see 2Nm section in IMa_Multiple_Populations.nb  */
+
+/* this is older code,  has some unnecessary conditions in it */ 
+double
+hold_calc_popmig (int thetai, int mi, double x, int prob_or_like)
+{
+  int ei, cc, mc;
+  int ccp, fcp, hcp, mcp, fmp, qip, mip;
+  double sum, temp, temp1, temp2, fc, fm, hc, qintg, mintg, mmax, qmax;
+  double a,b;
+  ccp = gsamp_ccp + thetai;
+  fcp = gsamp_fcp + thetai;
+  hcp = gsamp_hccp + thetai;
+  mcp = gsamp_mcp + mi;
+  fmp = gsamp_fmp + mi;
+  qip = gsamp_qip + thetai;
+  mip = gsamp_mip + mi;
+  mmax = C[ARBCHAIN]->imig[mi].pr.max;
+  qmax =C[ARBCHAIN]->itheta[thetai].pr.max;
+
+  for (sum = 0, ei = 0; ei < genealogiessaved; ei++)
+
+  {
+    cc = (int) gsampinf[ei][ccp]; // coalescent count
+    fc = (double) gsampinf[ei][fcp];  // coalescent weight
+    hc = (double) gsampinf[ei][hcp];  // inheritance weight
+    mc = (int) gsampinf[ei][mcp];    // migration count  (W in mathematica notebook)
+    fm = (double) gsampinf[ei][fmp];   // migration weight
+    qintg = (double) gsampinf[ei][qip];  // integrated term for q
+    mintg = (double) gsampinf[ei][mip];   // integrated term for m 
+    if (fc == 0 && cc == 0 && fm > 0)  //  special case 3 in IMa_Multiple_Populations.nb
+    {
+      temp1 = LOG2 - (mc * log (fm)) - hc - qintg - mintg;
+      temp2 = log ( exp (uppergamma (mc, 2 * fm * x / qmax)) - exp (uppergamma (mc, mmax * fm)));
+    }
+    else
+    {
+      if (fm == 0 && mc == 0 && fc > 0)  //  special case 4 in IMa_Multiple_Populations.nb
+      {
+        temp1 = LOG2 - (cc * log (fc)) - hc - qintg - mintg;
+        temp2 = log (exp (uppergamma (cc, 2 * fc / qmax)) - exp (uppergamma (cc, fc * mmax / x)));
+      }
+      else
+      {
+        if (fc == 0 && cc == 0 && mc == 0 && fm == 0)  //  special case 5 in IMa_Multiple_Populations.nb
+        {
+          temp1 = log (2 * log (mmax * qmax / (2 * x))) - hc - qintg - mintg;
+          temp2 = 0;
+        }
+        else// fc>0, cc>0, mc> 0, fm> 0
+        {
+          temp1 = LOG2 + (mc * log (x)) - ((cc + mc) * log (fc + fm * x)) - hc - qintg - mintg;
+          //temp2 = log ( exp(uppergamma (cc + mc, 2 * (fc + fm * x) / qmax)) - exp(uppergamma (cc + mc, mmax * (fm + fc / x))) );
+          a = uppergamma (cc + mc, 2 * (fc + fm * x) / qmax);   // a is a log of uppergamma
+          b = uppergamma (cc + mc, mmax * (fm + fc / x));     // b is a log of uppergamms
+          /* the difference between two upppergamma()s is the negative of */
+          /* the difference between two lowergamma()s.  However numbers   */
+          /* for a or b often come out to be very large and equal   */
+          /* under uppergamma  or underlowergramma, in which case it is   */
+          /* necessary to trap this and use the other function            */
+          if (a==b)
+          {
+            b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);  // b is a log of lowergama
+            a = lowergamma (cc + mc, mmax * (fm + fc / x));      // a is a log of lowergama 
+          }
+		        if (a>b)
+          {
+			        LogDiff(temp2,a,b); // temp2 is the log of the difference between what a and b are logs of
+          }
+		        else
+          {
+              temp1 = temp2 = 0.0;
+          }
+        }
+      }
+    }
+    // at this point temp1 and temp2 are logarithms,  need to exp() their sum 
+    if ((temp1 + temp2 < 700 ) && (temp1 + temp2 > -700 )) // skip things that cannot be exped
+      sum += exp (temp1 + temp2);
+  }
+  sum /= genealogiessaved;
+  if (prob_or_like)
+  {
+    temp = 2 * (log (qmax) + log (mmax) - log (2 * x)) / (qmax * mmax);
+    sum /= temp;
+  }
+  return sum;
+}                               //hold_calc_popmig
 
 /* calculate the probability density of the product 2NM when migration has an exponential prior */
 #define OCUTOFF  10

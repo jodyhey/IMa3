@@ -1157,6 +1157,10 @@ This is a unnormalized function.   Modified from numerical recipes gammaq() in t
             step, a, x);
   if (a == 0)
   {
+    /* JH 1/9/2018
+      rarely get a bug here  when x = 0.0 
+      would like to trap this without triggering error expint()
+      but what should temp be in this case?? */ 
     temp = expint (1, x, &logindicator);
     if (!logindicator)
       p = log (temp);

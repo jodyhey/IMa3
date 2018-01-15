@@ -49,10 +49,7 @@ marginp (int param, int firsttree, int lasttree, double x, int dummy)
     {
       p = param;
       hval = gsampinf[ei][gsamp_hccp + p];
-      temp =
-        -gsampinf[ei][gsamp_qip + p] + gsampinf[ei][gsamp_ccp +
-                                                    p] * (LOG2 -
-                                                          log (x)) -
+      temp = -gsampinf[ei][gsamp_qip + p] + gsampinf[ei][gsamp_ccp + p] * (LOG2 -log (x)) -
         hval - 2 * gsampinf[ei][gsamp_fcp + p] / x;
       sumtemp += exp (temp);
     }

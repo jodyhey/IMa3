@@ -10,7 +10,7 @@ extern int numtreesarray[];   /* number of possible ordered trees,  for up to 7 
 
 static double calcx (int ei, int pnum, int mode);
 extern int numuniquenodes[]; // in alltreestrings.cpp
-
+void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr);
 
 
 /******* LOCAL FUNCTIONS ***********/
@@ -137,6 +137,159 @@ calcx (int ei, int pnum, int mode)
   assert (tempval >= 0.0);         // it should be greater than or equal to 0   (not sure really,  is it ok to be 0 ? 
   return tempval;
 }                               //calcx
+
+/* fill strings and xy values for printing 2Nm ascii curves */
+void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
+{
+  int i, j, k, hpi, mpop, thetai, mi, found;
+  double pmmax, tempy, tempx, maxxfind;
+
+  hpi = 0;
+  if (modeloptions[PARAMETERSBYPERIOD])
+  {
+    for (k = 0; k < lastperiodnumber; k++)
+    {
+      for (i = 0; i < npops - k; i++)
+      {
+        mpop = C[ARBCHAIN]->plist[k][i];
+        thetai = 0;
+        found = 0;
+        while (!found && thetai < numpopsizeparams)
+        {
+          found = (k == atoi (&C[ARBCHAIN]->itheta[thetai].str[1])
+                   && mpop == atoi (&C[ARBCHAIN]->itheta[thetai].str[3]));
+          if (!found)
+            thetai++;
+        }
+        for (mi = 0; mi < nummigrateparams; mi++)
+        if ((modeloptions[EXPOMIGRATIONPRIOR]==1 && C[ARBCHAIN]->imig[mi].pr.expomean > MPRIORMIN) ||
+          (modeloptions[EXPOMIGRATIONPRIOR]==0 && C[ARBCHAIN]->imig[mi].pr.max > MPRIORMIN))
+        {
+          found = 0;
+          if (modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS])
+          {
+            found = (k == atoi (&C[ARBCHAIN]->imig[mi].str[1])
+                     && (mpop == atoi (&C[ARBCHAIN]->imig[mi].str[3])
+                         || mpop == atoi (&C[ARBCHAIN]->imig[mi].str[6])));
+          }
+          else
+          {
+            found = (k == atoi (&C[ARBCHAIN]->imig[mi].str[1])
+                     && mpop == atoi (&C[ARBCHAIN]->imig[mi].str[3]));
+          }
+          if (found)
+          {
+            sprintf (popmigstr[hpi], "%d,2N%d", k, mpop);
+            if (modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS])
+            {
+              strcat (popmigstr[hpi], "m");
+              strcat (popmigstr[hpi], &C[ARBCHAIN]->imig[mi].str[3]);
+            }
+            else
+            {
+              strcat (popmigstr[i], C[ARBCHAIN]->imig[mi].str);
+            }
+            if (modeloptions[EXPOMIGRATIONPRIOR])
+            {
+              pmmax = EXPOMIGPLOTSCALE * C[ARBCHAIN]->imig[mi].pr.expomean;
+            }
+            else
+            {
+              pmmax = C[ARBCHAIN]->itheta[thetai].pr.max * C[ARBCHAIN]->imig[mi].pr.max / 2.0;
+            }
+            j = GRIDSIZE-1;
+            maxxfind = 0;
+            while (maxxfind==0 && j >= 0)// see if the maximum x value can be reduced from pmmax.  
+            {
+              tempx = (j + 0.5) * pmmax / GRIDSIZE;
+              if (modeloptions[EXPOMIGRATIONPRIOR])
+                tempy = calc_pop_expomig (thetai, mi,tempx , 0);
+              else
+                tempy = calc_popmig (thetai, mi,tempx , 0);
+              if (tempy > 1e-6)  // 1e-6 fairly arbitrary cutoff for finding upper bound 
+                maxxfind = tempx;
+              else 
+                j--;
+            }
+            if (j < 0)
+              maxxfind = pmmax;
+            for (j = 0; j < GRIDSIZE; j++)
+            {
+              popmigxy[hpi][j].x = (j + 0.5) * maxxfind / GRIDSIZE;
+              if (modeloptions[EXPOMIGRATIONPRIOR])
+              {
+                popmigxy[hpi][j].y = calc_pop_expomig (thetai, mi, popmigxy[hpi][j].x, 0);
+              }
+              else
+              {
+                popmigxy[hpi][j].y = calc_popmig (thetai, mi, popmigxy[hpi][j].x, 0);
+              }
+            }
+            hpi++;
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    for (i = 0; i < numtreepops - 1; i++)
+    {
+      thetai = i;
+      for (mi = 0; mi < nummigrateparams; mi++)
+      if ((modeloptions[EXPOMIGRATIONPRIOR]==1 && C[ARBCHAIN]->imig[mi].pr.expomean > MPRIORMIN) ||
+        (modeloptions[EXPOMIGRATIONPRIOR]==0 && C[ARBCHAIN]->imig[mi].pr.max > MPRIORMIN))
+      {
+        if (modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS])
+        {
+          found = ((thetai == atoi (&C[ARBCHAIN]->imig[mi].str[1])) || (thetai == atoi (&C[ARBCHAIN]->imig[mi].str[4])));
+        }
+        else
+        {
+          found = thetai == atoi (&C[ARBCHAIN]->imig[mi].str[1]);
+        }
+        if (found)
+        {
+          sprintf (popmigstr[hpi], "2N%d", thetai);
+          strcat (popmigstr[hpi], C[ARBCHAIN]->imig[mi].str);
+          if (modeloptions[EXPOMIGRATIONPRIOR])
+          {
+            pmmax = EXPOMIGPLOTSCALE * C[ARBCHAIN]->imig[mi].pr.expomean;
+          }
+          else
+          {
+            pmmax = C[ARBCHAIN]->itheta[thetai].pr.max * C[ARBCHAIN]->imig[mi].pr.max / 2.0;
+          }
+          j = GRIDSIZE-1;
+          maxxfind = 0;
+          while (maxxfind==0 && j >= 0)
+          {
+            tempx = (j + 0.5) * pmmax / GRIDSIZE;
+            if (modeloptions[EXPOMIGRATIONPRIOR])
+              tempy = calc_pop_expomig (thetai, mi,tempx , 0);
+            else
+              tempy = calc_popmig (thetai, mi,tempx , 0);
+            if (tempy > 1e-9)
+              maxxfind = tempx;
+            else 
+              j--;
+          }
+          if (j < 0)
+            maxxfind = pmmax;
+          for (j = 0; j < GRIDSIZE; j++)
+          {
+            popmigxy[hpi][j].x = (j + 0.5) * maxxfind / GRIDSIZE;
+            if (modeloptions[EXPOMIGRATIONPRIOR])
+              popmigxy[hpi][j].y = calc_pop_expomig (thetai, mi, popmigxy[hpi][j].x, 0);
+            else
+              popmigxy[hpi][j].y = calc_popmig (thetai, mi, popmigxy[hpi][j].x, 0);
+          }
+          hpi++;
+        }
+      }
+    }
+  }
+}                               //void fill_2Nm_vals
 
 
 
@@ -1824,10 +1977,13 @@ void callasciicurves (FILE *outfile,int recordsteps)
   struct plotpoint **curvexy;
   char **curvestr;
   int *curve_do_logplot;
-  int numcurve = 0;
+  int numcurve = 0, nummigcurve = 0;
   int i, j, li, ui;
   int *nrecstep;
-  int dotcurves = 0,dodemogcurves = 0, doucurves = 0, dohypercurves = 0,dohkycurves=0;
+  int dotcurves = 0,dodemogcurves = 0, doucurves = 0, dohypercurves = 0,dohkycurves=0,do2Nmcurves = 0;
+  struct plotpoint **tempxyarrays;
+  char  **tempparamstr;
+
   // find out how many curves
 
 /* use C[ARBCHAIN] 
@@ -1861,11 +2017,21 @@ void callasciicurves (FILE *outfile,int recordsteps)
    // numcurve += numpopsizeparams;
   if (runmode == Gmode3 || runmode == LOADGmode4 || runmode == HGmode6)
   {
-    numcurve += numpopsizeparams;
-    for (i = 0; i < nummigrateparams; i++)
-      if (C[ARBCHAIN]->imig[i].pr.max > MPRIORMIN || C[ARBCHAIN]->imig[i].pr.expomean > MPRIORMIN)
-        numcurve++;
+    if (outputoptions[NOPOPMIGPARAMHIST] == 0)
+      do2Nmcurves = 1;
     dodemogcurves = 1;
+    numcurve += numpopsizeparams;
+    for (i = 0,nummigcurve = 0; i < nummigrateparams; i++)
+    {
+      if ((modeloptions[EXPOMIGRATIONPRIOR]==1 && C[ARBCHAIN]->imig[i].pr.expomean > MPRIORMIN) ||
+        (modeloptions[EXPOMIGRATIONPRIOR]==0 && C[ARBCHAIN]->imig[i].pr.max > MPRIORMIN))
+      {
+        numcurve++;
+        nummigcurve++;
+        if (do2Nmcurves)
+          numcurve++;
+      }
+    }
   }
 // allocate
   curvexy = static_cast<plotpoint **> 
@@ -1890,7 +2056,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
   {
     for (i = 0; i < numpopsizeparams; i++)
     {
-      /* curvexy for itheta and imig for C[ARBCHAIN] should have been filled when the histograms were made */
+      /* curvexy for itheta and imig for C[ARBCHAIN] should have been filled by fillvec() from the call to printhistograms() when the histograms were made */
       curvexy[j] = C[ARBCHAIN]->itheta[i].xy;
       curvestr[j] = &C[ARBCHAIN]->itheta[i].str[0];
       curve_do_logplot[j] = 0;
@@ -1901,13 +2067,37 @@ void callasciicurves (FILE *outfile,int recordsteps)
       if ((modeloptions[EXPOMIGRATIONPRIOR]==1 && C[ARBCHAIN]->imig[i].pr.expomean > MPRIORMIN) ||
         (modeloptions[EXPOMIGRATIONPRIOR]==0 && C[ARBCHAIN]->imig[i].pr.max > MPRIORMIN))
       {
-        /* curvexy for itheta and imig for C[ARBCHAIN] should have been filled when the histograms were made */
+        /* curvexy for itheta and imig for C[ARBCHAIN] should have been filled by fillvec() from the call to printhistograms() when the histograms were made */
         curvexy[j] = C[ARBCHAIN]->imig[i].xy;
         curvestr[j] = &C[ARBCHAIN]->imig[i].str[0];
         curve_do_logplot[j] = 0;
         nrecstep[j] = 1;
         j++;
       }
+  }
+  if (do2Nmcurves)  
+    /* added 1/11/2018,  bit of a kludge.  histograms have already been printed,  including those for 2Nm,  but 
+      we want to print the curves for 2Nm. But we have not saved the values in the histograms.  Even though those values
+      were generated and saved for q and m  by fillvec(). Anyway,  here we set up some new temporary 
+      arrays and calculate the values for 2Nm again with a call to the new function fill_2Nm_vals()
+    */ 
+  {
+    tempxyarrays = static_cast<plotpoint **> (malloc (nummigcurve * sizeof (struct plotpoint*)));
+    tempparamstr = static_cast<char **> (malloc(nummigcurve *sizeof(char*)));
+    for (i = 0; i < nummigcurve; i++)
+    {
+      tempxyarrays[i]=static_cast<plotpoint *> (calloc (GRIDSIZE, sizeof (struct plotpoint)));
+      tempparamstr[i] = static_cast<char *> (malloc(PARAMSTRLEN *sizeof(char)));
+    }
+    fill_2Nm_vals (tempxyarrays,tempparamstr);
+    for (i = 0; i < nummigcurve; i++)
+    {
+      curvexy[j] = tempxyarrays[i];
+      curvestr[j] = &tempparamstr[i][0];
+      curve_do_logplot[j] = 0;
+      nrecstep[j] = 1;
+      j++;
+    }
   }
   if (doucurves)
   {
@@ -1961,6 +2151,16 @@ void callasciicurves (FILE *outfile,int recordsteps)
   XFREE (curvestr);
   XFREE (curve_do_logplot);
   XFREE (nrecstep);
+  if (do2Nmcurves) /* added 1/11/2018,  free the temporary arrays used for 2Nm values */ 
+  {
+    for (i = 0; i < nummigrateparams; i++) 
+    {
+      XFREE(tempxyarrays[i]);
+      XFREE(tempparamstr[i]);
+    }
+    XFREE(tempxyarrays);
+    XFREE(tempparamstr);
+  }
 }                               //callasciicurve 
 
 void printsteps (FILE * outto, double like, double probg,int burndone, int burnsteps)

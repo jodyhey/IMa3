@@ -336,7 +336,7 @@ int setswaptries(void)
         but the effect of swapdist depends strongly on how many chains and the heating parameters
         don't include it for now 
      
-      no matter what set a min of 2 and a max of 40 
+      no matter what, set a min of 2 and a max of 40 
       the upper bound of 40 is there because swaps take a lot of time
       if m=1 and n=500  then x=125,  so having a max of 40 has the effect of setting m to about 3.  
       if m=1 and n=1000, then x=250  and having a max of 40 has the effect of setting m to about 6
@@ -455,51 +455,54 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
     only used with mpi
     complex function with a lot of tricky mpi work
 
-  STEP 1. HEADNODE picks 2 chain #'sheating values randomly but with indices that are within SWAPDIST positions
+  STEP 1. HEADNODE picks 2 heating values randomly but with indices that are within SWAPDIST positions
+          does this by picking two positions in allbetas[], which every cpus has and which never changes 
   STEP 2. Bcast those values to all the other nodes.
-  STEP 3. check to see if either chain is on the current node, set doISswap  (1 if either is on current node. else 0) 
-        keep in mind several possibilities:
-          both betas could be on the same node
-            that node could be the head node 
-            or not the head node
-          else betas are different nodes
-            one of those could be the head node
-            or neither could be the head node 
-    if so,  send the node number to HEADNODE 
+          After step 2,  all nodes know the indices in allbetas[]
+  STEP 3. each node: check to see if either chain is on the current node, set doISswap  (1 if either is on current node. else 0) 
+            keep in mind several possibilities:
+              both betas could be on the same node
+                that node could be the current node, or not  
+              else betas are different nodes
+                one of those could be the current node
+                or neither could be the current node 
+        if so,  send the node number to HEADNODE 
+        After step 3 the HEADNODE knows which two nodes have the chains corresponding to the picked indices in allbetas[]
+        
   STEP 4. broadcast from HEADNODE to others the node numbers for the beta values 
-  if doISwap  (one of the beta values is on the current node), so attempt a swap 
+        After step 4,  all nodes know the node numbers corresponding to the picked indices in allbetas[]
+
+  if doISwap:  (one of the beta values is on the current node), then attempt a swap 
     STEP 5.  
-		 	send/receive between nodes for A, B   poptreestrings,  put in holdpoptreestring vars
-			set treematch (1 if A tree is same as B tree, else 0) 
+		 	  send/receive between nodes for A, B   poptreestrings,  put in holdpoptreestring vars
+			   set treematch (1 if A tree is same as B tree, else 0) 
+						if nodes for A and B are the same: (STEP 5.1)
+				    swapchains without MPI 
+			  else  
+				  if current node is the node for A (STEP 5.2.A )
+					  calc likelihood and prior using calcpartialswapweight() for chain  A 
+					  send/receive from node for B info on RY and NW updating 
+					  send/receive from node for B info on beta vals and allbetapos and likelihoods and priors
+					  increment swapcount below diagonal
+				  if current node is the node for B (STEP 5.2.B )
+					  calc likelihood and prior using calcpartialswapweight() for chain  B 
+					  send/receive from node for A info on RY and NW updating 
+					  send/receive from node for A info on beta vals and allbetapos and likelihoods and priors			
 			
-			if nodes for A and B are the same: (STEP 5.1)
-				swapchains without MPI 
-			else  
-				if current node is the node for A (STEP 5.2.A )
-					calc likelihood and prior using calcpartialswapweight() for chain  A 
-					send/receive from node for B info on RY and NW updateing 
-					send/receive from node for B info on beta vals and allbetapos and likelihoods and priors
-					increment swapcount below diagonal
-				if current node is the node for B (STEP 5.2.B )
-					calc likelihood and prior using calcpartialswapweight() for chain  B 
-					send/receive from node for A info on RY and NW updateing 
-					send/receive from node for A info on beta vals and allbetapos and likelihoods and priors			
-			
-			if if current node is the node for A (STEP 5.3 )  (use node for A for actual metropolis hastings)
-				increment attempts
-				calculate metropolishastings ratio 
-				if success
-					increment successes
-					increment swapcount above diagonal
-					increment chain0 swap count
-				set swapvar indicating update accepted or not
-				send swapvar to B 
-					
-			else  (STEP 5.4 )
-				if swapvar
-					set beta, betapos
-					set RY NW  update info
-else (doISwap == 0)  do nothing 	
+			  if current node is the node for A (STEP 5.3 )  (use node for A for actual metropolis hastings)
+				  increment attempts
+				  calculate metropolishastings ratio 
+				  if success
+					   increment successes
+					   increment swapcount above diagonal
+					   increment chain0 swap count
+				    set swapvar indicating update accepted or not
+				    send swapvar to B 
+			   else  (STEP 5.4 )
+				    if swapvar
+					     set beta, betapos
+					     set RY NW  update info
+  else (i.e. doISwap == 0)  do nothing 	
 
  */
 

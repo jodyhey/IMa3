@@ -3936,7 +3936,7 @@ printf("printed means variances correlations\n");
     {
       p = numpopsizeparams + nummigrateparams ;
       holdpeakloc = static_cast<float *> (malloc (p * sizeof (float)));
-      printf ("surface calculations node# . . .\n");
+      printf ("surface calculations  . . .\n");
       fflush(stdout);
       if (modeloptions[EXPOMIGRATIONPRIOR] || (runoptions[LOADRUN] && calcoptions[FINDJOINTPOSTERIOR]))
         eexpsum = (struct extendnum *) malloc ((size_t) ((genealogiessaved + 1) * sizeof (struct extendnum)));
