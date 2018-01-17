@@ -29,8 +29,9 @@ static char priorfilename[FNSIZE];
 static char timeinfostring[80]; 
 static char topologypriorinfostring[COMMANDLINESTRINGLENGTHMAX] = {'\0'};                      
 static double generationtime; 
-static double hilike = -DBL_MAX, hiprob = -DBL_MAX;                   
-static double hilike_rec,hiprob_rec; 
+static double hilike, hiprob;                   
+static double currlike, currprob;                   
+//static double hilike_rec,hiprob_rec; 
 static double hval1, hval2;                       
 static double scaleumeaninput = 0;                      
 static FILE *genealogyinfosavefile; 
@@ -103,7 +104,7 @@ static void trend_reset (struct value_record *v, int nv);
 static void trendrecord (int loadarrayj, int currentid);
 static void recordval (struct value_record *v, double val);
 static void record_migrations (int z);
-static void checkhighs (int z);
+static void checkhighs (int z, int currentid, int reset);
 static void record (int currentid);
 static void loadgenealogyvalues (void);
 // moved these to output.cpp
@@ -383,7 +384,7 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("-q  Maximum for population size parameters (4Nu) \n");
       printf ("-r  Run options \n");
       printf ("    0 LOAD-GENEALOGY Mode - load from previous run(s); also requires -v (do not use with -j0)\n");
-      printf ("    1 Do not save genealogies (default saves sampled genealogies, ignored with –j0)\n");
+      printf ("    1 Do not save genealogies (default saves sampled genealogies, ignored with -j0)\n");
       printf ("    2 Save the state of the Markov chain in a file - named with extension .mcf (MCMC mode only)\n");
       printf ("    3 Start by loading *.mcf file; requires -f (data and priors must be the same) \n");
       printf ("    4 Write all mutation related updates rates to stdout during the run (default is to suppress)\n");
@@ -1527,7 +1528,7 @@ void start (int argc, char *argv[], int currentid)
       burndurationmode = TIMESTEPS;
       burnduration = (int) 0;  // no burn,  regardless of -b value 
       burndone = 1;
-
+      checkhighs(whichiscoldchain(),currentid,0);
       //setheat (hval1, hval2, heatmode, currentid); under some circumstances might want to reset heat terms after loading mcf files
       mcffound = 1;
       if (currentid == HEADNODE)
@@ -1557,6 +1558,7 @@ void start (int argc, char *argv[], int currentid)
   }
   checkautoc (1, 0, 0, currentid);
   gsampinflength = calc_gsampinf_length ();
+  checkhighs(whichiscoldchain(),currentid,1);
   // AS: TODO Looks like outputoptions has to be broadcast as well
   if (outputoptions[MIGRATEHIST]) 
   {
@@ -2113,6 +2115,7 @@ void reset_after_burn (int currentid)
   int rc;
   time_t timer;
   //time (&chainstarttime);
+  checkhighs(whichiscoldchain(),currentid,1);
 #ifdef MPI_ENABLED
 		if (numprocesses > 1)	
   {
@@ -2234,7 +2237,8 @@ void reset_after_burn (int currentid)
   }
   if (runoptions[SAVEMCSTATEFILE])
   {
-    writemcf (mcfwritefilename,command_line,recordsteps,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run 
+    //writemcf (mcfwritefilename,command_line,recordsteps,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run 
+    writemcf (mcfwritefilename,command_line,recordsteps,hilike,hiprob,currentid);
   }
 
 }                               /* reset_after_burn() */
@@ -2996,25 +3000,75 @@ void record_migrations (int z)
 
 */
 
-void checkhighs (int z) 
+void checkhighs (int z,int currentid, int reset) 
 {
-  double temp;
-  if (z >= 0)
-    {
-    if (hilike < C[z]->allpcalc.pdg)
-      hilike = C[z]->allpcalc.pdg;
+  int rc = 0; //AS: return code for MPI C bindings
+  double lowprob = -1e100;
+  if (z>= 0)
+  {
+    currlike = C[z]->allpcalc.pdg;
+    if (hilike < currlike || reset == 1)
+      hilike = currlike;
     if (hiddenoptions[HIDDENGENEALOGY]==0)
-    {
-      if (hiprob < C[z]->allpcalc.probg)
-        hiprob = C[z]->allpcalc.probg;
-    }
+      currprob = C[z]->allpcalc.probg;
     else
-    {
-      temp = C[z]->allpcalc.probg + C[z]->allpcalc.probhgg; // faster to sum these first
-      if (hiprob < temp)
-        hiprob = temp;
-    }
+      currprob = C[z]->allpcalc.probg + C[z]->allpcalc.probhgg;
+    if (hiprob < currprob || reset == 1)
+        hiprob = currprob;
   }
+  else if (reset)
+  {
+    hilike = currlike = hiprob = currprob = lowprob; 
+  }
+
+#ifdef MPI_ENABLED
+  MPI_Status status;
+  double temp[4];
+  if (z >=0 && currentid !=HEADNODE) // then send roottime to zero
+  {
+    temp[0] = hilike;
+    temp[1] = currlike;
+    temp[2] = hiprob;
+    temp[3] = currprob;
+    rc = MPI_Send(&temp, 4, MPI_DOUBLE, 0, 232321, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+  }
+	 if (z < 0 && currentid == HEADNODE) // receive roottime 
+  {
+		  rc = MPI_Recv(&temp, 4, MPI_DOUBLE, MPI_ANY_SOURCE, 232321, MPI_COMM_WORLD, &status);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+    hilike = temp[0];
+    currlike = temp[1];
+    hiprob = temp[2];
+    currprob = temp[3];
+  }
+
+  /*if (z >=0 && currentid !=HEADNODE) // then send roottime to zero
+  {
+    rc = MPI_Send(&hilike, 1, MPI_DOUBLE, 0, 232321, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Send(&currlike, 1, MPI_DOUBLE, 0, 232341, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Send(&hiprob, 1, MPI_DOUBLE, 0, 232361, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Send(&currprob, 1, MPI_DOUBLE, 0, 232381, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+	 }
+	 if (z < 0 && currentid == HEADNODE) // receive roottime 
+  {
+		  rc = MPI_Recv(&hilike, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232321, MPI_COMM_WORLD, &status);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Recv(&currlike, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232341, MPI_COMM_WORLD, &status);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Recv(&hiprob, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232361, MPI_COMM_WORLD, &status);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Recv(&currprob, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232381, MPI_COMM_WORLD, &status);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
+	 } 
+  MPI_Barrier(MPI_COMM_WORLD); // should be a way to do this better that avoids a barrier 
+  */
+#endif
+  //printf("currlike: %.2lf hilike: %.2lf currprob: %.2lf hiprob: %.2lf\n",currlike,hilike,currprob,hiprob);
 }                               /* checkhighs */
 
 void record (int currentid)
@@ -3029,14 +3083,27 @@ void record (int currentid)
 	MPI_Status status;
 #endif
 
-  checkhighs(z);
+ /*
+    need to get chain 0 stuff to head node
+    four possibilities:
+      1. chain 0 on current node and current node is headnode  (simply record the info)
+      2. chain 0 on current node and current node is NOT headnode (send chain 0 info to headnode)
+      3. chain 0 NOT on current node and current node is the headnode  (receive chain 0 info and record the info)
+      4. chain 0 NOT on current node and current node is NOT the headnode (do nothing)
+ */
+
+ /*
+  current and highest likelihoods and genealogy priors
+ */ 
+ checkhighs(z,currentid,0);
+
   if (outputoptions[PRINTTMRCA])
   {
     for (li = 0; li < nloci; li++)
     {
-	//AS: 6/16/2014 - recording should happen on head node for me to print values correctly
+	
 	    if (z >= 0 && currentid == HEADNODE) 
-      {
+     {
 	      recordval (L[li].g_rec->v, C[z]->G[li].roottime);
 	    }
 #ifdef MPI_ENABLED
@@ -3813,9 +3880,8 @@ printf("open outfilename %s  NODE %d  step %d time %s\n",outfilename,currentid,s
   else
     outfile = NULL;
 
-  printrunbasics (outfile, runoptions[LOADRUN], fpstr, burnsteps, recordint,
-                  recordsteps, savegenealogyint, hilike_rec,
-                  hiprob_rec);   // only writes to outfile if outfile != NULL
+  //printrunbasics (outfile, runoptions[LOADRUN], fpstr, burnsteps, recordint,recordsteps, savegenealogyint, hilike_rec,hiprob_rec);   // only writes to outfile if outfile != NULL
+  printrunbasics (outfile, runoptions[LOADRUN], fpstr, burnsteps, recordint,recordsteps, savegenealogyint, hilike,hiprob);
 #ifdef STDTEST
 printf("printed run basics\n");
 #endif
@@ -4194,7 +4260,7 @@ void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo
 /*JH 4/27/2016  moved the main step condition outside of this so it would not get called so often, to save some waiting in mpi */ 
 void intervaloutput (FILE * outto, int currentid)
 {
-  double like, probg,like_rec,probg_rec;
+  //double like, probg,like_rec,probg_rec;
   int rc = 0; //AS: Return code for MPI C bindings
   int poptreenum_rec;
   //char updatestr[1000];  no longer written too in here
@@ -4203,7 +4269,8 @@ void intervaloutput (FILE * outto, int currentid)
   int totaltopol_rec, chain0topol_rec, chain0topolswaps_rec;
 #endif
   int z = whichiscoldchain();
-  if (z >= 0)
+  checkhighs(z,currentid,0);
+  /*if (z >= 0) // cold chain is on current cpu 
   {
     like = C[z]->allpcalc.pdg;
     probg = C[z]->allpcalc.probg;
@@ -4214,7 +4281,7 @@ void intervaloutput (FILE * outto, int currentid)
   {
     probg = like = -DBL_MAX;
   }
-  checkhighs(z);
+  checkhighs(z); 
   if (numprocesses > 1)
   {
 #ifdef MPI_ENABLED
@@ -4234,9 +4301,10 @@ void intervaloutput (FILE * outto, int currentid)
     hilike_rec = hilike;
     like_rec = like;
     probg_rec = probg;
-  }
+  } */
   if (currentid == HEADNODE)
-    printsteps (outto, like_rec, probg_rec, burndone,burnsteps);
+    //printsteps (outto, like_rec, probg_rec, burndone,burnsteps);
+    printsteps (outto, currlike, currprob, burndone,burnsteps);
   if (z >=0 && currentid == HEADNODE) 
     poptreenum_rec = C[z]->poptreenum;
 #ifdef MPI_ENABLED
@@ -4246,15 +4314,15 @@ void intervaloutput (FILE * outto, int currentid)
     {
       rc = MPI_Send(&C[z]->poptreenum, 1, MPI_INT, 0, 13137, MPI_COMM_WORLD);
 	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-      rc = MPI_Send(&like, 1, MPI_DOUBLE, 0, 5656, MPI_COMM_WORLD);
-	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
+      //rc = MPI_Send(&like, 1, MPI_DOUBLE, 0, 5656, MPI_COMM_WORLD);
+	     //if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
     }
     if (z < 0 && currentid == HEADNODE) 
     {
       rc = MPI_Recv(&poptreenum_rec, 1,MPI_INT, MPI_ANY_SOURCE, 13137, MPI_COMM_WORLD, &status);
 	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-      rc = MPI_Recv(&like, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 5656, MPI_COMM_WORLD, &status);
-	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
+      //rc = MPI_Recv(&like, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 5656, MPI_COMM_WORLD, &status);
+	     //if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
     }
   }
   #endif
@@ -4460,7 +4528,7 @@ int main (int argc, char *argv[])
 	   if (currentid == HEADNODE) 
     {
 	    loadgenealogyvalues ();
-	    recordsteps = genealogiessaved;
+	    recordsteps = genealogiessaved; // why is recordsteps needed when runoptions[LOADRUN] ?
 	  }
    printoutput (currentid);
 	  if (currentid == HEADNODE)

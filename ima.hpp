@@ -116,7 +116,8 @@
 #ifdef DEBUG
 #define TURNONCHECKS
 #endif 
-//#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
+
+#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
 
 
 #ifdef STDTEST
