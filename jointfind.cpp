@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 
@@ -284,8 +284,8 @@ void listput(double val, int k)
 void setuplist()
 {
   int i;
-  list = (struct listelement **) malloc(genealogiessaved * sizeof (struct listelement *));
-  for (i=0;i<genealogiessaved;i++)
+  list = (struct listelement **) malloc(genealogysamples * sizeof (struct listelement *));
+  for (i=0;i<genealogysamples;i++)
     list[i] = (struct listelement *) malloc(sizeof (struct listelement));
 }
 
@@ -839,7 +839,7 @@ void startjointpeakouttable(FILE *outfile,char *fname)
   //FP"================================================\n");
   FP "%s",outputbanner("Joint Peak Locations and Posterior Probabilities"));
 
-  FP"  estimates based on %d sampled genealogies\n",genealogiessaved);
+  FP"  estimates based on %d sampled genealogies\n",genealogysamples);
   if (strlen(fname) > 0)
     FP"  nested model filename:%s\n",fname);
   FP"\nModel#  Model Description\n");
@@ -904,7 +904,7 @@ double jointp (double *x, int calc_ess,double *effective_n)
   if (init == 0)
   {
     init = 1;
-    log_numtrees = log ((double) genealogiessaved);
+    log_numtrees = log ((double) genealogysamples);
     /********* this section copied from IMa2  initialize.c setup_iparams()  on 8/24/09 */
     ccp = 0;
     fcp = ccp + numpopsizeparams;
@@ -926,13 +926,13 @@ double jointp (double *x, int calc_ess,double *effective_n)
     logx = (double *) malloc(nparams * sizeof (double));
     divx = (double *) malloc(nparams * sizeof (double));
     log2diffx = (double *) malloc(numpopsizeparams * sizeof (double));
-    double_gsamp_fcp = alt2d_alloc2Ddouble(genealogiessaved, numpopsizeparams);
+    double_gsamp_fcp = alt2d_alloc2Ddouble(genealogysamples, numpopsizeparams);
     if (npops > 2)
     {
-      probgp_popsize = (double *) malloc(genealogiessaved * sizeof(double));
-      probgp_migrate = (double *) malloc(genealogiessaved * sizeof(double));
+      probgp_popsize = (double *) malloc(genealogysamples * sizeof(double));
+      probgp_migrate = (double *) malloc(genealogysamples * sizeof(double));
     }
-    for (gi = 0; gi < genealogiessaved; gi++)
+    for (gi = 0; gi < genealogysamples; gi++)
     {
 	  for (i = 0; i < numpopsizeparams; i++)
         double_gsamp_fcp[gi][i] = 2.0 * gsampinf[gi][fcp + i]; 
@@ -963,7 +963,7 @@ double jointp (double *x, int calc_ess,double *effective_n)
     logx[i] = log(x[i]);
     divx[i] = 1.0/x[i];
   }
-  for (gi = 0, ii=0; gi < genealogiessaved; gi++)
+  for (gi = 0, ii=0; gi < genealogysamples; gi++)
   {
     g = gsampinf[gi];
     dg = double_gsamp_fcp[gi];
@@ -1017,7 +1017,7 @@ double jointp (double *x, int calc_ess,double *effective_n)
   while (gi < iin && last->v - now->v < PRANGELOG); 
   gin = gi;
   maxz -= OCUTOFF;
-  for (gi = 0; gi < gin /*genealogiessaved */; gi++) 
+  for (gi = 0; gi < gin /*genealogysamples */; gi++) 
     {
 	  zadj = eexpsum[gi].z - maxz;
       if (zadj > -308 && zadj < 308)
@@ -1062,7 +1062,7 @@ void freejointpmem()
     free(probgp_migrate);
   }
   free(popnest);
-  for (i=0;i<genealogiessaved;i++)
+  for (i=0;i<genealogysamples;i++)
     free(list[i]);
   free(list);
 }

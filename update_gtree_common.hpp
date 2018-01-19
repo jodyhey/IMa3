@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #ifndef _UPDATE_GTREE_COMMON_H_
 #define _UPDATE_GTREE_COMMON_H_
 #undef __BEGIN_DECLS

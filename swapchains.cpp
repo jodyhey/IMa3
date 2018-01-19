@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 
@@ -512,8 +512,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 {
   int swapvar = 0;
 	 MPI_Status status;
-	 MPI_Status stats[2];
-	 MPI_Request request[2];
+
   int rc = 0; 
 	 double metropolishastingsratio;
 	 int whichElementA, whichElementB;

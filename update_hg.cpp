@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 // 3/31/2016 version of this file.   Had a series of versions with various bugs. this one is best so far 
 // rnamed this to just update_hg.cpp  (i.e. without the date in the name 

@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 /*
 build a list of all possible population tree strings
 
@@ -409,7 +409,7 @@ int fillmigratepairs(void)
   int i,ii,j,k,numsubsets;
   SET *subsets,**subsetsbyk,fullset,seta,comp;
   int countbyk[MAXPOPS] = {0};
-  char checkstr[MAXPOPS],strseta[MAXPOPS],strcomp[MAXPOPS];
+  char checkstr[MAXPOPS+1],strseta[MAXPOPS],strcomp[MAXPOPS]; // 1_19_2018 fixed bug added 1 to checkstr length,  is this enough? 
   int numcompsubsets,countpairstrings,found;
 
   numsubsets = 1 << npops;  // 2^npops

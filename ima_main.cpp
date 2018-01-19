@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 #define GLOBVARS
 #include "ima.hpp"
@@ -62,8 +62,11 @@ static int time_t_size= sizeof(time_t);
 static int trenddoublepoint; 
 static int trendspot = 0;                      
 static long burnduration, chainduration;                       
-static long int burnsteps;                       
-static long int recordsteps = 0;                     
+static int mcmcrecords = 0;     
+static int mcmcrecords_old = 0;
+static int genealogysamples_old = 0;
+static int burninsteps_old = 0;
+static int runsteps_old = 0;
 static long seed_for_ran1; 
 static time_t endtime; 
 static time_t lasttime; 
@@ -112,7 +115,7 @@ static void loadgenealogyvalues (void);
 //static void callasciitrend (FILE * outfile);
 //static void callprintacceptancerates (FILE * outto, int currentid);
 
-static void printoutput (int currentid);
+static void printoutput (int currentid,int finaloutput);
 static void intervaloutput (FILE * outto, int currentid);
 static void output_update_scalars(/*FILE * outto,*/int z,int currentid, char updatestr[]);
 
@@ -293,7 +296,7 @@ scan_commandline (int argc, char *argv[], int currentid)
   {
     if (currentid == HEADNODE)  // print help screen then exit 
     {
-      printf ("IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman \n");
+      printf ("IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman \n");
   #ifdef STDTEST
     printf ("\n\n==================\nSTANDARD TEST MODE\n");
   #ifdef RANDOM_NUMBERS_FROM_FILE
@@ -386,7 +389,7 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    0 LOAD-GENEALOGY Mode - load from previous run(s); also requires -v (do not use with -j0)\n");
       printf ("    1 Do not save genealogies (default saves sampled genealogies, ignored with -j0)\n");
       printf ("    2 Save the state of the Markov chain in a file - named with extension .mcf (MCMC mode only)\n");
-      printf ("    3 Start by loading *.mcf file; requires -f (data and priors must be the same) \n");
+      printf ("    3 Start by loading *.mcf file; requires -f (only state space loaded, data and priors must be the same) \n");
       printf ("    4 Write all mutation related updates rates to stdout during the run (default is to suppress)\n");
       printf ("    5 Print burntrend file at end of burnin period\n");
       printf ("    6 When loading mcf files (-r3,-r7) do not load sampled values (i.e. use previous run as burnin)\n");
@@ -664,6 +667,8 @@ it is ok to have spaces between a flag and its values
                   hiddenoptions[SKIPMOSTUSCALAROUTPUT] = 1;
                 if (toupper(pstr[j])=='B') // treat 'B' as STOPMOSTINTERVALOUTPUT
                   hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;                  
+                if (toupper(pstr[j])=='C') // treat 'C' as READOLDMCFFILE  //jh1_17_2018
+                  hiddenoptions[READOLDMCFFILE] = 1; 
               }
               pstr[j] = '\0';
               j--;
@@ -868,6 +873,8 @@ it is ok to have spaces between a flag and its values
   } */
   if (numchainspp > 1)
   {
+    if ( calcoptions[CALCMARGINALLIKELIHOOD] && heatmode != HFULL)
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating mode.  -hf s required when calculating marginal likelihood ");
     if ( (heatmode == HGEOMETRIC && (numchainspp * numprocesses) < 4) || (heatmode == HFULL && (numchainspp * numprocesses) < 10)  )
     {
       IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model");
@@ -1119,7 +1126,7 @@ begin_outputfile_info_string (void)
   const char *buildtimestring = "IMa3 program compiled on " __DATE__ ", " __TIME__ ".";
   fpstri = static_cast<int *> (malloc (sizeof (int)));
   *fpstri = 0;
-  SP "IMa3 - Isolation with Migration Analysis  -  Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Arun Sethuraman, Yujin Chung 2017 \n");
+  SP "IMa3 - Isolation with Migration Analysis  -  Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Arun Sethuraman, Yujin Chung 2018 \n");
 
 #ifdef STDTEST
   SP "\n\n==================\nSTANDARD TEST MODE\n");
@@ -1224,7 +1231,7 @@ begin_outputfile_info_string (void)
 
     };
     if (runoptions[SAVELOADSAMEMCFFILE])
-      SP " (-r%d mode. If mcf file(s) exist,  no burn will be done)\n",(int) SAVELOADSAMEMCFFILE);
+      SP " (If mcf file(s) loaded using -r%d  no burn will be done)\n",(int) SAVELOADSAMEMCFFILE);
     else
       SP "\n");
     if (runoptions[PRINTBURNTREND])
@@ -1398,6 +1405,21 @@ void set_mode_check_inconsistent_options(void)
  }
 } // set_mode_check_inconsistent_options(void)
 
+
+void add_previous_run_info_to_output(int *fpstri, char fpstr[])
+{
+  if (numpriormcfruns > 0)
+  {
+    SP "\nPrevious Run Info (using mcf files) \n");
+    SP "-----------------------------------\n");
+    SP "  Number of prior runs: %d\n",numpriormcfruns);
+    SP "  Total time of prior runs : %d hours, %d minutes, %d seconds \n",
+        (int) totaltime / (int) 3600,
+          ((int) totaltime / (int) 60) - ((int) 60 * ((int) totaltime / (int) 3600)),
+              (int) totaltime - (int) 60 *((int) totaltime / (int) 60));
+    SP "\n");
+  }
+}
 /* some simple initializations, sets up filenames and calls the main initialization functions 
 currentid is the current process rank number
 the head node has currentid of 0
@@ -1408,6 +1430,7 @@ void start (int argc, char *argv[], int currentid)
   int i;
   FILE *checkfile;
   int rc = 0;
+  
   thetaprior = mprior = tprior = -1.0;
   scan_commandline (argc, argv,currentid);
   int mcf0found,mcffound;
@@ -1431,7 +1454,7 @@ void start (int argc, char *argv[], int currentid)
    {
        sprintf(genealogyinfosavefilename, "%s.ti", outfilename); // would not hurt to have other nodes set for this, why only on currentid ?
 	  }
-   genealogiessaved = 0; //not sure if this needed here
+   genealogysamples = 0; //not sure if this needed here
   }
   if (cdurationmode == TIMEINF)
   {
@@ -1503,14 +1526,19 @@ void start (int argc, char *argv[], int currentid)
       doNWupdate = 1;
 #endif
   setup (infilename, fpstri, fpstr,priorfilename, topologypriorinfostring,currentid); // setup() is in initialize.cpp and does all the big structures like L, C, T 
+  add_previous_run_info_to_output(fpstri, fpstr);
   if (runoptions[LOADMCSTATE]) // set name of mcf file to read 
   {
 	  if (strcmp(&mcfreadfilename[strlen(mcfreadfilename)-4],".mcf")==0)
       sprintf(mcfreadfilename, "%s.%d", mcfreadfilename, currentid); 
     else
       sprintf(mcfreadfilename, "%s.mcf.%d", mcfreadfilename, currentid);  
-    readmcf (mcfreadfilename, &recordsteps,&hilike,&hiprob, currentid);
+    readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
+    mcf_was_read = 1;
   }
+  else
+    mcf_was_read =0;
+
   if (runoptions[SAVELOADSAMEMCFFILE]) // check if mcf file is present and read if it is 
   {
     sprintf(mcfwritefilename, "%s.mcf.%d", outfilename, currentid);  
@@ -1523,17 +1551,64 @@ void start (int argc, char *argv[], int currentid)
     {
       fclose (checkfile);
       sprintf(oldoutfilename, "%s.old", outfilename);
-      runoptions[LOADMCSTATE] = 1;
-      readmcf (mcfreadfilename, &recordsteps,&hilike,&hiprob, currentid);
-      burndurationmode = TIMESTEPS;
+      //runoptions[LOADMCSTATE] = 1;  
+      readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
+      mcf_was_read = 1;
+      /*burndurationmode = TIMESTEPS;
       burnduration = (int) 0;  // no burn,  regardless of -b value 
-      burndone = 1;
+      if (runoptions[MCFLOADONLYSTATESPACE] == 1)  // ignore saved values in .mcf and .ti file, set burndone ==0 to overright .ti file with reset_after_burn
+        burndone = 0;
+      else
+        burndone = 1;
       checkhighs(whichiscoldchain(),currentid,0);
       //setheat (hval1, hval2, heatmode, currentid); under some circumstances might want to reset heat terms after loading mcf files
       mcffound = 1;
       if (currentid == HEADNODE)
-        mcf0found = 1;
+        mcf0found = 1; */
     }
+  }
+  if (mcf_was_read)
+  {
+    numpriormcfruns += 1;
+    burndurationmode = TIMESTEPS;
+    if (runoptions[MCFLOADONLYSTATESPACE] == 1 )
+      burnduration = (int) 0;  // no burn,  regardless of -b value 
+    if (runoptions[MCFLOADONLYSTATESPACE] == 1 || runoptions[LOADMCSTATE])  // make new .ti file, set burndone ==0 to overright .ti file with reset_after_burn
+      burndone = 0;
+    else
+      burndone = 1;
+    //checkhighs(whichiscoldchain(),currentid,0); gets done anyway below 
+    //setheat (hval1, hval2, heatmode, currentid); under some circumstances might want to reset heat terms after loading mcf files
+    mcffound = 1;
+    if (currentid == HEADNODE)
+      mcf0found = 1;
+    add_previous_run_info_to_output(fpstri, fpstr);
+    if (hiddenoptions[READOLDMCFFILE]==0)
+    {
+      if (runoptions[MCFLOADONLYSTATESPACE])
+      {
+        mcmcrecords_old = 0;
+        genealogysamples_old = 0;
+      }
+      else
+      {
+        mcmcrecords_old = mcmcrecords;
+        genealogysamples_old = genealogysamples;
+      }
+      mcmcrecords = 0;
+      genealogysamples = 0;
+      burninsteps_old = burninsteps;
+      burninsteps = 0;
+      runsteps_old = runsteps;
+      runsteps = 0;
+    }
+    else
+    {
+      runsteps_old = runsteps = burninsteps_old = burninsteps = genealogysamples_old = 0;
+      mcmcrecords_old = mcmcrecords; 
+      mcmcrecords = 0;
+    }
+
 #ifdef MPI_ENABLED
 		  if (numprocesses > 1)	
     {
@@ -1556,7 +1631,10 @@ void start (int argc, char *argv[], int currentid)
     }
     //else  file does not exist,  do a regular run 
   }
-  checkautoc (1, 0, 0, currentid);
+  else
+    numpriormcfruns = 0;
+  if (mcf_was_read == 0 || runoptions[MCFLOADONLYSTATESPACE] == 1)
+    checkautoc (1, 0, 0, currentid);
   gsampinflength = calc_gsampinf_length ();
   checkhighs(whichiscoldchain(),currentid,1);
   // AS: TODO Looks like outputoptions has to be broadcast as well
@@ -2082,7 +2160,7 @@ checkgenealogyweights(ci);
 
 
   //if (step >= CHECKAUTOCWAIT)  // mpved to main loop in main. 
-    //checkautoc (0, burndone, burnsteps, currentid);
+    //checkautoc (0, burndone, burninsteps, currentid);
 #ifdef TURNONCHECKS
   for (ci=0;ci<numchainspp;ci++)
   {
@@ -2125,7 +2203,8 @@ void reset_after_burn (int currentid)
 	 }
 #endif
 
-  burnsteps = step - 1;
+  burninsteps = step - 1;
+  runsteps = 0;
   if (cdurationmode == TIMEINF)
   {
     time (&lasttime);
@@ -2184,61 +2263,63 @@ void reset_after_burn (int currentid)
         poptopologycounts[i] = 0;
     }
   }
-  checkautoc (1, burndone, burnsteps, currentid);
+  checkautoc (1, burndone, burninsteps, currentid);
   if (runoptions[DONTSAVEGENEALOGIES]==0)
   {
-	if (currentid == HEADNODE) {
-    if ((genealogyinfosavefile = fopen (genealogyinfosavefilename, "w")) == NULL)
+	   if (currentid == HEADNODE) 
+    if (runoptions[MCFLOADONLYSTATESPACE] && mcf_was_read) // write a .ti file,  possibly overwriting one of the same name (which is ok)
     {
-      IM_err (IMERR_CREATEFILEFAIL, "Error creating file for holding genealogy information");
-    }
-    fprintf (genealogyinfosavefile,
-             "-------------------------------------------\n\n");
-    fprintf (genealogyinfosavefile, "Header for genealogy file:  %s\n\n",
-             genealogyinfosavefilename);
-    fprintf (genealogyinfosavefile,
-             "-------------------------------------------\n\n");
-    fprintf (genealogyinfosavefile, "%s\n", fpstr);
-    fprintf (genealogyinfosavefile,
-             "-------------------------------------------\n\n");
-    fprintf (genealogyinfosavefile, "End of header for genealogy file:  %s\n\n",
-             genealogyinfosavefilename);
-    fprintf (genealogyinfosavefile,
-             "-------------------------------------------\n\n");
-    if (hiddenoptions[GSAMPINFOEXTRA]==1)
-    {
-      for (i=0;i<numpopsizeparams;i++)
-        fprintf (genealogyinfosavefile,"q_c\t");
-      for (i=0;i<numpopsizeparams;i++)
-        fprintf (genealogyinfosavefile,"q_f\t");
-      for (i=0;i<numpopsizeparams;i++)
-        fprintf (genealogyinfosavefile,"h\t");
-      for (i=0;i<nummigrateparams;i++)
-        fprintf (genealogyinfosavefile,"m_c\t");
-      for (i=0;i<nummigrateparams;i++)
-        fprintf (genealogyinfosavefile,"m_f\t");
-      for (i=0;i<numpopsizeparams;i++)
-        fprintf (genealogyinfosavefile,"q_intg\t");
-      for (i=0;i<nummigrateparams;i++)
-        fprintf (genealogyinfosavefile,"m_intg\t");
-      fprintf (genealogyinfosavefile,"P_data\t");
-      fprintf (genealogyinfosavefile,"P_G\t");
-      for (i=0;i<npops-1;i++)
-        fprintf (genealogyinfosavefile,"t\t");
-      fprintf (genealogyinfosavefile,"P_hm\t");
-      fprintf (genealogyinfosavefile,"c_hm\t");
-      if (modeloptions[POPTREETOPOLOGYUPDATE])
-        fprintf (genealogyinfosavefile,"treenum\t");
-      fprintf (genealogyinfosavefile,"\n");
-    }
-    fprintf (genealogyinfosavefile, "VALUESSTART\n");
-    f_close (genealogyinfosavefile);
-	}
+      if ((genealogyinfosavefile = fopen (genealogyinfosavefilename, "w")) == NULL)
+      {
+        IM_err (IMERR_CREATEFILEFAIL, "Error creating file for holding genealogy information");
+      }
+      fprintf (genealogyinfosavefile,
+               "-------------------------------------------\n\n");
+      fprintf (genealogyinfosavefile, "Header for genealogy file:  %s\n\n",
+               genealogyinfosavefilename);
+      fprintf (genealogyinfosavefile,
+               "-------------------------------------------\n\n");
+      fprintf (genealogyinfosavefile, "%s\n", fpstr);
+      fprintf (genealogyinfosavefile,
+               "-------------------------------------------\n\n");
+      fprintf (genealogyinfosavefile, "End of header for genealogy file:  %s\n\n",
+               genealogyinfosavefilename);
+      fprintf (genealogyinfosavefile,
+               "-------------------------------------------\n\n");
+      if (hiddenoptions[GSAMPINFOEXTRA]==1)
+      {
+        for (i=0;i<numpopsizeparams;i++)
+          fprintf (genealogyinfosavefile,"q_c\t");
+        for (i=0;i<numpopsizeparams;i++)
+          fprintf (genealogyinfosavefile,"q_f\t");
+        for (i=0;i<numpopsizeparams;i++)
+          fprintf (genealogyinfosavefile,"h\t");
+        for (i=0;i<nummigrateparams;i++)
+          fprintf (genealogyinfosavefile,"m_c\t");
+        for (i=0;i<nummigrateparams;i++)
+          fprintf (genealogyinfosavefile,"m_f\t");
+        for (i=0;i<numpopsizeparams;i++)
+          fprintf (genealogyinfosavefile,"q_intg\t");
+        for (i=0;i<nummigrateparams;i++)
+          fprintf (genealogyinfosavefile,"m_intg\t");
+        fprintf (genealogyinfosavefile,"P_data\t");
+        fprintf (genealogyinfosavefile,"P_G\t");
+        for (i=0;i<npops-1;i++)
+          fprintf (genealogyinfosavefile,"t\t");
+        fprintf (genealogyinfosavefile,"P_hm\t");
+        fprintf (genealogyinfosavefile,"c_hm\t");
+        if (modeloptions[POPTREETOPOLOGYUPDATE])
+          fprintf (genealogyinfosavefile,"treenum\t");
+        fprintf (genealogyinfosavefile,"\n");
+      }
+      fprintf (genealogyinfosavefile, "VALUESSTART\n");
+      f_close (genealogyinfosavefile);
+	   }
   }
   if (runoptions[SAVEMCSTATEFILE])
   {
-    //writemcf (mcfwritefilename,command_line,recordsteps,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run 
-    writemcf (mcfwritefilename,command_line,recordsteps,hilike,hiprob,currentid);
+    //writemcf (mcfwritefilename,command_line,mcmcrecords,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run 
+    writemcf (mcfwritefilename,command_line,mcmcrecords,mcmcrecords_old,genealogysamples_old,burninsteps_old,runsteps_old,hilike,hiprob,currentid);
   }
 
 }                               /* reset_after_burn() */
@@ -2367,7 +2448,7 @@ int run (int currentid)
     {
       case TIMESTEPS:
         {
-          return (step < (chainduration + burnsteps)); ///AS: Is this correct? 
+          return (step < (chainduration + burninsteps)); ///AS: Is this correct? 
           break;
 	       }
       case TIMEINF:
@@ -2426,12 +2507,12 @@ int run (int currentid)
             {
 		            if (currentid == HEADNODE) 
               {
-                if (runoptions[DONTSAVEGENEALOGIES]==0 && genealogiessaved > 0)
+                if (runoptions[DONTSAVEGENEALOGIES]==0 && genealogysamples > 0)
                 {
                   savegenealogyfile (genealogyinfosavefilename, genealogyinfosavefile, &lastgenealogysaved, gsampinflength);
                 }
 		            }
-              printoutput (currentid);
+              printoutput (currentid,0);
 #ifdef MPI_ENABLED
 		            if (numprocesses > 1) 
               {
@@ -3427,7 +3508,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 
 ///Allocate memory for the full gsampinf only if I am on the head node
 //else, I only need a local structure to be filled up, then I'll send that to the head node	
-  if (genealogiessaved == 0)
+  if (genealogysamples == 0)
   {
     if (cdurationmode == TIMESTEPS)
     {
@@ -3475,7 +3556,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 		gsampinflocal = static_cast<float *> (malloc (gsampinflength * sizeof (float)));
 	}
 
-  if (genealogiessaved >= (MAXGENEALOGIESTOSAVE - 1) && cdurationmode == TIMEINF)
+  if (genealogysamples >= (MAXGENEALOGIESTOSAVE - 1) && cdurationmode == TIMEINF)
   {
     printf (" maximum possible genealogies saved \n");
     fflush(stdout);
@@ -3507,9 +3588,9 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 		}*/
 		//std::cout << "\n";
       if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
-        savegsampinf_debug_ti_addinfo (gsampinf[genealogiessaved], z,&debug_ti_addinfo[genealogiessaved][0]);
+        savegsampinf_debug_ti_addinfo (gsampinf[genealogysamples], z,&debug_ti_addinfo[genealogysamples][0]);
       else
-		    savegsampinf (gsampinf[genealogiessaved], z);
+		    savegsampinf (gsampinf[genealogysamples], z);
 			return;
 
 		}
@@ -3568,7 +3649,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 			if (rc != MPI_SUCCESS)
 				MPI_Abort(MPI_COMM_WORLD, rc);
 		for (int v = 0; v < gsampinflength; v++) {
-			rc = MPI_Irecv(&gsampinf[genealogiessaved][v], 1, MPI_FLOAT, tempcurrid, v*2, MPI_COMM_WORLD, &request[0]);
+			rc = MPI_Irecv(&gsampinf[genealogysamples][v], 1, MPI_FLOAT, tempcurrid, v*2, MPI_COMM_WORLD, &request[0]);
 			if (rc != MPI_SUCCESS)
 				MPI_Abort(MPI_COMM_WORLD, rc);
 			rc = MPI_Waitall(1, &request[0], &status);
@@ -3578,7 +3659,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 		}
       if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
       {
-   			rc = MPI_Irecv(debug_ti_addinfo[genealogiessaved], 1000, MPI_CHAR, tempcurrid, 3971, MPI_COMM_WORLD, &request[0]);
+   			rc = MPI_Irecv(debug_ti_addinfo[genealogysamples], 1000, MPI_CHAR, tempcurrid, 3971, MPI_COMM_WORLD, &request[0]);
 	  		if (rc != MPI_SUCCESS)
 		  		MPI_Abort(MPI_COMM_WORLD, rc);
       }
@@ -3587,7 +3668,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 		//AS: Debug only
 		//std::cout << "After receiving gsampinflocal\n";
 		//for (int q = 0; q < gsampinflength; q++) {
-		//	std::cout << gsampinf[genealogiessaved][q] << "\t";
+		//	std::cout << gsampinf[genealogysamples][q] << "\t";
 		//}
 		//std::cout << "\n";
 	}
@@ -3620,7 +3701,7 @@ void loadgenealogyvalues (void)
   size_t l2;
   size_t len_defaultdir;
   char *basename;
-  char *treefilename;
+  char *genealogysavefilename;
 
   float load_fraction;
   if (strlen (loadfilebase))
@@ -3680,11 +3761,11 @@ void loadgenealogyvalues (void)
       {  
         numgenealogyfiles++; 
         /* We found one. */
-        treefilename = static_cast<char *> (malloc ((len_defaultdir + l2 + 1) * sizeof (char)));
-        sprintf (treefilename, "%s%s", defaultdir, dir_entry->d_name);
+        genealogysavefilename = static_cast<char *> (malloc ((len_defaultdir + l2 + 1) * sizeof (char)));
+        sprintf (genealogysavefilename, "%s%s", defaultdir, dir_entry->d_name);
 
         /* Count the number of gene genealogies of the found file. */
-        if ((sfile = fopen (treefilename, "r")) == NULL) 
+        if ((sfile = fopen (genealogysavefilename, "r")) == NULL) 
         {
           IM_err (IMERR_TIFILE, " cannot open .ti file");
         }
@@ -3710,7 +3791,7 @@ void loadgenealogyvalues (void)
         fclose(sfile);
         totalnumgenealogies += numgenealogies;
 
-        XFREE (treefilename);
+        XFREE (genealogysavefilename);
       }
     }
   }
@@ -3747,12 +3828,12 @@ void loadgenealogyvalues (void)
       {  
         numfiles++;
         /* We found one. */
-        treefilename = static_cast<char *> 
+        genealogysavefilename = static_cast<char *> 
                 (malloc ((len_defaultdir + l2 + 1) * sizeof (char)));
-        sprintf (treefilename, "%s%s", defaultdir, dir_entry->d_name);
+        sprintf (genealogysavefilename, "%s%s", defaultdir, dir_entry->d_name);
 
         /* Count the number of gene genealogies of the found file. */
-        if ((sfile = fopen (treefilename, "r")) == NULL) 
+        if ((sfile = fopen (genealogysavefilename, "r")) == NULL) 
         {
           IM_err (IMERR_TIFILE, " cannot open .ti file");
         }
@@ -3777,12 +3858,12 @@ void loadgenealogyvalues (void)
               scanfval = sscanf (c, "%f", &gsampinf[loaded][i]);
               j = allwhitespace (c);
               if (j ==1 || j== -1)
-                IM_err (IMERR_TIFILE, "Problem in .ti file %s,  too few values per genealogy, .ti file may have been generated with a different program",treefilename);
+                IM_err (IMERR_TIFILE, "Problem in .ti file %s,  too few values per genealogy, .ti file may have been generated with a different program",genealogysavefilename);
               c = nextwhite (c);
             }
             j = allwhitespace (c);
             if (j==0)
-               IM_err (IMERR_TIFILE, "Problem in .ti file %s,  too many values per genealogy, .ti file may have been generated with a different program",treefilename);
+               IM_err (IMERR_TIFILE, "Problem in .ti file %s,  too many values per genealogy, .ti file may have been generated with a different program",genealogysavefilename);
             loaded++;
           }
           else
@@ -3791,7 +3872,7 @@ void loadgenealogyvalues (void)
         }
         fclose (sfile);
 
-        XFREE (treefilename);
+        XFREE (genealogysavefilename);
       }
     }
   }
@@ -3806,10 +3887,10 @@ void loadgenealogyvalues (void)
   if (numgenealogies < 1)
     IM_err (IMERR_TIFILE, "  no genealogies loaded from .ti file(s)");
   /* closedir (dp); */
-  genealogiessaved = loaded;
+  genealogysamples = loaded;
   //int z = whichiscoldchain();
 //	if (z >= 0) {
-  for (j = 0; j < genealogiessaved; j++)
+  for (j = 0; j < genealogysamples; j++)
   {
     // use full range of t, ignore t.pr.min > 0
     if (npops > 1)
@@ -3830,35 +3911,25 @@ void loadgenealogyvalues (void)
 
 /* reorganized printoutput()  6/13/2017 */
 void 
-printoutput (int currentid)         // mostly calls functions in output.c   - called only for printing a results file  
+printoutput (int currentid, int finaloutput)         // mostly calls functions in output.c   - called only for printing a results file  
 {
   int i;
-  double seconds;
+  //double seconds;
+  long seconds;
   int p;
   float *holdpeakloc;
   double multitpeak[MAXPOPS - 1];
   struct tm *endtimeinfo;
+  static time_t startoutputtime,endoutputtime,totaloutputseconds = 0;
   // char updatestr[1000]; no longer used
   int rc = 0;
-  	time (&endtime);
-#ifdef MPI_ENABLED
-  if (numprocesses > 1)	
-  {
-    rc = MPI_Bcast(&endtime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
-	   if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
-  }
-#endif
-  
+  time(&startoutputtime);
+
+/*   printoutput()  open outout file,  deal with old outputfile */  
   if (runoptions[LOADRUN] == 0)
   {
     if ((cdurationmode == TIMEINF || runoptions[SAVELOADSAMEMCFFILE]) && currentid == HEADNODE)
     {
-/*time_t temptimeb;
-time(&temptimeb);
-struct tm *temptimeinfob;
-temptimeinfob = localtime(&temptimeb);
-strftime(timeinfostring,80,"%x - %X", temptimeinfob);
-printf("remove %s rename outfilename %s  NODE %d  step %d %s\n",oldoutfilename,outfilename,currentid,step,timeinfostring);*/
       if (file_exists(oldoutfilename))
         remove (oldoutfilename);
       rename (outfilename, oldoutfilename);
@@ -3870,27 +3941,23 @@ printf("remove %s rename outfilename %s  NODE %d  step %d %s\n",oldoutfilename,o
     {
       IM_err (IMERR_CREATEFILEFAIL, "Error opening text file for writing");
     }
-/*time_t temptimea;
-time(&temptimea);
-struct tm *temptimeinfoa;
-temptimeinfoa = localtime(&temptimea);
-strftime(timeinfostring,80,"%x - %X", temptimeinfoa);
-printf("open outfilename %s  NODE %d  step %d time %s\n",outfilename,currentid,step,timeinfostring); */
   }
   else
     outfile = NULL;
 
-  //printrunbasics (outfile, runoptions[LOADRUN], fpstr, burnsteps, recordint,recordsteps, savegenealogyint, hilike_rec,hiprob_rec);   // only writes to outfile if outfile != NULL
-  printrunbasics (outfile, runoptions[LOADRUN], fpstr, burnsteps, recordint,recordsteps, savegenealogyint, hilike,hiprob);
+/*   printoutput()  call printrunbasics()*/  
+  runsteps = step - burninsteps;
+  printrunbasics (outfile, runoptions[LOADRUN], fpstr, burninsteps, burninsteps_old,runsteps_old,mcmcrecords_old,genealogysamples_old,recordint,mcmcrecords, savegenealogyint, hilike,hiprob);
+
 #ifdef STDTEST
 printf("printed run basics\n");
 #endif
+
+/*   printoutput()  print acceptance rates and autoc table*/  
   if (runmode != LOADGmode4) // any mode running mcmc 
   {
     if (currentid == HEADNODE) 
     {
-      //strcpy(bannertext,"MCMC Information");
-      //FP "%s",outputbanner(bannertext));
       FP "%s",outputbanner("MCMC Information"));
     }
 
@@ -3909,12 +3976,12 @@ printf("printed acceptance rates\n");
 
       if ((runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1) && burndone && hiddenoptions[CALCGEWEKEZ])
         printgewekez(outfile);
-
-
     }
 #ifdef STDTEST
 printf("printed autoc table\n");
 #endif
+
+/*   printoutput()  share topology counts across chains, print topology posterior*/  
     if (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1)
     {
 #ifdef INDEVELOPMENT
@@ -3956,14 +4023,14 @@ printf("printed autoc table\n");
       XFREE(totalpoptopologycounts);  // uncommented this,  why was it commented out ?? 4/20/2017
 
 #ifdef  TURNONCHECKS
-      /* check if topology count matches recordsteps  // does not apply if loading mcf files
+      /* check if topology count matches mcmcrecords  // does not apply if loading mcf files
       int tsum = 0;
       for (i=0;i<numpoptopologies;i++)
       {
         tsum +=  totalpoptopologycounts[i];
         assert (totalpoptopologycounts[i] >= 0);
       }
-      assert (tsum == recordsteps); */
+      assert (tsum == mcmcrecords); */
       /* check that no two beta values are identical  
       int j;
       for (i=0;i<numchainspp-1;i++)
@@ -3976,6 +4043,7 @@ printf("printed autoc table\n");
   {
     if (npops >=3  && npops <= 5 && !runoptions[LOADRUN] && outputoptions[PRINTJOINTTEST])
     {
+/*   printoutput()  joint t distribution*/  
       return_joint_t (multitpeak);
       FP "\nEstimated joint splitting time from multi-dimensional histogram\n");
       FP "  number of bins per dimension %d\n", NUMTARRAYBINS);
@@ -3985,6 +4053,7 @@ printf("printed autoc table\n");
         FP "   %s\t%.3lf\n", T[i].str, multitpeak[i]);
       FP "\n\n");
     }
+/*   printoutput()  greater thans,  means and variances */  
     if (outputoptions[PARAMGREATERTHAN])
     {
       print_greater_than_tests (outfile);
@@ -3997,7 +4066,7 @@ printf("printed greater than tests\n");
 #ifdef STDTEST
 printf("printed means variances correlations\n");
 #endif
-  /*  get marginal peaks */
+/*   printoutput()  get marginal peaks*/  
     if (!calcoptions[DONTCALCLIKELIHOODMUTATION])
     {
       p = numpopsizeparams + nummigrateparams ;
@@ -4005,10 +4074,10 @@ printf("printed means variances correlations\n");
       printf ("surface calculations  . . .\n");
       fflush(stdout);
       if (modeloptions[EXPOMIGRATIONPRIOR] || (runoptions[LOADRUN] && calcoptions[FINDJOINTPOSTERIOR]))
-        eexpsum = (struct extendnum *) malloc ((size_t) ((genealogiessaved + 1) * sizeof (struct extendnum)));
+        eexpsum = (struct extendnum *) malloc ((size_t) ((genealogysamples + 1) * sizeof (struct extendnum)));
 
       findmarginpeaks (outfile, holdpeakloc);
-
+/*   printoutput()  get joint peaks*/  
       if (runmode == LOADGmode4 && calcoptions[FINDJOINTPOSTERIOR])
       {
         closeopenout (&outfile, outfilename);
@@ -4024,13 +4093,14 @@ printf("found peaks\n");
 #endif
     }
   }
+/*   printoutput()  print histograms*/  
   if (currentid == HEADNODE) 
   {
-    printhistograms (outfile, recordsteps, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
+    printhistograms (outfile, mcmcrecords, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
 #ifdef STDTEST
 printf("printed histograms\n");
 #endif
-
+/*   printoutput()  print ascii trends*/  
     FP "\n\n===================================================\n");
     if (!outputoptions[DONTPRINTASCIITREND] && runmode != LOADGmode4)
     {
@@ -4058,35 +4128,15 @@ printf("printed trends\n");
 #ifdef STDTEST
 printf("printed trends\n");
 #endif
-    //FP "\n\n===================================================\n");
-    //FP "ASCII Curves - Approximate Posterior Densities \n");
-    //FP "===================================================\n");
-    //strcpy(bannertext,"ASCII Curves - Approximate Posterior Densities");
-    //FP "%s",outputbanner(bannertext));
+/*   printoutput()  print ascii curves*/  
     FP "%s",outputbanner("ASCII Curves - Approximate Posterior Densities"));
 
-    callasciicurves (outfile,recordsteps);
+    callasciicurves (outfile,mcmcrecords);
 #ifdef STDTEST
 printf("printed ascii curves\n");
 #endif
-    endtimeinfo = localtime(&endtime);
-    strftime(timeinfostring,80,"%x - %X", endtimeinfo);
-    FP "\nJob Finished: %s\n",timeinfostring);
-    seconds = difftime (endtime, starttime);
-    FP "\nTime Elapsed : %d hours, %d minutes, %d seconds \n",
-      (int) seconds / (int) 3600,
-        ((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),
-            (int) seconds - (int) 60 *((int) seconds / (int) 60));
-    FP "\nEND OF OUTPUT\n");
-    f_close (outfile);
-/*time_t temptimec;
-time(&temptimec);
-struct tm *temptimeinfoc;
-temptimeinfoc = localtime(&temptimec);
-strftime(timeinfostring,80,"%x - %X", temptimeinfoc);
-printf("close outfilename %s  NODE %d  step %d time %s\n",outfilename,currentid,step,timeinfostring); */
-fflush(stdout);
   }
+/*   printoutput()  print migration histogram file  - almost certainly broken as of 1/17/2018*/  
   if (outputoptions[MIGRATEHIST] && nummigrateparams > 0  && currentid == HEADNODE)
   {
     if ((migplotfile = fopen (migplotfilename, "w")) == NULL)
@@ -4094,7 +4144,7 @@ fflush(stdout);
       IM_err (IMERR_CREATEFILEFAIL,
               "Error opening file for plotting migration amounts and times");
     }
-    printmigrationhistograms (migplotfile, recordsteps);
+    printmigrationhistograms (migplotfile, mcmcrecords);
   #ifdef STDTEST
   printf("printed migration histogram\n");
   #endif
@@ -4105,11 +4155,58 @@ fflush(stdout);
     f_close(migrationnamefile);
     migrationnamefile = fopen (migrationnamefilename, "a"); // file is kept open 
   }
+/*   printoutput()  print timing information*/  
+  time (&endtime);
+  endoutputtime = endtime;
+  totaloutputseconds += difftime(endoutputtime,startoutputtime);
+/*#ifdef MPI_ENABLED  don't think this is needed
+  if (numprocesses > 1)	
+  {
+    rc = MPI_Bcast(&endtime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
+	   if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
+  }
+#endif */
+  if (currentid == HEADNODE) 
+  {
+    endtimeinfo = localtime(&endtime);
+    seconds = difftime (endtime, starttime);
+    
+    FP "\nTime Elapsed : %d hours, %d minutes, %d seconds \n",
+      (int) seconds / (int) 3600,
+        ((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),
+            (int) seconds - (int) 60 *((int) seconds / (int) 60));
+      totaltime = (time_t) seconds;
+    FP "Time spent running analyses after mcmc finished : %d hours, %d minutes, %d seconds \n",
+      (int) totaloutputseconds / (int) 3600,
+        ((int) totaloutputseconds / (int) 60) - ((int) 60 * ((int) totaloutputseconds / (int) 3600)),
+            (int) totaloutputseconds - (int) 60 *((int) totaloutputseconds / (int) 60));
+    if (numpriormcfruns > 0  && finaloutput)
+    {
+      FP "Duration of previous runs : %d hours, %d minutes, %d seconds \n",
+        (int) totaltime / (int) 3600,
+          ((int) totaltime / (int) 60) - ((int) 60 * ((int) totaltime / (int) 3600)),
+              (int) totaltime - (int) 60 *((int) totaltime / (int) 60));
+      totaltime += seconds;
+      FP "Total Time of all Runs : %d hours, %d minutes, %d seconds \n",
+        (int) totaltime / (int) 3600,
+          ((int) totaltime / (int) 60) - ((int) 60 * ((int) totaltime / (int) 3600)),
+              (int) totaltime - (int) 60 *((int) totaltime / (int) 60));
+
+    }
+    strftime(timeinfostring,80,"%x - %X", endtimeinfo);
+    FP "\nJob Finished: %s\n",timeinfostring);
+    FP "\nEND OF OUTPUT\n");
+    f_close (outfile);
+    fflush(stdout);
+  }
+
+
 
   if (runoptions[SAVEMCSTATEFILE])
   {
-    netsteps += step;
-    writemcf (mcfwritefilename,command_line,recordsteps,hilike,hiprob,currentid);
+    //jh 1_17_2018 netsteps += step;
+    //writemcf (mcfwritefilename,command_line,mcmcrecords,hilike,hiprob,currentid);
+    writemcf (mcfwritefilename,command_line,mcmcrecords,mcmcrecords_old,genealogysamples_old,burninsteps_old,runsteps_old,hilike,hiprob,currentid);
   }
 #ifdef STDTEST
 printf("done printing output\n");
@@ -4302,9 +4399,10 @@ void intervaloutput (FILE * outto, int currentid)
     like_rec = like;
     probg_rec = probg;
   } */
+  runsteps = step - burninsteps;
   if (currentid == HEADNODE)
-    //printsteps (outto, like_rec, probg_rec, burndone,burnsteps);
-    printsteps (outto, currlike, currprob, burndone,burnsteps);
+    //printsteps (outto, like_rec, probg_rec, burndone,burninsteps);
+    printsteps (outto, currlike, currprob, burndone,burninsteps);
   if (z >=0 && currentid == HEADNODE) 
     poptreenum_rec = C[z]->poptreenum;
 #ifdef MPI_ENABLED
@@ -4424,9 +4522,9 @@ void check_to_record (int currentid)
   {
     /*if (calcoptions[CALCMARGINALLIKELIHOOD])
         stepstone_get_Lmax(); */
-    record (currentid);                  // record values of parameters that are in mcmc
+    record (currentid);                  // record some values that are in mcmc
 
-    recordsteps++;
+    mcmcrecords++;
     i = 1;
   }
   else
@@ -4441,7 +4539,7 @@ void check_to_record (int currentid)
     savegenealogyinfo (currentid);            // record values associated with genealogies
     if (hiddenoptions[WRITEMIGRATIONNAME])
       record_migration_names();
-    genealogiessaved++;
+    genealogysamples++;
     j = 1;
   }
   else
@@ -4528,9 +4626,9 @@ int main (int argc, char *argv[])
 	   if (currentid == HEADNODE) 
     {
 	    loadgenealogyvalues ();
-	    recordsteps = genealogiessaved; // why is recordsteps needed when runoptions[LOADRUN] ?
+	    mcmcrecords = genealogysamples; // why is mcmcrecords needed when runoptions[LOADRUN] ?
 	  }
-   printoutput (currentid);
+   printoutput (currentid,0);
 	  if (currentid == HEADNODE)
 	    free_ima_main_stuff ();
   } 
@@ -4543,7 +4641,7 @@ int main (int argc, char *argv[])
     }
 
     step = 0;
-    recordsteps = 0;
+    mcmcrecords = 0;
     while (run (currentid))
     {
       qupdate (currentid);
@@ -4555,7 +4653,7 @@ int main (int argc, char *argv[])
         intervaloutput (stdout, currentid);
 
       if (step >= CHECKAUTOCWAIT)  // moved from qupdate()
-        checkautoc (0, burndone, burnsteps, currentid);
+        checkautoc (0, burndone, burninsteps, currentid);
 
       if (burndone)
       {
@@ -4585,7 +4683,7 @@ printf("done mcmc\n");
 #endif
 
  /* save genealogy info in *.ti file */
-    if (runoptions[DONTSAVEGENEALOGIES]==0 && genealogiessaved > 0 && currentid == HEADNODE)
+    if (runoptions[DONTSAVEGENEALOGIES]==0 && genealogysamples > 0 && currentid == HEADNODE)
     {
       savegenealogyfile (genealogyinfosavefilename, genealogyinfosavefile, &lastgenealogysaved, gsampinflength);
 #ifdef STDTEST
@@ -4598,7 +4696,7 @@ printf("saved genealogies\n");
   assert (strlen(alltreestrings[ix])==48);
 } */
 
-    printoutput (currentid);
+    printoutput (currentid,1);
 
 /*for (int ix = 0; ix < numpoptopologies; ix++)
 {

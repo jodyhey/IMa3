@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 #undef GLOBVARS
 #include "ima.hpp"
@@ -23,7 +23,7 @@ calc_popmig (int thetai, int mi, double x, int prob_or_like)
   mmax = C[ARBCHAIN]->imig[mi].pr.max;
   qmax =C[ARBCHAIN]->itheta[thetai].pr.max;
 
-  for (sum = 0, ei = 0; ei < genealogiessaved; ei++)
+  for (sum = 0, ei = 0; ei < genealogysamples; ei++)
 
   {
     cc = (int) gsampinf[ei][ccp]; // coalescent count
@@ -82,7 +82,7 @@ calc_popmig (int thetai, int mi, double x, int prob_or_like)
     if ((temp1 + temp2 < 700 ) && (temp1 + temp2 > -700 )) // skip things that cannot be exped
       sum += exp (temp1 + temp2);
   }
-  sum /= genealogiessaved;
+  sum /= genealogysamples;
   if (prob_or_like)
   {
     temp = 2 * (log (qmax) + log (mmax) - log (2 * x)) / (qmax * mmax);
@@ -112,7 +112,7 @@ hold_calc_popmig (int thetai, int mi, double x, int prob_or_like)
   mmax = C[ARBCHAIN]->imig[mi].pr.max;
   qmax =C[ARBCHAIN]->itheta[thetai].pr.max;
 
-  for (sum = 0, ei = 0; ei < genealogiessaved; ei++)
+  for (sum = 0, ei = 0; ei < genealogysamples; ei++)
 
   {
     cc = (int) gsampinf[ei][ccp]; // coalescent count
@@ -172,7 +172,7 @@ hold_calc_popmig (int thetai, int mi, double x, int prob_or_like)
     if ((temp1 + temp2 < 700 ) && (temp1 + temp2 > -700 )) // skip things that cannot be exped
       sum += exp (temp1 + temp2);
   }
-  sum /= genealogiessaved;
+  sum /= genealogysamples;
   if (prob_or_like)
   {
     temp = 2 * (log (qmax) + log (mmax) - log (2 * x)) / (qmax * mmax);
@@ -201,7 +201,7 @@ calc_pop_expomig (int thetai, int mi, double x, int prob_or_like)
   mmean = C[ARBCHAIN]->imig[mi].pr.expomean;
   qmax =C[ARBCHAIN]->itheta[thetai].pr.max;
 
-  for (sum = 0, ei = 0; ei < genealogiessaved; ei++)
+  for (sum = 0, ei = 0; ei < genealogysamples; ei++)
 
   {
     cc = (int) gsampinf[ei][ccp];
@@ -245,14 +245,14 @@ calc_pop_expomig (int thetai, int mi, double x, int prob_or_like)
     if (eexpsum[ei].z > maxz)
       maxz = eexpsum[ei].z;
   }
-  for (ei = 0; ei < genealogiessaved; ei++)
+  for (ei = 0; ei < genealogysamples; ei++)
   {
     zadj = eexpsum[ei].z - (maxz - OCUTOFF);
     eexpsum[ei].m *= pow (10.0, (double) zadj);
     acumm += eexpsum[ei].m;
   }
   sum = log (acumm) + (maxz - OCUTOFF) * LOG10;
-  sum -= log((double) genealogiessaved);
+  sum -= log((double) genealogysamples);
   sum = exp(sum);
   if (prob_or_like)
   {

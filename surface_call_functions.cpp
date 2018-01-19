@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 /* funccall.c   functions associated w/ the surface, and that make calls optimization routines */
 #undef GLOBVARS
@@ -125,7 +125,7 @@ margincalc (double x, double yadjust, int pi, int logi)
     meani = 1.0 / C[ARBCHAIN]->imig[pi - numpopsizeparams].pr.expomean;
   }
   
-  for (ei = 0; ei < genealogiessaved; ei++)
+  for (ei = 0; ei < genealogysamples; ei++)
   {
     if (pi < numpopsizeparams)
     { /*  for popsize params only  */
@@ -151,7 +151,7 @@ margincalc (double x, double yadjust, int pi, int logi)
                     log (x) - gsampinf[ei][gsamp_fmp + p] * x);
     }
   }
-  sum /= genealogiessaved;
+  sum /= genealogysamples;
 
   if (logi)
   {
@@ -434,8 +434,8 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
 
   printf ("Finding marginal peaks and probabilities \n");
   fflush(stdout);
-  genealogiessaved = IMIN (MAXGENEALOGIESTOSAVE - 1, genealogiessaved);   // trap cases when too saving too many trees is attempted
-  if (genealogiessaved <= 10)
+  genealogysamples = IMIN (MAXGENEALOGIESTOSAVE - 1, genealogysamples);   // trap cases when too saving too many trees is attempted
+  if (genealogysamples <= 10)
   {
     FP " TOO FEW TREES SAVED - MARGINAL VALUES NOT FOUND \n");
     for (i = 0; i < p; i++)
@@ -443,7 +443,7 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
   }
   else
   {
-    for (firsttree = 0, lasttree = (int) genealogiessaved / NUMTREEINT, j = 0;
+    for (firsttree = 0, lasttree = (int) genealogysamples / NUMTREEINT, j = 0;
          j < NUMTREEINT; j++)
     {
       marginalopt (firsttree, lasttree, mlval[j], peakloc[j]);
@@ -451,25 +451,25 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
         // this does slow this entire function down a lot 
         marginalopt_popmig (firsttree, lasttree, popmigmlval[j], popmigpeakloc[j],mpop, mterm);
       firsttree = lasttree + 1;
-      lasttree += (int) genealogiessaved / NUMTREEINT;
-      if (lasttree > genealogiessaved)
-        lasttree = genealogiessaved;
+      lasttree += (int) genealogysamples / NUMTREEINT;
+      if (lasttree > genealogysamples)
+        lasttree = genealogysamples;
     }
-    marginalopt (0, genealogiessaved, mlval[NUMTREEINT], peakloc[NUMTREEINT]);
+    marginalopt (0, genealogysamples, mlval[NUMTREEINT], peakloc[NUMTREEINT]);
     for (i = 0; i < nummigrateparams; i++)
     {
-      maxp = -marginp (i + numpopsizeparams, 0, genealogiessaved, peakloc[NUMTREEINT][i + numpopsizeparams], 0);
-      max0p = -marginp (i + numpopsizeparams, 0, genealogiessaved, MINPARAMVAL, 0);
+      maxp = -marginp (i + numpopsizeparams, 0, genealogysamples, peakloc[NUMTREEINT][i + numpopsizeparams], 0);
+      max0p = -marginp (i + numpopsizeparams, 0, genealogysamples, MINPARAMVAL, 0);
       migtest[i] = 2 * log(maxp/max0p);
     }
 
     if (outputoptions[NOPOPMIGPARAMHIST]==0) 
     {
-      marginalopt_popmig (0, genealogiessaved, popmigmlval[NUMTREEINT], popmigpeakloc[NUMTREEINT], mpop, mterm);
+      marginalopt_popmig (0, genealogysamples, popmigmlval[NUMTREEINT], popmigpeakloc[NUMTREEINT], mpop, mterm);
       for (i = 0; i < nummigrateparams; i++)
       {
-        maxp = -marginpopmig (mterm[i], 0, genealogiessaved, popmigpeakloc[NUMTREEINT][i],mpop[i]);
-        max0p = -marginpopmig (mterm[i], 0, genealogiessaved, MINPARAMVAL,mpop[i]);
+        maxp = -marginpopmig (mterm[i], 0, genealogysamples, popmigpeakloc[NUMTREEINT][i],mpop[i]);
+        max0p = -marginpopmig (mterm[i], 0, genealogysamples, MINPARAMVAL,mpop[i]);
         popmigtest[i] = 2 * log(maxp/max0p);
       }
     }

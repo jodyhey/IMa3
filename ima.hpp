@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 /* This is the main header file for pretty much everything, nearly all files include this file */ 
 
@@ -71,10 +71,14 @@
 
 #ifndef INDEVELOPMENT    // default state  - do no touch this,  see notes on FORRELEASE 
 #define INDEVELOPMENT 
+//#undef INDEVELOPMENT 
 #endif
 
+#ifndef FORRELEASE
 #undef FORRELEASE  // default state - do not touch this. 
 //#define FORRELEASE   // if this is defined then it overrides INDEVELOPMENT,  but must set the RELEASE_DATE
+#endif
+
 #ifdef FORRELEASE 
 #undef INDEVELOPMENT
 #define RELEASE_DATE "Jan 1, 1900" //__DATE__
@@ -84,10 +88,11 @@
 #endif
 #endif
 
-
-
+#ifndef STDTEST // have thi so STDTEST can be defined at compile time 
 //#define STDTEST
 #undef STDTEST
+#endif
+
 
 #ifdef STDTEST  // run standard tests,  turn on RANDOM_NUMBERS_FROM_FILE
 #define RANDOM_NUMBERS_FROM_FILE
@@ -117,7 +122,7 @@
 #define TURNONCHECKS
 #endif 
 
-#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
+//#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
 
 
 #ifdef STDTEST
@@ -201,7 +206,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define DEFAULTNUMCHAINS 1
 #define SWAPDIST 7 //10         // maximum distance in chain array of two chains with betas being swapped, not sure how much this matters
 #define MINNUMCHAINSPERPROCESSOR 2 // changed to 2 after some testing on 10/4/2017  4  // must have at least 4 for swaps within chains
-#define MAXPOPS  10             // MAXPOPS cannot exceed 10 because the treestring functions assume populations and nodes are represented by single integers
+#define MAXPOPS 9 // 10     set this back to 9 , have not tested it with this many        // MAXPOPS cannot exceed 10 because the treestring functions assume populations and nodes are represented by single integers
 #define MAXPOPS_PHYLOGENYESTIMATION 9  // actually 8,  but 9 prevents a crash  (with ghost it becomes 9) for larger numbers the list of possble trees just gets too large. 
 #define MAXPERIODS (MAXPOPS+1)
 #define MAXTREEPOPS  (2*MAXPOPS - 1)
@@ -295,6 +300,12 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define isninf_DBL(x) ((x) < -DBL_MAX)  // only for doubles 
 #define ispinf_DBL(x) ((x) > DBL_MAX)  // only for doubles 
 #define isnotinf_DBL(x) (((x) <= DBL_MAX) && ((x) >= -DBL_MAX))  // only for doubles 
+#define isinf_FLT(x) (((x) > FLT_MAX) || ((x) < -FLT_MAX))  // only for float 
+#define isninf_FLT(x) ((x) < -FLT_MAX)  // only for floats
+#define ispinf_FLT(x) ((x) > FLT_MAX)  // only for floats 
+#define isnotinf_FLT(x) (((x) <= FLT_MAX) && ((x) >= -FLT_MAX))  // only for floats
+
+
 
 #ifdef TURNONCHECKS  // these are used for checking if floating point values are 'equal' ,  very crude 
 //#define checkfloatsclose(x,y) ( ((x)==(y)) || ((fabs((x) - (y)) / DMAX(fabs(x), fabs(y))) < (1e-7) ) ) // evaluates to 1 if floats x and y are near each other 
@@ -498,7 +509,8 @@ enum
   CALCGEWEKEZ = 7, //calculate gewekez stat when updating phylogenies
   SKIPMOSTUSCALAROUTPUT = 8, // stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
   STOPMOSTINTERVALOUTPUT = 9,// stop writing most interval output to the screen  use -jhb or -jhB on command line
-  HIDDENOPTIONNUMBER=10};
+  READOLDMCFFILE = 10, // -jhC on command line, read mcf files generated before 1/17/2018 
+  HIDDENOPTIONNUMBER=11};
 
 /* calcoptions -c
     DONTCALCLIKELIHOODMUTATION - don't calculate p(Data|G)  if set to 1 then data likelihood functions return a constant
@@ -719,6 +731,7 @@ enum
 
   IMERR_MCFREADFAIL = 28,
   IMERR_MCFSPLITTIMEPROB = 29,
+  IMERR_MCFWRITEFAIL = 30,
 
   IMERR_ROOTTIMEMAXFAIL = 33,
 
@@ -1332,7 +1345,7 @@ gextern struct value_record *lpgpd_v; // record for likelihood measurements
 gextern struct value_record **migration_counts;   // used if outputoptions[MIGRATEHIST]
 //gextern struct value_record **migration_counts_times; // no longer in use
 gextern int step;
-gextern int netsteps;
+//jh 1_17_2018 gextern int netsteps;
 gextern int nurates;
 gextern int nkappas; 
 gextern int numchainspp;  // numchains per process (i.e. per cpu) 
@@ -1354,7 +1367,12 @@ gextern int outputoptions[OUTPUTOPTIONSNUMBER];
 gextern int runoptions[RUNOPTIONSNUMBER];
 gextern double *beta;
 gextern double *allbetas; // an array to hold all the betas, regardless of cpu, should never change once its initialized
-gextern int genealogiessaved;
+gextern int genealogysamples;
+gextern int burninsteps;
+gextern int runsteps;
+gextern int numpriormcfruns;
+gextern time_t totaltime;
+gextern int mcf_was_read;
 gextern int somestepwise;
 gextern int countuprior;
 gextern int counturateperyear;
@@ -1442,7 +1460,7 @@ int whichiscoldchain(void);
 /**** GLOBAL FUNCTIONS IN autoc.cpp ****/
 void init_autoc_pointers (void);
 void free_autoc_pointers (void);
-void checkautoc (int start_autocorrelations, int burndone, int burnsteps, int currentid);
+void checkautoc (int start_autocorrelations, int burndone, int burninsteps, int currentid);
 void callprintautoctable (FILE * outto/*, int step*/);
 
 /**** GLOBAL FUNCTIONS IN update_poptree.cpp ****/
@@ -1519,9 +1537,9 @@ void sum_treeinfo (struct genealogy_weights *addup,
                    struct genealogy_weights *addto);
 
 /**** GLOBAL FUNCTIONS IN histograms.cpp ****/
-void printhistograms (FILE * outfile, long int recordsteps,
+void printhistograms (FILE * outfile, long int mcmcrecords,
                       double generationtime,int usegenerationtimedefault, double scaleumeaninput,char priorfilename[]);
-void printmigrationhistograms (FILE * outfile, long int recordsteps);
+void printmigrationhistograms (FILE * outfile, long int mcmcrecords);
 
 
 
@@ -1535,11 +1553,12 @@ char* outputbanner(const char *bannertext);
 void checkoutfileclosed (FILE ** outfile, char outfilename[]);
 
 void printrunbasics (FILE * outfile, int loadrun, char fpstr[],
-                     int burnsteps, int recordint, int recordsteps,
+                      int burninsteps,int burninsteps_old,int runsteps_old, int mcmcrecords_old,int genealogysamples_old,
+                     int recordint, int mcmcrecords,
                      int savegenealogyint,double hilike, double hiprob);
 void asciitrend (FILE * outfile, struct value_record *v, int trenddoublepoint,int trendspot);
 void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
-                 int logscale, int recordsteps);
+                 int logscale, int mcmcrecords);
 void printacceptancerates (FILE * outto, int numrec,
                            struct chainstate_record_updates_and_values *rec[],
                            const char *printstring);
@@ -1549,10 +1568,10 @@ void printcurrentvals (FILE * outto);
 void printcurrent_tvals (FILE * outto,int  currentid);
 void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosavefile,
                    int *lastgenealogysavedvalue, int gsampinflength);
-void preparehistogram (FILE * outfile, int mode, long int recordsteps,
+void preparehistogram (FILE * outfile, int mode, long int mcmcrecords,
                        double scaleumeaninput, double generationtime);
-void printmigratehist (FILE * outfile, int recordsteps);
-void printtmrcahist (FILE * outfile, int recordsteps);
+void printmigratehist (FILE * outfile, int mcmcrecords);
+void printtmrcahist (FILE * outfile, int mcmcrecords);
 void print_means_variances_correlations (FILE * outfile);
 void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *poptopologyproposedlist_rec, char *topologypriorinfostring); /* for printing population tree posteriors,  sorts and prints */
 
@@ -1562,8 +1581,8 @@ void readdata (char infilename[], int *fpstri,
                char fpstr[], int **numsitesIS, int currentid);
 int imaInfileNpops (const char *fn);
 void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot);
-void callasciicurves (FILE *outfile,int recordsteps);
-void printsteps (FILE * outto, double like, double probg,int burndone, int burnsteps);
+void callasciicurves (FILE *outfile,int mcmcrecords);
+void printsteps (FILE * outto, double like, double probg,int burndone, int burninsteps);
 /**** GLOBAL FUNCTIONS IN surface_call_functions.cpp ****/
 //void eexp (double x, double *m, int *z);
 double margincalc (double x, double yadjust, int pi, int logi);
@@ -1781,8 +1800,8 @@ double joint_t_prob (double *tvals);
 void freeanymemory (void);
 
 /**** Global Functions in File: mcmcfile */
-void writemcf (char mcffilename[],char commandline[],long recordsteps,double hilike,double hiprob,int currentid);
-void readmcf (char mcffilename[],long *recordsteps,double *hilike,double *hiprob, int currentid);
+void writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_old,int genealogysamples_old,int burninsteps_old,int runsteps_old, double hilike,double hiprob,int currentid);
+void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob, int currentid);
 #ifdef TURNONCHECKS
 void readima2mcf (char ima2mcffilename[]);
 #endif

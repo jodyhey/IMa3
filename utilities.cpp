@@ -1,4 +1,4 @@
-﻿/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+﻿/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 #undef GLOBVARS
 #include "ima.hpp"
@@ -144,7 +144,7 @@ static const char *simerrmsg[] = {
   /* 27 */ "error in locus information",
   /* 28 */ "problem reading mcf file",
   /* 29 */ "cannot load mcf file, split times in file not compatiable with t prior",
-  /* 30 */ "",
+  /* 30 */ "problem writing mcf file",
   /* 31 */ "",
   /* 32 */ "",
   /* 33 */ "problem with root ",

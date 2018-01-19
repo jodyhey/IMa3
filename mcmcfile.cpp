@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 
@@ -54,6 +54,9 @@ codes for atype
 6 for unsigned short 
 */
 
+int netsteps; //jh 1_17_2018 
+
+
 /* some extern prototypes */
 extern void fillplist (int ci);
 extern void fillancplist (int ci);
@@ -89,30 +92,51 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
   unsigned long *ulp;
   unsigned short *usp;
   int i;
+  int isnumerical;
 
 #ifdef MCFVARNAMEWRITE
   fprintf (mcffile, "%s %d %d ", name, atype, iu);
 #else
   fprintf (mcffile, "%d %d ", atype, iu);
 #endif
-
+  isnumerical = atype != 4;
+  
   switch (atype)
   {
   case 0:
     for (i = 0, ip = static_cast<int *> (a); i < iu; i++)
+    {
+      if (isnan_(*(ip + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%d ", *(ip + i));
+    }
     break;
   case 1:
     for (i = 0, lip = static_cast<long *> (a); i < iu; i++)
+    {
+      if (isnan_(*(lip + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%ld ", *(lip + i));
+    }
     break;
   case 2:
     for (i = 0, fp = static_cast<float *> (a); i < iu; i++)
-      fprintf (mcffile, "%g ", *(fp + i));
+    {
+      if (isnan_(*(fp + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018
+      if (isninf_FLT(*(fp + i)))
+        fprintf (mcffile, "%.12g ", -FLT_MAX);
+      else if (ispinf_FLT(*(fp + i)))
+        fprintf (mcffile, "%.12g ", FLT_MAX);
+      else
+        fprintf (mcffile, "%g ", *(fp + i));
+    }
     break;
   case 3:
     for (i = 0, dp = static_cast<double *> (a); i < iu; i++)
     {
+      if (isnan_(*(dp + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018
       if (isninf_DBL(*(dp + i)))
         fprintf (mcffile, "%.18lg ", -DBL_MAX);
       else if (ispinf_DBL(*(dp + i)))
@@ -129,11 +153,19 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     break;
   case 5:
     for (i = 0, ulp = static_cast<unsigned long *> (a); i < iu; i++)
+    {
+      if (isnan_(*(ulp + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%lu ", *(ulp + i));
+    }
     break;
   case 6:
     for (i = 0, usp = static_cast<unsigned short *> (a); i < iu; i++)
+    {
+      if (isnan_(*(usp + i)))
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%hu ", *(usp + i));
+    }
     break;
   }
   fprintf (mcffile, "\n");
@@ -666,7 +698,7 @@ void readima2mcf (char ima2mcffilename[])
 #define aa   awrite (mcffile,
 
 void
-writemcf (char mcffilename[],char commandline[],long recordsteps,double hilike,double hiprob,int currentid)
+writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_old,int genealogysamples_old,int burninsteps_old,int runsteps_old, double hilike,double hiprob,int currentid)
 {
   int i, j, li, ci;
   FILE *mcffile;
@@ -794,6 +826,17 @@ writemcf (char mcffilename[],char commandline[],long recordsteps,double hilike,d
 #endif //TURNONCHECKS 
     }
   }
+  if (hiddenoptions[READOLDMCFFILE]==0) //jh 1_17_2018
+  {
+    int temp;
+    temp = burninsteps + burninsteps_old;
+    aa "burninsteps",0,1,&temp);
+    temp = runsteps + runsteps_old;
+    aa "runsteps",0,1,&temp);
+    aa "numpriormcfruns",0,1,&numpriormcfruns);
+    long temptotaltime = (long) totaltime;// copy to a long so aa still works 
+    aa "totaltime",1,1,&temptotaltime); 
+  }
   // now do the various instances of struct chainstate_record_updates_and_values
   // everything from this point on goes at the end of the file
   // in the case that runoptions[MCFLOADONLYSTATESPACE] == 1 all this stuff from here to the end gets skipped when reading the mcf file
@@ -850,8 +893,23 @@ writemcf (char mcffilename[],char commandline[],long recordsteps,double hilike,d
 	  aa "stepstone_Lmax", 3, numchainstotal, stepstone_Lmax);
     */
   }
-  aa "netsteps",0,1,&netsteps);
-  aa "recordsteps",1,1,&recordsteps);
+  if (hiddenoptions[READOLDMCFFILE]) //jh 1_17_2018
+  {
+    aa "netsteps",0,1,&netsteps);
+    aa "mcmcrecords",0,1,&mcmcrecords);
+  }
+  else  
+  {
+    int temp;
+    if (runoptions[DONTSAVEGENEALOGIES] == 1)  // put 0 in for genealogysamples because none will have been saved in the .ti file 
+      temp = 0;
+    else
+      temp = genealogysamples + genealogysamples_old;
+    aa "genealogysamples",0,1,&temp);
+    temp = mcmcrecords + mcmcrecords_old;
+    aa "mcmcrecords",0,1,&temp);
+  }
+  
   aa "hilike",3,1,&hilike);
   aa "hiprob",3,1,&hiprob);
 
@@ -902,7 +960,7 @@ if the number of chains in the current run (call this cc for now) is different t
 /* need to revise this so that if cc > cf,  then all chains above cf are copied from the chain cf
   this way we are less likely to have a chain that is much better than its beta value, 
   at least compared to what happens when we start copying low number chains into highly heated positions */ 
-void readmcf (char mcffilename[],long *recordsteps,double *hilike,double *hiprob,int currentid)
+void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,int currentid)
 {
   int i, j, li, ci, lastci = -1;
   int dummy;
@@ -1091,9 +1149,19 @@ void readmcf (char mcffilename[],long *recordsteps,double *hilike,double *hiprob
     if (largetimeflag)  // skip that locus
       ci--;
   }
+  if (hiddenoptions[READOLDMCFFILE]==0) //jh 1_17_2018
+  {
+    aa "burninsteps",0,1,&burninsteps);
+    aa "runsteps",0,1,&runsteps);
+    aa "numpriormcfruns",0,1,&numpriormcfruns);
+    long temptotaltime;
+    aa "totaltime",1,1,&temptotaltime); 
+    totaltime = (time_t) temptotaltime;// copy from a longo aa still works 
+  }
+
   init_p (); // initialize various things 
   // now do the various instances of struct chainstate_record_updates_and_values
-  if (runoptions[MCFLOADONLYSTATESPACE] == 0)  // do not read this part of the file if runoptions[MCFLOADONLYSTATESPACE] == 1
+  if (runoptions[MCFLOADONLYSTATESPACE] == 0 && runoptions[LOADMCSTATE] == 0)  // do not read this part of the file if runoptions[MCFLOADONLYSTATESPACE] == 1 or runoptions[LOADMCSTATE] == 1
   {
     for (i=0;i<nloci;i++)
     {
@@ -1148,8 +1216,16 @@ void readmcf (char mcffilename[],long *recordsteps,double *hilike,double *hiprob
 	    aa "stepstone_Lmax", 3, numchainstotal, stepstone_Lmax);
       */
     }
-    aa "netsteps",0,1,&netsteps);
-    aa "recordsteps",1,1,recordsteps);
+    if (hiddenoptions[READOLDMCFFILE]) //jh 1_17_2018
+    {
+      aa "netsteps",0,1,&netsteps);
+      aa "recordsteps",0,1,&mcmcrecords);  // used to be "recordsteps"
+    }
+    else  
+    {
+      aa "genealogysamples",0,1,&genealogysamples);
+      aa "mcmcrecords",0,1,mcmcrecords);
+    }
     aa "hilike",3,1,hilike);
     aa "hiprob",3,1,hiprob);
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)

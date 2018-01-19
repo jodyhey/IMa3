@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 
@@ -48,7 +48,7 @@ static void prepare_migration_histograms (int locusrow, int nummigdirs);
 
 void copysmthmaxvals(void);
 double get_cdf_percentile_value(struct plotpoint *xy,int n, double p);
-void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char priorfilename[]);
+void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char priorfilename[]);
 
 char *
 histformatdouble (double pval)
@@ -949,7 +949,7 @@ It is also helpful to precede these by some FP statements that explain the histo
 
 /* scaleumeaninput is the user provide (with -y) mean mutation rate.  Used in L mode with -p3.  If all loci are mutation rates in the data file, then use -y1*/
 
-void printhistograms (FILE * outfile, long int recordsteps,
+void printhistograms (FILE * outfile, long int mcmcrecords,
                       double generationtime, int usegenerationtimedefault, double scaleumeaninput,char priorfilename[])
 {
   int numhistprint = 0, uratecount; // 5/17/2017 uratecount usage unclear ??
@@ -965,7 +965,7 @@ void printhistograms (FILE * outfile, long int recordsteps,
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     numhist += nummigrateparams;
   init_print_histogram (numhist);
-  numstepsrecorded = recordsteps;
+  numstepsrecorded = mcmcrecords;
   /* jh 1/2/2018  this was the wrong place for this,  needs to be done when smthmaxvals have the mutation scalars , after first call to writehistogram()
   //calculate the average mutation rate scalar 
   if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
@@ -1174,7 +1174,7 @@ void printhistograms (FILE * outfile, long int recordsteps,
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR] && (runmode==GHYPERPRIORmode2 || runmode == HGHYPERPRIORmode5))
   {
     FP "--------------------------------------------------------------------------------------------------------\n");
-    print_prior_posterior_suggestions(outfile,recordsteps,priorfilename);
+    print_prior_posterior_suggestions(outfile,mcmcrecords,priorfilename);
   }
   free_print_histogram ();
 }                               // printhistograms
@@ -1182,11 +1182,11 @@ void printhistograms (FILE * outfile, long int recordsteps,
 /* plots of counts and times of migration events are handled a little differently than 
   other histograms.  They still are done by a call to writehistogram(), but the printing
   is done to a different file,  so that's why this function was created */
-void printmigrationhistograms (FILE * outfile, long int recordsteps)
+void printmigrationhistograms (FILE * outfile, long int mcmcrecords)
 {
   int i;
   init_print_histogram (2 * nummigdirs);
-  numstepsrecorded = recordsteps;
+  numstepsrecorded = mcmcrecords;
 
   FP "%s",outputbanner("IMa3 MIGRATION COUNT DISTRIBUTIONS:  BY LOCUS AND MIGRATION PARAMETER"));
   
@@ -1288,7 +1288,7 @@ exponential priors:
 
 
 
-void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char priorfilename[])
+void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char priorfilename[])
 {
   int i;
   double w, p,u,psug;
@@ -1309,7 +1309,7 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
   FP  " Param\ttu\t50%%\t60%%\t70%%\t80%%\t90%%\tp*\tw\tsuggestions\n");
   for (i = 0; i < numpopsizeparams; i++)
   {
-    w = get_cdf_percentile_value(qh[i].v->xy, recordsteps, 0.8);
+    w = get_cdf_percentile_value(qh[i].v->xy, mcmcrecords, 0.8);
     p = qpriorsmthmaxvals[i];
     u = hyperprior_uniform_q_max;
     if (p > 0.8 * u)
@@ -1325,11 +1325,11 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
     //FP " %s\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n",&qh[i].v->str[0],u,p,w,psug);
     FP " %s\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n",
       &qh[i].v->str[0],u,
-      get_cdf_percentile_value(qh[i].v->xy, recordsteps, 0.5),
-      get_cdf_percentile_value(qh[i].v->xy, recordsteps, 0.6),
-      get_cdf_percentile_value(qh[i].v->xy, recordsteps, 0.7),
+      get_cdf_percentile_value(qh[i].v->xy, mcmcrecords, 0.5),
+      get_cdf_percentile_value(qh[i].v->xy, mcmcrecords, 0.6),
+      get_cdf_percentile_value(qh[i].v->xy, mcmcrecords, 0.7),
       w,
-      get_cdf_percentile_value(qh[i].v->xy, recordsteps, 0.9),
+      get_cdf_percentile_value(qh[i].v->xy, mcmcrecords, 0.9),
       p,w,psug);
   }
   FP "\nSuggested Population Migration Parameter Priors:\n");
@@ -1347,7 +1347,7 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
     
     for (i = 0; i < nummigrateparams; i++)
     {
-      w = get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.8);
+      w = get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.8);
       p = mpriorsmthmaxvals[i];
       u = hyperprior_uniform_m_max;
       if (p > 0.8 * u)
@@ -1363,11 +1363,11 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
       //FP " %s\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n",&mh[i].v->str[0],u,p,w,psug);
       FP " %s\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n",
       &mh[i].v->str[0],u,
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.5),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.6),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.7),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.5),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.6),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.7),
       w,
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.9),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.9),
       p,w,psug);
     }
   }
@@ -1378,7 +1378,7 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
     FP  " Param\thypermean\t50%%\t60%%\t70%%\t80%%\t90%%\tm*\n");
     for (i = 0; i < nummigrateparams; i++)
     {
-      w = get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.01*expo_m_mean);
+      w = get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.01*expo_m_mean);
       if (mpriorsmthmaxvals[i] < w)
         psug = w;
       else
@@ -1387,11 +1387,11 @@ void print_prior_posterior_suggestions(FILE * outfile, long int recordsteps,char
       //FP "  %s\t%.4lf\n",&mh[i].v->str[0],psug);
       FP " %s\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\t%.4lf\n",
       &mh[i].v->str[0],expo_m_mean,
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.5),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.6),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.7),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.8),
-      get_cdf_percentile_value(mh[i].v->xy, recordsteps, 0.9),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.5),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.6),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.7),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.8),
+      get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.9),
       psug);
 
     }

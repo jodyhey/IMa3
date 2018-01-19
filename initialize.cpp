@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 #include "update_gtree_common.hpp"
@@ -726,6 +726,7 @@ setup_iparams (int ci)
   this loop mirrors the first loop for mig parameters in set_iparam_poptreeterms()
   but here we just deal with setting the priors 
   */
+
   if (calcoptions[LOADPRIORSFROMFILE])
   {
     if (!modeloptions[NOMIGRATION] && npops > 1)
@@ -1699,6 +1700,7 @@ start_setup_L (char infilename[], int *fpstri, char fpstr[], int currentid)
                         (calloc ((size_t) npops + 1, sizeof (int)));
   }
   readdata (infilename, fpstri, fpstr, numsitesIS, currentid);
+
   for (li = 0; li < nloci; li++)
   {
     init_mutation_scalar_rec (li);
@@ -2407,7 +2409,6 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
 {
   int ci;
   start_setup_L (infilename, fpstri, fpstr, currentid);
-
   if (calcoptions[LOADPRIORSFROMFILE])
   {
     if (thetaprior < 0.0)
@@ -2449,7 +2450,6 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
     hashsize = hashvalmaxes[npops];
   for (ci=0;ci<numchainspp;ci++)
   {
-    
     setup_iparams (ci);
     set_iparam_poptreeterms (ci);
   }
@@ -2459,14 +2459,10 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
     setup_migprior_recording();
     setup_qprior_recording();
   }
-
   finish_setup_poptree(topologypriorinfostring);
-
   finish_setup_C (currentid);
-
   reportparamcounts(fpstri, fpstr);
   finish_setup_L ();            // somethings in L need info from T , free up numsitesIS and uvals
-
   if (npops > 1  && hiddenoptions[HIDDENGENEALOGY]==0)
   {
     init_t_NW ();
@@ -2478,7 +2474,6 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
   init_lpgpd_v ();
   if (outputoptions[MIGRATEHIST]) 
     init_migration_counts ();
-
   add_priorinfo_to_output(priorfilename,fpstri, fpstr);
   init_autoc_pointers ();
 

@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 
@@ -407,6 +407,12 @@ init_autoc_pointers (void)
         i++;
       }
     assert (i == num_autoc);
+    for (i = 0; i < AUTOCTERMS; i++) // added zeroing of the vals array,  1/18/2018
+    {
+      for (j = 0; j < num_autoc; j++)
+        for (int k = 0;k < AUTOCNEXTARRAYLENGTH;k++)
+          autoc_pointer[j][i].vals[k] = 0.0;
+    }
   }
   return;
 }                               // init_autoc_pointers
@@ -421,7 +427,7 @@ nextposcalc[AUTOCTERMS] for each lag value, the position in the autoc_pointer[][
 maxpos[AUTOCTERMS] for each lag value, the length of the autoc_pointer[][].vals array 
 */
 void
-checkautoc (int start_autocorrelations, int burndone, int burnsteps, int currentid)
+checkautoc (int start_autocorrelations, int burndone, int burninsteps, int currentid)
 {
   int i, j;
   int autoc_vals_recorded = 0;
@@ -434,7 +440,7 @@ checkautoc (int start_autocorrelations, int burndone, int burnsteps, int current
       iautoc (autoc_pointer[i]); 
     for (i = 0; i < AUTOCTERMS; i++)
     {
-      nextstepcalc[i] = CHECKAUTOCWAIT + AUTOCINT * AUTOCSTEPSCALAR + autoc_checkstep[i] * AUTOCSTEPSCALAR + (burndone * burnsteps);
+      nextstepcalc[i] = CHECKAUTOCWAIT + AUTOCINT * AUTOCSTEPSCALAR + autoc_checkstep[i] * AUTOCSTEPSCALAR + (burndone * burninsteps);
       nextpossave[i] = 0;
       nextposcalc[i] = 0;
       if (autoc_checkstep[i] <= AUTOCINT)

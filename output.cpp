@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 #undef GLOBVARS
 #include "ima.hpp"
@@ -363,57 +363,80 @@ checkoutfileclosed (FILE ** outfile, char outfilename[])
 /* prints to outfile it its not NULL, which should only be true if it is the head node - cpu 0
   also gathers topologycounts to cpu 0 from other cpus */ 
 void
-printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burnsteps,
-                int recordint, int recordsteps, int savegenealogyint,double hilike,double hiprob)
+printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int burninsteps_old,int runsteps_old, int mcmcrecords_old,int genealogysamples_old,
+                int recordint, int mcmcrecords, int savegenealogyint,double hilike,double hiprob)
 {
   //double mcalc;
   int totaltopol_rec, chain0topol_rec, chain0topolswaps_rec;
-  double ml_estimate, ml_stdev1, ml_stdev2;
+  double ml_estimate;//, ml_stdev1, ml_stdev2;
   if (calcoptions[CALCMARGINALLIKELIHOOD])  // make this call for all processors (i.e. regardless of outfile value) 
     move_calcmarglike_vals();
   if (outfile != NULL)
   {
+ //printf("here 1 %ld",(long) strlen(fpstr));
   FP "%s", fpstr);
-
+//printf("here 2");
   if (!loadrun == 1)
     {
-      //FP "\n\n===========================\n");
-      //FP "MCMC INFORMATION\n");
-      //FP "===========================\n\n");
-
-     // strcpy(bannertext,"Sampling summaries");
-     // FP "%s",outputbanner(bannertext));
       FP "%s",outputbanner("Sampling summaries"));
-      FP "Number of steps in burnin: %10d\n", burnsteps);
-      FP "Number of steps in chain following burnin: %10d \n",
-        (step - burnsteps));
-      if (runoptions[LOADMCSTATE]==1)
-      {
-        FP "Number of steps in previous runs (read in from *.mcf file): %d   Total number of steps: %d\n",netsteps,netsteps + (step - burnsteps));
-        netsteps = step - burnsteps;
-      }
-      //FP "Number of steps between checking mcmc status : %d  Number of status checks: %d \n", recordint, recordsteps);
-      FP "Number of steps between recording values : %d  Number of recording calls: %d \n", recordint, recordsteps);
+      FP "\nIntervals\n---------\n");
+      FP "  Number of steps between recording values : %d\n", recordint);
       if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
-        FP "Number of steps between saving genealogy information: %d  Number of genealogies saved per locus: %d \n", savegenealogyint, genealogiessaved);
-      FP "Highest Joint P(G) (log) - checked at recording intervals: %10.3f \n", hiprob);
-      FP "Highest Joint P(D|G) (log) - checked at recording intervals : %10.3f \n", hilike);
+        FP "  Number of steps between saving genealogy information: %d\n", savegenealogyint);
+      FP "\nBurnin Period Steps\n-------------------\n");
+      if (burninsteps  > 0)
+        FP "  Number of steps in burnin: %10d\n", burninsteps);
+      if (burninsteps_old  > 0)
+      {
+        FP "  Number of steps in previous burnin: %10d\n", burninsteps_old);
+        FP "  Total number of burnin steps: %10d\n", burninsteps_old+burninsteps);
+      }
+      FP "\nSampling Period Steps\n---------------------\n");
+      if (runsteps > 0)
+        FP "  Number of steps in chain: %10d \n", runsteps);
+      if (runsteps_old > 0)
+      {
+        FP "  Number of steps in previous runs: %10d \n",runsteps_old);
+        FP "  Total number of steps in all runs: %10d \n",runsteps_old + runsteps);
+      }
+      if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
+      {
+        FP "\nGenealogy Sampling\n------------------\n");
+       if (genealogysamples > 0)
+        FP "  Number of genealogies sampled (per locus): %d \n", genealogysamples);
+       if (genealogysamples_old > 0)
+       {
+          FP "  Number of genealogies sampled in prior runs: %d \n", genealogysamples_old);
+          FP "  Total number of genealogies sampled: %d \n", genealogysamples_old + genealogysamples);
+       }
+      }
+      FP "\nMCMC Sampling (other than genealogies)\n--------------------------------------\n");
+      if (mcmcrecords > 0)
+        FP "  Number of samples: %d \n", mcmcrecords);
+      if (mcmcrecords_old > 0)
+      {
+        FP "  Number of samples from prior runs: %d \n", mcmcrecords_old);
+        FP "  Total number of samples: %d \n", mcmcrecords_old+mcmcrecords);
+      }
+      FP "\nLikelihoods and Probabilities\n-------------------------------\n");
+      FP "  Highest Joint P(G) (log) - checked at sampling intervals: %10.3f \n", hiprob);
+      FP "  Highest Joint P(D|G) (log) - checked at sampling : %10.3f \n", hilike);
       if (calcoptions[CALCMARGINALLIKELIHOOD])
       {
-        thermo_marginlike_calc(recordsteps, &ml_estimate);
-        FP "Marginal Likelihood P(D) (log) estimate: %10.3lf\n",ml_estimate);
+        thermo_marginlike_calc(mcmcrecords, &ml_estimate);
+        FP "  Marginal Likelihood P(D) (log) estimate: %10.3lf\n",ml_estimate);
         /* 8/22/2016 turned off most marginal likelihood stuff as it was not working well when intervals between beta values were not uniform 
           need to get back to this to figure out how to calculate the variance of the estimate */
         /*FP "Marginal Likelihood P(D) (log) estimates\n");
         if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
         {
-          mcalc = harmonicmarginlikecalc(recordsteps);
+          mcalc = harmonicmarginlikecalc(mcmcrecords);
           FP "     harmonic mean : %10.3f\n",mcalc);
         }
-        thermo_marginlike_calc(recordsteps, &ml_estimate);
+        thermo_marginlike_calc(mcmcrecords, &ml_estimate);
         //FP "     thermodynamic integration : %10.3f    discretization error : %10.3f   sampling error : %10.3f\n",ml_estimate,ml_stdev1,ml_stdev2); standard error not working it seems ??
         FP "     thermodynamic integration : %10.3f \n",ml_estimate);
-        steppingstone_marginlike_calc2(recordsteps,&ml_estimate, &ml_stdev1);
+        steppingstone_marginlike_calc2(mcmcrecords,&ml_estimate, &ml_stdev1);
         //FP "     steppingstone sampling (Aude Grelaud): %10.3f   sampling error : %10.3f\n",ml_estimate, ml_stdev1); standard error not working it seems ??
         FP "     steppingstone sampling: %10.3f\n",ml_estimate);
         */
@@ -483,24 +506,31 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burnsteps,
       if (numchainstotal > 1) 
       {
         //FP "Last Sampled Population Topology #: %d   String: %s\n\n",poptreenum_rec,alltreestrings[poptreenum_rec]);   this just not very useful in output file
-        FP "\nPopulation Topology Updates Across Chains\n-----------------------------------------\n");
+        FP "\nPopulation Topology Sampling\n----------------------------\n");
+        if (mcmcrecords > 0)
+          FP "  Number of sampled topologies: %d\n",mcmcrecords);
+        if (mcmcrecords_old > 0)
+        {
+          FP "  Number of topologies sampled in previous runs: %d\n",mcmcrecords_old);
+          FP "  Total number of sampled topologies: %d\n",mcmcrecords+mcmcrecords_old);
+        }
         if (numprocesses > 1)
         {
-  		    FP " Total Number of Accepted Topology Updates Across all Chains: %d\n",totaltopol_rec);
-	        FP " Number of Accepted Topology Updates to the Cold Chain: %d\n",chain0topol_rec);
-          FP " Number of Accepted Swaps that Changed Topology for the Cold Chain: %d\n",chain0topolswaps_rec);
+  		    FP "  Total Number of Accepted Topology Updates Across all Chains: %d\n",totaltopol_rec);
+	        FP "  Number of Accepted Topology Updates to the Cold Chain: %d\n",chain0topol_rec);
+          FP "  Number of Accepted Swaps that Changed Topology for the Cold Chain: %d\n",chain0topolswaps_rec);
         }
         else
         {
-          FP " Total Number of Topology Updates Across all Chains: %d\n",totaltopolupdates);
-          FP " Number of Accepted Topology Updates to the Cold Chain: %d\n",chain0topolupdates);
-	        FP " Number of Accepted Swaps that Changed Topology for the Cold Chain: %d\n",chain0topolswaps);
+          FP "  Total Number of Topology Updates Across all Chains: %d\n",totaltopolupdates);
+          FP "  Number of Accepted Topology Updates to the Cold Chain: %d\n",chain0topolupdates);
+	        FP "  Number of Accepted Swaps that Changed Topology for the Cold Chain: %d\n",chain0topolswaps);
         }
         FP  "\n");
       }
       else  // 1 chain
       {
-        FP " Total Number of Topology Updates Across: %d\n",totaltopolupdates);
+        FP "  Total Number of Topology Updates Across: %d\n",totaltopolupdates);
       }
     }
   }
@@ -682,7 +712,7 @@ ACYPLOT + 2
 */
 
 void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
-                 int logscale, int recordsteps)
+                 int logscale, int mcmcrecords)
 {
   char graph[ACYMAX][ACXMAX + 1];
   char tc[13];
@@ -699,7 +729,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
     if (ymin > a[i].y)
       ymin = a[i].y;
   }
-  ymax /= recordsteps;
+  ymax /= mcmcrecords;
   ymin = 0;                     // don't shift plot on y axis 
   if (logscale)
   {
@@ -721,7 +751,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
 // set up plot name line 
   strcat (graph[0], qlabel);
   strcat (graph[0], " curve");
-  //sprintf(graph[0],"%s curve %d pts",qlabel,recordsteps);
+  //sprintf(graph[0],"%s curve %d pts",qlabel,mcmcrecords);
   while (strlen (graph[0]) < ACXMAX)
     strcat (graph[0], " ");
 //set up the upper y axis label
@@ -762,7 +792,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
   i = 0;
   while (i <= xmax)
   {
-    yspot = (int) 1 + ACYPLOT - (int) (ACYPLOT * (a[i].y / recordsteps - ymin) / (ymax - ymin));
+    yspot = (int) 1 + ACYPLOT - (int) (ACYPLOT * (a[i].y / mcmcrecords - ymin) / (ymax - ymin));
     if (logscale)
       xspot = (int) ACXLEFTSPACE + 1 + (int) ((ACXPLOT - 2) * (log (a[i].x) - log (a[0].x)) / (2 * log (a[xmax].x)));
     else
@@ -1565,7 +1595,7 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
     //printf ("Error opening treeinfosave file for writing\n");
     IM_err(IMERR_CREATEFILEFAIL,"Error opening treeinfosave file for writing");
   }
-  for (j = *lastgenealogysavedvalue; j < genealogiessaved; j++)
+  for (j = *lastgenealogysavedvalue; j < genealogysamples; j++)
   {
     // save everything as a float  - round integers later, when they get used
     //std::cout << "What is going on here???";
@@ -1578,7 +1608,7 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
       fprintf(genealogyinfosavefile,"%s",debug_ti_addinfo[j]);
     fprintf (genealogyinfosavefile, "\n");
   } 
-  *lastgenealogysavedvalue = genealogiessaved - 1;
+  *lastgenealogysavedvalue = genealogysamples - 1;
   f_close (genealogyinfosavefile);
   return;
 }                               /* savegenealogyfile */
@@ -1597,7 +1627,7 @@ void print_means_variances_correlations (FILE * outfile)
     correlations = orig2d_alloc2Ddouble (np, np);
   }
 
-  for (i = 0; i < genealogiessaved; i++)
+  for (i = 0; i < genealogysamples; i++)
   {
     for (p = 0; p < np; p++)
     {
@@ -1608,10 +1638,10 @@ void print_means_variances_correlations (FILE * outfile)
   for (p = 0; p < np; p++)
   {
     if (means[p] >= 0.0)
-      means[p] /= genealogiessaved;
+      means[p] /= genealogysamples;
     if (variances[p] >= 0.0)
     {
-      variances[p] /= genealogiessaved;
+      variances[p] /= genealogysamples;
       variances[p] -= SQR (means[p]);
     }
   }
@@ -1620,7 +1650,7 @@ void print_means_variances_correlations (FILE * outfile)
     for (p = 0; p < np; p++)
       for (q = 0; q < np; q++)
         correlations[p][q] = 0;
-    for (i = 0; i < genealogiessaved; i++)
+    for (i = 0; i < genealogysamples; i++)
     {
       for (p = 0; p < np - 1; p++)
         for (q = p + 1; q < np; q++)
@@ -1631,7 +1661,7 @@ void print_means_variances_correlations (FILE * outfile)
       {
         if (correlations[p][q] >= 0.0)
         {
-          correlations[p][q] /= genealogiessaved;
+          correlations[p][q] /= genealogysamples;
           correlations[p][q] -= (means[p] * means[q]);
           correlations[p][q] /= sqrt (variances[p] * variances[q]);
         }
@@ -1972,7 +2002,7 @@ void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot)
    some things that are plotted are based on struct value_record and others on struct i_param
    this is why we cannot simply call asciicurve() with a pointer to a single type of structure  */
 /* this is called only for the head node */
-void callasciicurves (FILE *outfile,int recordsteps)
+void callasciicurves (FILE *outfile,int mcmcrecords)
 {
   struct plotpoint **curvexy;
   char **curvestr;
@@ -2048,7 +2078,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
       curvexy[j] = T[i].v->xy;
       curvestr[j] = &T[i].v->str[0];
       curve_do_logplot[j] = T[i].v->do_logplot;
-      nrecstep[j] = recordsteps;
+      nrecstep[j] = mcmcrecords;
       j++;
     }
   }
@@ -2107,7 +2137,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
         curvexy[j] = L[li].u_rec[ui].v->xy;
         curvestr[j] = &L[li].u_rec[ui].v->str[0];
         curve_do_logplot[j] = L[li].u_rec[ui].v->do_logplot;
-        nrecstep[j] = recordsteps;
+        nrecstep[j] = mcmcrecords;
         j++;
       }
   }
@@ -2119,7 +2149,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
         curvexy[j] = L[li].kappa_rec->v->xy;
         curvestr[j] = &L[li].kappa_rec->v->str[0];
         curve_do_logplot[j] = L[li].kappa_rec->v->do_logplot;
-        nrecstep[j] = recordsteps;
+        nrecstep[j] = mcmcrecords;
         j++;
       }
   }
@@ -2130,7 +2160,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
       curvexy[j] = qh[i].v->xy;
       curvestr[j] = &qh[i].v->str[0];
       curve_do_logplot[j] = qh[i].v->do_logplot;
-      nrecstep[j] = recordsteps;
+      nrecstep[j] = mcmcrecords;
       j++;
     }
     for (i = 0; i < nummigrateparams; i++)
@@ -2138,7 +2168,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
       curvexy[j] = mh[i].v->xy;
       curvestr[j] = &mh[i].v->str[0];
       curve_do_logplot[j] = mh[i].v->do_logplot;
-      nrecstep[j] = recordsteps;
+      nrecstep[j] = mcmcrecords;
       j++;
     }
   }
@@ -2163,7 +2193,7 @@ void callasciicurves (FILE *outfile,int recordsteps)
   }
 }                               //callasciicurve 
 
-void printsteps (FILE * outto, double like, double probg,int burndone, int burnsteps)
+void printsteps (FILE * outto, double like, double probg,int burndone, int burninsteps)
 {
   if (!burndone)
   {
@@ -2176,20 +2206,20 @@ void printsteps (FILE * outto, double like, double probg,int burndone, int burns
     if (outto != NULL)  fprintf(outto, "=============================================\n");
     if (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1)
     {
-      if (outto != NULL)  fprintf(outto, "STEP # %d  Topologies Sampled: %d p(D|G): %.3lf p(G): %.3lf\n",step - burnsteps,poptopologiessampled, like, probg);
+      if (outto != NULL)  fprintf(outto, "STEP # %d  Topologies Sampled: %d p(D|G): %.3lf p(G): %.3lf\n",runsteps,poptopologiessampled, like, probg);
     }
     else
     {
-      if (genealogiessaved > 0)
+      if (genealogysamples > 0)
       {
         if (outto != NULL)  fprintf(outto,
                  "STEP # %d # Genealogies Saved: %d p(D|G): %.1lf p(G): %.1f\n",
-                 step - burnsteps, genealogiessaved, like, probg);
+                 runsteps, genealogysamples, like, probg);
       }
       else
       {
         if (outto != NULL)  fprintf(outto, "STEP # %d  p(D|G): %.3lf p(G): %.3lf\n",
-                 step - burnsteps, like, probg);
+                 runsteps, like, probg);
       }
     }
   }

@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 #undef GLOBVARS
 #include "ima.hpp"
 /* calculate marginal likelihood */
@@ -204,10 +204,10 @@ double harmonicmarginlikecalc(void)
   int maxz = 0;
   double  harmonicsum_eexp = 0.0;
 
-  harmonicsump = (struct extendnum *) malloc ((size_t) ((genealogiessaved + 1) * sizeof (struct extendnum)));
+  harmonicsump = (struct extendnum *) malloc ((size_t) ((genealogysamples + 1) * sizeof (struct extendnum)));
 
   pdgp = 4*numpopsizeparams + 3* nummigrateparams;  // position in gsampinf[gi] that holds pdg
-  for (gi = 0; gi < genealogiessaved; gi++)
+  for (gi = 0; gi < genealogysamples; gi++)
   {
     eexp(gsampinf[gi][pdgp],&tempm,&tempz);
     harmonicsump[gi].m = 1.0/tempm;
@@ -215,12 +215,12 @@ double harmonicmarginlikecalc(void)
     if (harmonicsump[gi].z > maxz)
       maxz = harmonicsump[gi].z;
   }
-  for (gi = 0; gi < genealogiessaved; gi++)
+  for (gi = 0; gi < genealogysamples; gi++)
   {
     zadj = harmonicsump[gi].z - (maxz - OCUTOFF);
     harmonicsum_eexp += harmonicsump[gi].m * pow (10.0, (double) zadj);
   }
-  hmlog = -(log (harmonicsum_eexp) - log( (double) genealogiessaved) + (maxz - OCUTOFF) * LOG10);
+  hmlog = -(log (harmonicsum_eexp) - log( (double) genealogysamples) + (maxz - OCUTOFF) * LOG10);
   XFREE(harmonicsump);
   return hmlog;
 }

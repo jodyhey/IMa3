@@ -1,4 +1,4 @@
-/*IMa3 2017 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
+/*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
 /* calculations for assessing if one parameter is greater than another 
 print matrices of results */ 
@@ -334,16 +334,16 @@ void print_greater_than_tests (FILE * outfile)
   double **gt_popsize, **gt_mig;
   int i, j;
   int printwarning = 0;
-  if (genealogiessaved > USETREESMAX)
+  if (genealogysamples > USETREESMAX)
   {
-    treeinc = (int) genealogiessaved/(int) USETREESMAX;
+    treeinc = (int) genealogysamples/(int) USETREESMAX;
     numtreesused = USETREESMAX;
     hitreenum = treeinc * USETREESMAX;
   }
   else
   {
     treeinc = 1;
-    hitreenum = numtreesused = genealogiessaved;
+    hitreenum = numtreesused = genealogysamples;
   }
   gt_popsize= orig2d_alloc2Ddouble (numpopsizeparams, numpopsizeparams);
   for (i=0;i < numpopsizeparams ; i++) //JH 4/22/2010  calculate full matrix
