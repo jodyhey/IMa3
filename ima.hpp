@@ -12,7 +12,8 @@
 /***** GLOBAL STRUCTURES  ************/
 /*******     GLOBAL VARIABLES     *********/
 /***** GLOBAL FUNCTION PROTOTYPES *********/
- 
+
+
 /*************************************/
 /******** INCLUDES *******************/
 /*************************************/
@@ -88,7 +89,7 @@
 #endif
 #endif
 
-#ifndef STDTEST // have thi so STDTEST can be defined at compile time 
+#ifndef STDTEST // have this so STDTEST can be defined at compile time 
 //#define STDTEST
 #undef STDTEST
 #endif
@@ -483,6 +484,7 @@ NUMRUNMODES = 7};
     UPDATEMRATEFORHGUPDATE - use a migration rate for hidden genealogy updating drawn from migration prior, update this in mcmc 
     FIXMUTATIONSCALARUPATES  mutation rate scalars are fixed to relative mutation scalar values, as found in input file 
     CALCGEWEKEZ  calculate gewekez stat when updating phylogenies
+    PRINT2NMASCIICURVES  prints ascii curves for 2Nm,  takes some time so off by default 
     SKIPMOSTUSCALAROUTPUT  stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
     STOPMOSTINTERVALOUTPUT  stop writing most interval output to the screen  use -jhb or -jhB on command line
 
@@ -500,17 +502,18 @@ NUMRUNMODES = 7};
   */
 enum
 { SWINPUTOPTION = 0,
-  WRITEMIGRATIONNAME=1,
+  WRITEMIGRATIONNAME=1,   // 1_22_2018  not sure what this is for 
   HIDDENGENEALOGY=2,  
   GSAMPINFOEXTRA=3, 
   UPDATEMRATEFORHGUPDATE=4,
   NOMUTATIONSCALARUPATES = 5, // no mutation rate scalar updating 
   FIXMUTATIONSCALARUPATES = 6, // mutation rate scalars are fixed to relative mutation scalar values, as found in input file 
   CALCGEWEKEZ = 7, //calculate gewekez stat when updating phylogenies
-  SKIPMOSTUSCALAROUTPUT = 8, // stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
-  STOPMOSTINTERVALOUTPUT = 9,// stop writing most interval output to the screen  use -jhb or -jhB on command line
-  READOLDMCFFILE = 10, // -jhC on command line, read mcf files generated before 1/17/2018 
-  HIDDENOPTIONNUMBER=11};
+  PRINT2NMASCIICURVES = 8,
+  SKIPMOSTUSCALAROUTPUT = 9, // stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
+  STOPMOSTINTERVALOUTPUT = 10,// stop writing most interval output to the screen  use -jhb or -jhB on command line
+  READOLDMCFFILE = 11, // -jhC on command line, read mcf files generated before 1/17/2018  use -jhb or -jhC on command line
+  HIDDENOPTIONNUMBER=12};
 
 /* calcoptions -c
     DONTCALCLIKELIHOODMUTATION - don't calculate p(Data|G)  if set to 1 then data likelihood functions return a constant

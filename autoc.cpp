@@ -156,7 +156,6 @@ printautoctable (FILE * outto, int numautoc, struct autoc **ac, char **ac_str)
   double **acvals;
   int numacprint;
   char numstr[20];
-  //char banner[3*BANNERMAXLENGTH], bannertext[BANNERMAXLENGTH];
   numacprint = (outto == stdout) ? IMIN (numautoc, IFSTDOUTMAXSHOW) : numautoc;
 
   acvals = orig2d_alloc2Ddouble (numacprint, AUTOCTERMS);

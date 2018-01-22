@@ -12,8 +12,6 @@ struct histprintstructure
   int after;
 };
 
-//extern char banner[], bannertext[];
-
 static struct histprintstructure *hp;
 static double scaleumean, timeumean;
 static double *smthmaxvals;
@@ -973,12 +971,6 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     uratecount = getdemogscale (scaleumeaninput);
   }
   */
-  //FP "\n");
-  //FP "==========\n");
-  //FP "HISTOGRAMS\n");
-  //FP "==========\n");
-  //strcpy(bannertext,"histograms");
-  //FP "%s",outputbanner(bannertext));
   FP "%s",outputbanner("histograms"));
 
   FP "  Each histogram is given as %d pairs of values (i.e. two columns side by side).\n", GRIDSIZE);

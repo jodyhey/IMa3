@@ -835,8 +835,6 @@ void printjointpeakvals(FILE *outfile,int notused[], double *printvals)
 void startjointpeakouttable(FILE *outfile,char *fname)
 {
   int i, mi, typeloopstart, typeloopstop,nowmodeltype_local,j=0;
-  //FP"Joint Peak Locations and Posterior Probabilities\n");
-  //FP"================================================\n");
   FP "%s",outputbanner("Joint Peak Locations and Posterior Probabilities"));
 
   FP"  estimates based on %d sampled genealogies\n",genealogysamples);

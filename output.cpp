@@ -1669,14 +1669,7 @@ void print_means_variances_correlations (FILE * outfile)
           correlations[p][q] = -1.0;
       }
   }
-  //FP "\n=============================================================================\n");
-  //FP "MEANS, VARIANCES and CORRELATIONS OF PARAMETERS ('$' r > 0.4  '*' r > 0.75)\n");
-  //FP "=============================================================================\n");
-
-  //strcpy(bannertext,"MEANS, VARIANCES and CORRELATIONS OF PARAMETERS ('$' r > 0.4  '*' r > 0.75)");
-  //FP "%s",outputbanner(bannertext));
   FP "%s",outputbanner("MEANS, VARIANCES and CORRELATIONS OF PARAMETERS ('$' r > 0.4  '*' r > 0.75)"));
-
   FP "Param:");
   for (p = 0; p < np; p++)
   {
@@ -1855,16 +1848,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
       hii = i;
     }
   }
-  //FP "\n===============================================================\n");
-  //FP "Estimated Posterior Probabilities of Population Tree Topologies\n");
-  //FP "===============================================================\n");
-  //FP "\n");
-
-//  strcpy(bannertext,"Estimated Posterior Probabilities of Population Tree Topologies");
-//  FP "%s",outputbanner(bannertext));
-  
   FP "%s",outputbanner("Estimated Posterior Probabilities of Population Tree Topologies"));
-
   FP "Population Names\n");
   FP "----------------\n");
   for (i = 0; i < npops; i++)
@@ -2047,7 +2031,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
    // numcurve += numpopsizeparams;
   if (runmode == Gmode3 || runmode == LOADGmode4 || runmode == HGmode6)
   {
-    if (outputoptions[NOPOPMIGPARAMHIST] == 0)
+    if (outputoptions[NOPOPMIGPARAMHIST] == 0 && hiddenoptions[PRINT2NMASCIICURVES] == 1)
       do2Nmcurves = 1;
     dodemogcurves = 1;
     numcurve += numpopsizeparams;
