@@ -2740,7 +2740,7 @@ void trendrecord (int loadarrayj, int currentid)
 		      inctrend (movespot, trendspot, lpgpd_v, probrec);
 	      }
 	      if (z >=0 && currentid != 0) 
-        {
+       {
           if (hiddenoptions[HIDDENGENEALOGY]==0)
 		          probrec = C[z]->allpcalc.probg + C[z]->allpcalc.pdg;
           else
@@ -2765,7 +2765,7 @@ void trendrecord (int loadarrayj, int currentid)
 	      }
 	#ifdef MPI_ENABLED
 	      if (z < 0 && currentid == HEADNODE) 
-        {
+       {
 		      probrec = 0.0;
 		      int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 13131, MPI_COMM_WORLD, &status);
 		      if (rc != MPI_SUCCESS) 
@@ -2775,7 +2775,7 @@ void trendrecord (int loadarrayj, int currentid)
 		      inctrend (movespot, trendspot, poptreeuinfo->v, probrec);
 	      }
 	      if (z >=0 && currentid != 0) 
-        {
+       {
           if (npops - modeloptions[ADDGHOSTPOP] < MINPOPSFORDISTANCE)
 		          probrec = (double) C[z]->poptreenum;
           else
@@ -2785,29 +2785,32 @@ void trendrecord (int loadarrayj, int currentid)
 	      }
 	#endif
 	    }
-      for (j = 0; j < lastperiodnumber; j++) 
-      {
+     for (j = 0; j < lastperiodnumber; j++) 
+     {
         if (T[j].v->do_trend) 
         {
 		      int z = whichiscoldchain();
 		      if (z >= 0 && currentid == HEADNODE) 
-          {
-	              inctrend (movespot, trendspot, T[j].v, C[z]->tvals[j]);
+        {
+	         inctrend (movespot, trendspot, T[j].v, C[z]->tvals[j]);
 		      }
 #ifdef MPI_ENABLED
 		      if (z < 0 && currentid == HEADNODE) {
 			      probrec = 0.0;
 			      int rc =  MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1717, MPI_COMM_WORLD, &status);
-			      if (rc != MPI_SUCCESS) {
-				  MPI_Abort(MPI_COMM_WORLD, rc);
+			      if (rc != MPI_SUCCESS) 
+         {
+				      MPI_Abort(MPI_COMM_WORLD, rc);
 			      }
 			      inctrend (movespot, trendspot, T[j].v, probrec);
 		      }
-		      if (z >= 0 && currentid != 0) {
+		      if (z >= 0 && currentid != 0) 
+        {
 			      probrec = C[z]->tvals[j];
 			      int rc =  MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1717, MPI_COMM_WORLD);
-			      if (rc != MPI_SUCCESS) {
-				  MPI_Abort(MPI_COMM_WORLD, rc);
+			      if (rc != MPI_SUCCESS) 
+         {
+				        MPI_Abort(MPI_COMM_WORLD, rc);
 			      }
 		      }
 #endif
@@ -2820,56 +2823,51 @@ void trendrecord (int loadarrayj, int currentid)
       {
         for (ui = 0; ui < L[li].nlinked; ui++)if (L[li].u_rec[ui].v->do_trend) 
         {
-		    int z = whichiscoldchain();
-		    if (z >= 0 && currentid == HEADNODE)  {
-                inctrend (movespot, trendspot, L[li].u_rec[ui].v,
-                          C[z]->G[li].uvals[ui]);
-		    }
+		        int z = whichiscoldchain();
+		        if (z >= 0 && currentid == HEADNODE)  
+          {
+            inctrend (movespot, trendspot, L[li].u_rec[ui].v, C[z]->G[li].uvals[ui]);
+		        }
 #ifdef MPI_ENABLED
-		    if (z < 0 && currentid == HEADNODE) {
-			    probrec = 0.0;
-			    int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1414, MPI_COMM_WORLD, &status);
-			    if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-			    inctrend (movespot, trendspot, L[li].u_rec[ui].v, probrec);
-		    }
-		    if (z >= 0 && currentid != 0) {
-			    probrec = C[z]->G[li].uvals[ui];
-			    int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1414, MPI_COMM_WORLD);
-			    if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-		    }
+		        if (z < 0 && currentid == HEADNODE) 
+          {
+			         probrec = 0.0;
+			         int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1414, MPI_COMM_WORLD, &status);
+			         if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
+			         inctrend (movespot, trendspot, L[li].u_rec[ui].v, probrec);
+		        }
+		        if (z >= 0 && currentid != 0) 
+          {
+			         probrec = C[z]->G[li].uvals[ui];
+			         int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1414, MPI_COMM_WORLD);
+			         if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
+		        }
 #endif
-		    }
-	    }
+		      }
+	     }
       if (L[li].model == HKY) 
       {
-		    int z = whichiscoldchain();
-		    if (z >= 0 && currentid == HEADNODE) 
+		      int z = whichiscoldchain();
+		      if (z >= 0 && currentid == HEADNODE) 
         {
-	                inctrend (movespot, trendspot, L[li].kappa_rec->v,
-                          C[z]->G[li].kappaval);
-		    }
+	         inctrend (movespot, trendspot, L[li].kappa_rec->v, C[z]->G[li].kappaval);
+		      }
 #ifdef MPI_ENABLED
-		    if (z < 0 && currentid == HEADNODE) 
+		      if (z < 0 && currentid == HEADNODE) 
         {
-			    probrec = 0.0;
-			    int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1515, MPI_COMM_WORLD, &status);
-			    if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-			    inctrend (movespot, trendspot, L[li].kappa_rec->v, probrec);
-		    }
-		    if (z >=0 && currentid != 0) 
+			       probrec = 0.0;
+			       int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1515, MPI_COMM_WORLD, &status);
+			       if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+			       inctrend (movespot, trendspot, L[li].kappa_rec->v, probrec);
+		      }
+		      if (z >=0 && currentid != 0) 
         {
-			    probrec = C[z]->G[li].kappaval;
-			    int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1515, MPI_COMM_WORLD);
-			    if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-
-		    }
+			       probrec = C[z]->G[li].kappaval;
+			       int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1515, MPI_COMM_WORLD);
+			       if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+		      }
 #endif
-
-	      }
+	     }
     }
 /* ADD ADDITONAL inctrend() calls here */
     if (movespot == TRENDLASTPT && trendspot == TRENDLASTPT)
@@ -3056,12 +3054,12 @@ void checkhighs (int z,int currentid, int reset)
     temp[1] = currlike;
     temp[2] = hiprob;
     temp[3] = currprob;
-    rc = MPI_Send(&temp, 4, MPI_DOUBLE, 0, 232321, MPI_COMM_WORLD);
+    rc = MPI_Send(temp, 4, MPI_DOUBLE, 0, 12321, MPI_COMM_WORLD);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
   }
 	 if (z < 0 && currentid == HEADNODE) // receive roottime 
   {
-		  rc = MPI_Recv(&temp, 4, MPI_DOUBLE, MPI_ANY_SOURCE, 232321, MPI_COMM_WORLD, &status);
+		  rc = MPI_Recv(temp, 4, MPI_DOUBLE, MPI_ANY_SOURCE, 12321, MPI_COMM_WORLD, &status);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     hilike = temp[0];
     currlike = temp[1];
@@ -4141,7 +4139,8 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 #ifdef MPI_ENABLED
     if (currentid != 0 ) //current process is not zero but has updatestr, must send to 0
     {
-		   rc = MPI_Send(&updatestr,1000, MPI_CHAR, 0, 12377, MPI_COMM_WORLD); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
+		   //rc = MPI_Send(&updatestr,1000, MPI_CHAR, 0, 12377, MPI_COMM_WORLD); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
+     rc = MPI_Send(updatestr,1000, MPI_CHAR, 0, 12377, MPI_COMM_WORLD); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
 		    if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
     }
 #endif 
@@ -4150,7 +4149,8 @@ void output_update_scalars(int z,int currentid, char updatestr[])
   if (currentid ==0 && z < 0)// current process is 0, must receive updatestr
   {
 #ifdef MPI_ENABLED
-		  rc = MPI_Recv(&updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
+		  //rc = MPI_Recv(&updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
+    rc = MPI_Recv(updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
 		  if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
 #endif  //MPI_ENABLED 
   }
@@ -4541,6 +4541,7 @@ printf("freed stuff\n");
 
 #ifdef MPI_ENABLED
   MPI_Op_free(&myOp_updatescalarsum);
+  MPI_Type_free(&MPI_updatescalar);  //1_26_2018
   MPI_Finalize();
 #ifdef STDTEST
 printf("finalized mpi\n");

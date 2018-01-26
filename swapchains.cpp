@@ -661,20 +661,44 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 /**** STEP 5 *****/
       if (procIdForA  != procIdForB) /* need to share poptreestrings between nodes for A and B  */
       {
-        if (areWeA)  
+         if (areWeA) // 1_26_2018  break these send/recv up 
         {
-          rc = MPI_Send(&C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+         // rc = MPI_Send(&C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+           rc = MPI_Send(C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-          rc = MPI_Recv(&holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 24923, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          //rc = MPI_Recv(&holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 24923, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          rc = MPI_Recv(holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
         }
         else
         {
-          rc = MPI_Send(&C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 24923, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          //rc = MPI_Recv(&holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          rc = MPI_Recv(holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-          rc = MPI_Recv(&holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          //rc = MPI_Send(&C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 24923, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          rc = MPI_Send(C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+        } 
+        /*if (areWeA)  
+        {
+           rc = MPI_Send(C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+        }
+        else
+        {
+          rc = MPI_Send(C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
         }
+        if (areWeA)  
+        {
+          rc = MPI_Recv(holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+        }
+        else
+        {
+          rc = MPI_Recv(holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
+          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+        } */
       }
       assert (holdpoptreestringA != 0 && holdpoptreestringB != 0);
       treematch = strcmp(holdpoptreestringA,holdpoptreestringB)==0; // 1 if they match.  
@@ -708,7 +732,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
               rc = MPI_Send(&RYsendinfo[ti],1,MPI_updatescalar,procIdForB,123+(ti+1), MPI_COMM_WORLD);
 				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
               // receive from B into A 
-              rc = MPI_Recv(&RYrecvinfo[ti], 1,MPI_updatescalar,procIdForB,345+(ti+1), MPI_COMM_WORLD, &status);
+              rc = MPI_Recv(&RYrecvinfo[ti],1,MPI_updatescalar,procIdForB,123+(ti+1), MPI_COMM_WORLD, &status);
 				          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
             }
            if (doNWupdate)  // only do NW updates when not using hidden genealogies 
@@ -716,7 +740,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
               NWsendinfo[ti] = C[whichElementA]->NWwidthinfo[ti];
               rc = MPI_Send(&NWsendinfo[ti],1,MPI_updatescalar,procIdForB,323+(ti+1), MPI_COMM_WORLD);
 				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-              rc = MPI_Recv(&NWrecvinfo[ti], 1,MPI_updatescalar,procIdForB,545+(ti+1), MPI_COMM_WORLD, &status);
+              rc = MPI_Recv(&NWrecvinfo[ti],1,MPI_updatescalar,procIdForB,323+(ti+1), MPI_COMM_WORLD, &status);
 				          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
            }
           } 
@@ -724,24 +748,25 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 				      rc = MPI_Send(&abeta, 1, MPI_DOUBLE, procIdForB, 0, MPI_COMM_WORLD);
 				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           // receive bbeta from node for B 
-				      rc = MPI_Recv(&bbeta, 1, MPI_DOUBLE, procIdForB, 1, MPI_COMM_WORLD, &status);
+				      rc = MPI_Recv(&bbeta, 1, MPI_DOUBLE, procIdForB, 0, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
            // send a_allbetapos to node for B
 				      rc = MPI_Send(&a_allbetapos, 1, MPI_INT, procIdForB, 2, MPI_COMM_WORLD);
-				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);   // receive b_allbetapos from node for B 
-				      rc = MPI_Recv(&b_allbetapos, 1, MPI_INT, procIdForB, 3, MPI_COMM_WORLD, &status);
+				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);   
+          // receive b_allbetapos from node for B 
+				      rc = MPI_Recv(&b_allbetapos, 1, MPI_INT, procIdForB, 2, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
             // node for A sends lratio for A to node for B
 				      rc = MPI_Send(&likelihoodi, 1, MPI_DOUBLE, procIdForB, 4, MPI_COMM_WORLD);
 				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
             //node for A receives lratio for B from node for B 
-				      rc = MPI_Recv(&likelihoodj, 1, MPI_DOUBLE, procIdForB, 5, MPI_COMM_WORLD, &status);
+				      rc = MPI_Recv(&likelihoodj, 1, MPI_DOUBLE, procIdForB, 4, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)				MPI_Abort(MPI_COMM_WORLD, rc);
           // node for A sends priorratio for A to node for B
 				      rc = MPI_Send(&priori, 1, MPI_DOUBLE, procIdForB, 6, MPI_COMM_WORLD);
 				      if (rc != MPI_SUCCESS)				MPI_Abort(MPI_COMM_WORLD, rc);
           // node for A receives priorratio for B  from node for B
-				      rc = MPI_Recv(&priorj, 1, MPI_DOUBLE, procIdForB, 7, MPI_COMM_WORLD, &status);
+				      rc = MPI_Recv(&priorj, 1, MPI_DOUBLE, procIdForB, 6, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)				MPI_Abort(MPI_COMM_WORLD, rc);
 
 #ifdef TURNONCHECKS
@@ -786,41 +811,37 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
             if (doRYupdate)
             {
               RYsendinfo[ti] = C[whichElementB]->RYwidthinfo[ti];
-              rc = MPI_Send(&RYsendinfo[ti],1,MPI_updatescalar,procIdForA,345+(ti+1), MPI_COMM_WORLD);
-				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
               rc = MPI_Recv(&RYrecvinfo[ti], 1,MPI_updatescalar,procIdForA,123+(ti+1), MPI_COMM_WORLD, &status);
 				          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+              rc = MPI_Send(&RYsendinfo[ti],1,MPI_updatescalar,procIdForA,123+(ti+1), MPI_COMM_WORLD);
+				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+
             }
             if (doNWupdate)  // only do NW updates when not using hidden genealogies 
             {
               NWsendinfo[ti] = C[whichElementB]->NWwidthinfo[ti];
-              rc = MPI_Send(&NWsendinfo[ti],1,MPI_updatescalar,procIdForA,545+(ti+1), MPI_COMM_WORLD);
-				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
               rc = MPI_Recv(&NWrecvinfo[ti], 1,MPI_updatescalar,procIdForA,323+(ti+1), MPI_COMM_WORLD, &status);
 				          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+              rc = MPI_Send(&NWsendinfo[ti],1,MPI_updatescalar,procIdForA,323+(ti+1), MPI_COMM_WORLD);
+				          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
             }
           }
-
-				      rc =  MPI_Send(&bbeta, 1, MPI_DOUBLE, procIdForA, 1, MPI_COMM_WORLD);
-				      if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
 				      rc = MPI_Recv(&abeta, 1, MPI_DOUBLE, procIdForA, 0, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)				MPI_Abort(MPI_COMM_WORLD, rc);
-				      rc =  MPI_Send(&b_allbetapos, 1, MPI_INT, procIdForA, 3, MPI_COMM_WORLD);
-				      if (rc != MPI_SUCCESS)			MPI_Abort(MPI_COMM_WORLD, rc);
+				      rc =  MPI_Send(&bbeta, 1, MPI_DOUBLE, procIdForA, 0, MPI_COMM_WORLD);
+				      if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
 				      rc = MPI_Recv(&a_allbetapos, 1, MPI_INT, procIdForA, 2, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)			MPI_Abort(MPI_COMM_WORLD, rc);
-            // node for B sends lratio for B node for A
-				      rc = MPI_Send(&likelihoodj, 1, MPI_DOUBLE, procIdForA, 5, MPI_COMM_WORLD);
+				      rc =  MPI_Send(&b_allbetapos, 1, MPI_INT, procIdForA, 2, MPI_COMM_WORLD);
 				      if (rc != MPI_SUCCESS)			MPI_Abort(MPI_COMM_WORLD, rc);
-            // node for B receives lratio for A from node for A
 				      rc = MPI_Recv(&likelihoodi, 1, MPI_DOUBLE, procIdForA, 4, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)			MPI_Abort(MPI_COMM_WORLD, rc);
-          // node for B sends priorratio for B to node for A
-				      rc = MPI_Send(&priorj, 1, MPI_DOUBLE, procIdForA, 7, MPI_COMM_WORLD);
-				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-            // node for B receives priorratio for A from node for A 
+				      rc = MPI_Send(&likelihoodj, 1, MPI_DOUBLE, procIdForA, 4, MPI_COMM_WORLD);
+				      if (rc != MPI_SUCCESS)			MPI_Abort(MPI_COMM_WORLD, rc);
 						    rc = MPI_Recv(&priori, 1, MPI_DOUBLE, procIdForA, 6, MPI_COMM_WORLD, &status);
 				      if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
+				      rc = MPI_Send(&priorj, 1, MPI_DOUBLE, procIdForA, 6, MPI_COMM_WORLD);
+				      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           /* ==== END STEP 5.2.B ====*/
 		      }
 		      swapvar = 0;
