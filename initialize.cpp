@@ -2435,7 +2435,7 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
       init_RF_nodeinfo();
       poptopologycounts = static_cast<int *> (calloc ((size_t) numpoptopologies, sizeof (int)));
       // poptopologysequence is only used on cpu 0,  but go ahead an initialize on all cpus
-      poptopologysequence.vals =  static_cast<unsigned short *>  (malloc (POPTOPOLOGYSEQUENCELENGTH * sizeof(unsigned short)));
+      poptopologysequence.vals =  static_cast<int *>  (malloc (POPTOPOLOGYSEQUENCELENGTH * sizeof(int)));
       poptopologysequence.disvals =  static_cast<double *>  (malloc (POPTOPOLOGYSEQUENCELENGTH * sizeof(double)));
       poptopologysequence.currentlength = 0;
       poptopologysequence.maxlength = POPTOPOLOGYSEQUENCELENGTH;

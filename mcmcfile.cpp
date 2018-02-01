@@ -926,7 +926,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     assert (poptopologysequence.maxlength >  poptopologysequence.currentlength);
     if (currentid == HEADNODE)
     {
-      aa "poptopologysequence.vals",6,poptopologysequence.currentlength,poptopologysequence.vals);
+      aa "poptopologysequence.vals",0,poptopologysequence.currentlength,poptopologysequence.vals);
       // note.  disvals is actually full of doubles,  but we don't want to take up that much space and the values are integers. so first copy into a list of unsigned ints
       unsigned short *tempa = static_cast<unsigned short *>  (malloc (poptopologysequence.currentlength * sizeof(unsigned short)));
       for (i=0;i< poptopologysequence.currentlength;i++)
@@ -1242,10 +1242,10 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       {
         if (poptopologysequence.maxlength > POPTOPOLOGYSEQUENCELENGTH)
         {
-          poptopologysequence.vals =  static_cast<unsigned short *>  (realloc (poptopologysequence.vals,(poptopologysequence.maxlength) * sizeof(unsigned short)));
+          poptopologysequence.vals =  static_cast<int *>  (realloc (poptopologysequence.vals,(poptopologysequence.maxlength) * sizeof(int)));
           poptopologysequence.disvals =  static_cast<double *>  (realloc (poptopologysequence.disvals,(poptopologysequence.maxlength) * sizeof(double)));
         }
-        aa "poptopologysequence.vals",6,poptopologysequence.currentlength,poptopologysequence.vals);
+        aa "poptopologysequence.vals",0,poptopologysequence.currentlength,poptopologysequence.vals);
         // note.  disvals is actually full of doubles,  but we don't want to take up that much space and the values are actually integers. so first copy into a list of unsigned ints
         unsigned short *tempa = static_cast<unsigned short *>  (malloc (poptopologysequence.currentlength * sizeof(unsigned short)));
         aa "poptopologysequence.disvals",6,poptopologysequence.currentlength,tempa);

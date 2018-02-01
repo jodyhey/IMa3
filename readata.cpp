@@ -635,7 +635,7 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
   }
   total_numgenes += L[li].numgenes;
   L[li].numgenesunknown = 0;
-  SP "%d\t%s", li, L[li].name);
+  SP "  %d\t%s", li, L[li].name);
   for (i = 0; i < npops; i++)
   {
     SP "\t%3d", L[li].samppop[i]);
@@ -834,7 +834,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
       IM_err (IMERR_INPUTFILEINVALID,"Length of a line is limited upto %d",  DATAFILEMAXLINELENGTH - 2);
     }
   infilelines++;
-  SP "\nText From Input File: \n  First line : %s",textline);
+  SP "\nText From Input File:\n---------------------\n  First line : %s",textline);
   ch = (char) getc (infile);
   if (ch == '#')
     SP "  Additional comment line(s) from input file: \n");
@@ -873,7 +873,8 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
     scanfval = fscanf (infile, "%s ", popnames[i]);
   scanfval = fscanf (infile, "\n");
 
-  SP "Number of sampled populations given in input file: %d \n", npops);
+  SP "Sampled Populations:\n--------------------\n");
+  SP "   Number of populations: %d\n", npops);
   SP "   Population Names:\n");
   for (i = 0; i < npops; i++)
     SP "   Population %d : %s \n", i, popnames[i]);
@@ -909,7 +910,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
   infilelines += poptreestring_given;
   if (poptreestring_given && modeloptions[POPTREETOPOLOGYUPDATE]==1)
   {
-      SP "Population Tree in Input File: %s\n", startpoptreestring);
+      SP "Population Tree in Input File:\n------------------------------\n  %s\n", startpoptreestring);
       strcpy(temppoptreestring,startpoptreestring);
       //rewrite(startpoptreestring);//  this will put the string in standard order
       rewrite(temppoptreestring);  // changed to rewriting the temporary string 
@@ -1010,8 +1011,8 @@ readdata (char infilename[], int *fpstri,
   uinext = 0;
   SP "\nLocus Information\n");
   SP "-----------------\n");
-  SP "\nNumber of loci: %d \n", nloci);
-  SP "Locus#\tLocusname");
+  SP "  Number of loci: %d\n", nloci);
+  SP "  Locus#\tLocusname");
   for (i = 0; i < npops; i++)
     SP "\tPop%d#", i);
   SP "\tModel\tInheritanceScalar\tMutationRatePerYear\n");
@@ -1068,6 +1069,8 @@ readdata (char infilename[], int *fpstri,
     fflush(stdout);
   return;
 }                               /* readdata */
+
+
 /* get the # of populations out of the datafile */
 int 
 imaInfileNpops (const char *fn)

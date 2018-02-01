@@ -232,7 +232,6 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define KAPPAMAX  100           /* maximum value of HKY parameter */
 #define RECORDINTERVALDEFAULT 10     // default # of steps between recording values of things - used to call record()
 #define SAMPLEGENEALOGYINTERVALDEFAULT 100  // default # of steps between recording information about the genealogies
-#define DONOTSAVE_BECAUSE_PHYLOGENYESTIMATION -1   // never save genealogies when estimating phylogeny 
 #define MINSTRLENGTH  3         // minimum allowed number of STR repeats, so users don't use data that doesn't fit // JH changed to 3  11/29/2010
 #define GRIDSIZE 1000           // # of bins in histogram
 #define TRENDDIM 500            // number of points saved for the trendline plots
@@ -784,14 +783,16 @@ typedef struct  // used in  sort_and_print_alltreestrings()
   char treestr[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
   char treestrnoghost[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
   int count;
-  double freq;
+  double freqset1;
+  double freqset2;
+  double freqall;
   double  ppcp; // product of the posterior clade probabilities
   int origi; // original index 
 }  foralltreestringsort;
 
 struct topolseq // holds the entire sampled sequences of tree numbers and Robinson Foulds distances (from tree 0).  Kept only on cpu with rank 0.
 {
-  unsigned short *vals; // the current tree number 
+  int  *vals; // the current tree number 
   double *disvals; // Robinson Foulds distances between tree 0 and the current tree
   int currentlength;
   int maxlength; 

@@ -418,9 +418,9 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
         FP "  Number of samples from prior runs: %d \n", mcmcrecords_old);
         FP "  Total number of samples: %d \n", mcmcrecords_old+mcmcrecords);
       }
-      FP "\nLikelihoods and Probabilities\n-------------------------------\n");
-      FP "  Highest Joint P(G) (log) - checked at sampling intervals: %10.3f \n", hiprob);
-      FP "  Highest Joint P(D|G) (log) - checked at sampling : %10.3f \n", hilike);
+      FP "\nHighest Likelihood and Genealogy Probability (checked at time of sampling)\n--------------------------------------------------------------------------\n");
+      FP "  Highest Joint P(G) (log): %10.3f\n", hiprob);
+      FP "  Highest Joint P(D|G) (log): %10.3f \n", hilike);
       if (calcoptions[CALCMARGINALLIKELIHOOD])
       {
         thermo_marginlike_calc(mcmcrecords, &ml_estimate);
@@ -825,7 +825,7 @@ void printacceptancerates (FILE * outto, int numrec,
     if (outto != NULL)  fprintf(outto, "-");
   if (outto != NULL)  fprintf(outto, "\n");
 
-  if (outto != NULL)  fprintf(outto, "Update Type:");
+  if (outto != NULL)  fprintf(outto, " Update Type:");
   for (i = 0; i < rec[0]->num_uptypes; i++)
     if (outto != NULL)  fprintf(outto, "\t%s\t", rec[0]->upnames[i]);
   if (outto != NULL)  fprintf(outto, "\n");
@@ -948,7 +948,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
   if (currentid == HEADNODE)
     if (numsplittimes > 0) printacceptancerates (outto, numsplittimes, reclist,
-                          "Update Rates -- Population Splitting Times");
+                          "Update Rates (chain 0) -- Population Splitting Times");
   XFREE(y_rec);
   XFREE(z_rec);
 
@@ -1039,12 +1039,12 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
     if (currentid == HEADNODE)
       if (nummigrateparams > 0) printacceptancerates (outto, nummigrateparams, reclist,
-                            "Update Rates -- Migration Priors in Poptree");
+                            "Update Rates (chain 0) -- Migration Priors in Poptree");
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
     {
       reclist[0] = mhnit;
       if (currentid == HEADNODE)
-        printacceptancerates (outto, 1, reclist, "Update Rates -- Migration Priors Not in Poptree");
+        printacceptancerates (outto, 1, reclist, "Update Rates (chain 0) -- Migration Priors Not in Poptree");
     }
     XFREE(y_rec);
     XFREE(z_rec);
@@ -1113,12 +1113,12 @@ void callprintacceptancerates (FILE * outto, int currentid)
       reclist[i] = (qh + i);
     if (currentid == HEADNODE)
       if (numpopsizeparams > 0) printacceptancerates (outto, numpopsizeparams, reclist,
-                            "Update Rates -- Population Size Priors in Poptree");
+                            "Update Rates (chain 0) -- Population Size Priors in Poptree");
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
     {
       reclist[0] = qhnit;
       if (currentid == HEADNODE)
-        printacceptancerates (outto, 1, reclist, "Update Rates -- Population Priors Not in Poptree");
+        printacceptancerates (outto, 1, reclist, "Update Rates (chain 0) -- Population Priors Not in Poptree");
     }
     XFREE(y_rec);
     XFREE(z_rec);
@@ -1196,7 +1196,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     reclist[0] = poptreeuinfo;
     if (currentid == HEADNODE)
       printacceptancerates (outto, 1, reclist,
-                          "Update Rates -- Branch Slide Updates to Population Trees");
+                          "Update Rates (chain 0) -- Branch Slide Updates to Population Trees");
 #ifdef MPI_ENABLED
     if (numprocesses > 1 && currentid == HEADNODE) 
     {
@@ -1289,7 +1289,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     for (li = 0; li < nloci; li++)
       reclist[li] = L[li].g_rec;
     if (currentid == HEADNODE)
-	     printacceptancerates (outto, nloci, reclist, "Update Rates -- Genealogies");
+	     printacceptancerates (outto, nloci, reclist, "Update Rates (chain 0) -- Genealogies");
   }
 
 #ifdef MPI_ENABLED
@@ -1373,7 +1373,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
         }
   // kappa values for HKY model
         if (currentid == HEADNODE  && domutationscalarupdate) 
-          printacceptancerates (outto, i, reclist,"Update Rates -- Mutation Rate Scalars");
+          printacceptancerates (outto, i, reclist,"Update Rates (chain 0) -- Mutation Rate Scalars");
       }
 #ifdef MPI_ENABLED
       if (numprocesses > 1 && currentid == HEADNODE) 
@@ -1435,7 +1435,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
         }
         if (i > 0 && currentid == HEADNODE)
           printacceptancerates (outto, i, reclist,
-                              "Update Rates -- HKY Model Kappa parameter");
+                              "Update Rates (chain 0) -- HKY Model Kappa parameter");
       }
 #ifdef MPI_ENABLED
       if (numprocesses > 1 && currentid == HEADNODE) 
@@ -1486,7 +1486,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     if (i > 0)
     {
       printacceptancerates (outto, i, reclist,
-                            "Update Rates -- STR Genealogy Allele States");
+                            "Update Rates (chain 0) -- STR Genealogy Allele States");
     } */
 
   return;
@@ -1781,33 +1781,48 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   char **uniquenodes;
   int *nodecounts;
   int nunique = 0;
-  int i;
+  int i,j;
   int totaltreecount = 0, numnonzero = 0;
   double temphi = -1.0;
   int hii;
   int numnotproposed = 0;
   int uniformprior = (strlen(topologypriorinfostring) == 0);
   double temp1 = 1.0;
+  int *set1counts,*set2counts, setl;
+
   for (i = 0; i < numpoptopologies; i++)
   {
     numnotproposed += (poptopologyproposedlist_rec[i] == 0);
   }
 
   fatssarray = static_cast<foralltreestringsort *> (malloc (numpoptopologies * sizeof (foralltreestringsort)));
+  set1counts = static_cast<int *> (calloc (numpoptopologies, sizeof (int)));
+  set2counts = static_cast<int *> (calloc (numpoptopologies, sizeof (int)));
+
   for (i = 0; i < numpoptopologies; i++)
   {
     totaltreecount += poptopologycounts[i];
     if (poptopologycounts[i] > 0)
       numnonzero += 1;
   }
+  setl = poptopologysequence.currentlength/2;
+  for (i=0,j=setl;i<setl;i++,j++)
+  {
+    set1counts[(int) (poptopologysequence.vals[i])]++;
+    set2counts[(int) (poptopologysequence.vals[j])]++;
+  }
+
+
   for (i = 0; i < numpoptopologies; i++)
   {
     strcpy(fatssarray[i].treestr,alltreestrings[i]);
     if (modeloptions[ADDGHOSTPOP]==1)
       strcpy(fatssarray[i].treestrnoghost,alltreestrings_noghost[i]);
     fatssarray[i].count = poptopologycounts[i];
-    fatssarray[i].freq =  poptopologycounts[i]/ (double) totaltreecount;
+    fatssarray[i].freqall =  poptopologycounts[i]/ (double) totaltreecount;
     fatssarray[i].origi = i;
+    fatssarray[i].freqset1 = set1counts[i]/(double) setl;
+    fatssarray[i].freqset2 = set2counts[i]/(double) setl;
   }
   
   qsort(fatssarray,numpoptopologies,sizeof(foralltreestringsort),foralltreestringsort_comp);
@@ -1854,9 +1869,9 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   for (i = 0; i < npops; i++)
   {
     if (i==npops-1 && modeloptions[ADDGHOSTPOP]==1)
-      FP "Population %d : ghost \n", i);
+      FP " Population %d : ghost \n", i);
     else
-      FP "Population %d : %s \n", i, popnames[i]);
+      FP " Population %d : %s \n", i, popnames[i]);
   }
   FP "\n");
   FP "Priors\n");
@@ -1888,7 +1903,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   else
   {
     FP " Tree topology with highest estimated posterior probability: %s\n",fatssarray[0].treestrnoghost);
-    FP "     -estimated posterior probability: %.6f\n",fatssarray[0].freq);
+    FP "     -estimated posterior probability: %.6f\n",fatssarray[0].freqall);
     if (uniformprior == 0)
       FP "     -prior probability: %.6f\n",exp(topologypriors[fatssarray[0].origi]));
     FP "     -Newick string without ghost (unit branch lengths):\n       ");
@@ -1911,23 +1926,23 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   FP "------------------------------------------------------------------------------------------------\n");
   if (modeloptions[ADDGHOSTPOP]==0)
   {
-    FP "Tree_string\tpriorprob\tcount\tfrequency\tppcp\n");
+    FP "Tree_string\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
      if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
-      FP "%s\t%.6f\t%d\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freq,fatssarray[i].ppcp);
+      FP "%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
     }
     FP "\n");
   }
   else
   {
-    FP "Tree\tTree(w/ghost)\tpriorprob\tcount\tfrequency\tppcp\n");
+    FP "Tree\tTree(w/ghost)\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
       if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
-      FP "%s\t%s\t%.6f\t%d\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freq,fatssarray[i].ppcp);
+      FP "%s\t%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
     }
     FP "\n");
   }
@@ -1948,6 +1963,8 @@ FP"\n"); */
     XFREE(uniquenodes[i]);
   XFREE(uniquenodes);
   XFREE(nodecounts);
+  XFREE(set1counts);
+  XFREE(set2counts);
   
 }//sort_and_print_alltreestrings
 
