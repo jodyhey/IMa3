@@ -384,7 +384,6 @@ void init_hyperprior_arrays(int ci)
     {
       poppairs[i] = static_cast<char *> (malloc ((MAXPOPS_PHYLOGENYESTIMATION +2) * sizeof (char)));
     }
-    //hashedpairpos = static_cast<int *> (malloc (pairhasharraysize[npops] * sizeof (int)));
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {

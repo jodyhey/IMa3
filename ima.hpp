@@ -45,21 +45,16 @@
   When debugging 
       DEBUG should be defined, usually handled at the command line or in the development environment
       if DEBUG is defined,  TURNONCHECKS will also be defined, which leads to lots of things being checked and makes it quite slow 
+      To run in debug mode without all the checks,  uncomment #define TURNONCHECKS
 
   When the code is going to be run on the testbed
    - compile with STDTEST defined, this will cause RANDOM_NUMBERS_FROM_FILE to be defined
    -  if STDTEST is defined TURNONCHECKS will be undefined so as not to take too long if running standard tests in debug mode
 
-  Whenever code is being developed:
-   - comment out  #define FORRELEASE
-   - leave INDEVELOPMENT defined 
-      INDEVELOPMENT can be used to bracket code that specifically should not be included in the release version 
-
-  To make a release version:
-    - uncomment #define FORRELEASE
-      - this will cause INDEVELOPMENT to be undefined 
-    - set #define RELEASE_DATE to the current date 
-    - save a copy of the code somewhere with that release date on the filename (e.g. a zip archive)
+  Whenever code has reached the point that it is a definite release version:
+   - increment  IMA3RELEASEVERSION
+   - uncomment  #define IMA3RELEASE
+   - put this copy of the code (with IMA3RELEASE defined)  in a safe spot, clearly labeled as release code 
 */
 
 //#define MPI_ENABLED  // usually done in compiler settings or the command line 
@@ -69,37 +64,24 @@
 #include <mpi.h>
 #endif
 
+#define IMA3RELEASEVERSION  "0.0"  // update only when a release is made 
+//#define IMA3RELEASE   // uncomment  if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
 
-#ifndef INDEVELOPMENT    // default state  - do no touch this,  see notes on FORRELEASE 
-#define INDEVELOPMENT 
-//#undef INDEVELOPMENT 
-#endif
 
-#ifndef FORRELEASE
-#undef FORRELEASE  // default state - do not touch this. 
-//#define FORRELEASE   // if this is defined then it overrides INDEVELOPMENT,  but must set the RELEASE_DATE
-#endif
-
-#ifdef FORRELEASE 
+#ifdef IMA3RELEASE 
 #undef INDEVELOPMENT
-#define RELEASE_DATE "Jan 1, 1900" //__DATE__
 #else
-#ifdef INDEVELOPMENT
-#define RELEASE_DATE   "NOT RELEASED"  
-#endif
-#endif
-
-#ifndef STDTEST // have this so STDTEST can be defined at compile time 
-//#define STDTEST
-#undef STDTEST
+#undef IMA3RELEASE
+#define INDEVELOPMENT 
 #endif
 
+//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
-#ifdef STDTEST  // run standard tests,  turn on RANDOM_NUMBERS_FROM_FILE
-#define RANDOM_NUMBERS_FROM_FILE
-#else
+#ifndef STDTEST //  STDTEST can be defined at compile time  on in the code 
 #undef STDTEST
 #undef RANDOM_NUMBERS_FROM_FILE
+#else
+#define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #endif
 
 /* #define RANDOM_NUMBERS_FROM_FILE   coded by Janeen, used to be called SANITY_TEST
@@ -272,7 +254,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define NAMELENGTH 151          // max length of population names and locus names
 #define GENENAMELENGTH 10          /* a gene name can be up to 10 */
 #define POPTOPOLOGYSEQUENCELENGTH 1000 // starting length of array of saved topology and distance values
-#define FPSTRIMAXLENGTH 200000 // max length of input file header 
+#define FPSTRIMAXLENGTH 200000 // max length of input file header needs to be really big,  sprintf is used a lot on a string of this length, a bit risky
 
 /* autocorrelation estimation constants */
 #define AUTOCTERMS 12           // the number of lag values for which autocorrelations are recorded
@@ -1431,11 +1413,6 @@ gextern char **poppairs;
   	 //list of all possible poppairs as strings,  also extern in update_migration_priors.cpp
 	   //length numdistinctpopulationpairs[]
 	   //never changes 
-//gextern int *hashedpairpos; 
-	   //length  pairhasharraysize[npops]
-	   //never changes 
-	   //for population pair string s   pairhash(s) is an index for hashedpairpos[]
-	   //hashedpairpos[ pairhash(s) ] is the location of string s  in poppairs[]
 gextern int hashsize;
 
 //These are set in start()
@@ -1791,7 +1768,7 @@ int  file_exists(const char * filename);
 struct dictionary_node_kr *dictionary_install(char *name, double val,struct dictionary_node_kr **hashtab);  // returns an nlist pointer
 double getvalue(char *key, struct dictionary_node_kr **hashtab);
 int metropolishastingsdecide(double logmhratio,int othercriteria);
-
+char* timestring(time_t seconds);
 
 /* GLOBAL Functions in multi_t_bins */
 void setup_multi_t_arrays (int z);

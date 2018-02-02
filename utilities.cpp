@@ -2070,3 +2070,15 @@ int metropolishastingsdecide(double logmhratio,int othercriteria)
     return 0;
 }
 
+/* return point to a string with time info
+  should be safe since ts is static and should not dissappear after exiting */ 
+char* timestring(time_t seconds)
+{
+  static char ts[50];
+  sprintf(ts,"%d hours, %d minutes, %d seconds",
+        (int) seconds / (int) 3600,
+          ((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),
+              (int) seconds - (int) 60 *((int) seconds / (int) 60));
+   ts[sizeof(ts)-1] = '\0';  // just in case it has written past the end 
+   return ts;
+}
