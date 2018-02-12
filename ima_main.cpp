@@ -136,7 +136,7 @@ int checkrunfile(char *runfilename)
   {
     ch = (char) getc (runfile);
 	   fflush(runfile);
-    f_close (runfile);
+    FCLOSE (runfile);
     if ((char) toupper (ch) == 'Y')
     {
 		    return 1;
@@ -2290,7 +2290,7 @@ void reset_after_burn (int currentid)
         fprintf (genealogyinfosavefile,"\n");
       }
       fprintf (genealogyinfosavefile, "VALUESSTART\n");
-      f_close (genealogyinfosavefile);
+      FCLOSE (genealogyinfosavefile);
 	   }
   }
   if (runoptions[SAVEMCSTATEFILE])
@@ -4057,11 +4057,11 @@ printf("printed ascii curves\n");
   #ifdef STDTEST
   printf("printed migration histogram\n");
   #endif
-    f_close (migplotfile);
+    FCLOSE (migplotfile);
   }
   if (hiddenoptions[WRITEMIGRATIONNAME])
   {
-    f_close(migrationnamefile);
+    FCLOSE(migrationnamefile);
     migrationnamefile = fopen (migrationnamefilename, "a"); // file is kept open 
   }
 /*   printoutput()  print timing information*/  
@@ -4107,7 +4107,7 @@ printf("printed ascii curves\n");
     strftime(timeinfostring,80,"%x - %X", endtimeinfo);
     FP "\nJob Finished: %s\n",timeinfostring);
     FP "\nEND OF OUTPUT\n");
-    f_close (outfile);
+    FCLOSE (outfile);
     fflush(stdout);
   }
 #ifdef MPI_ENABLED
@@ -4554,7 +4554,7 @@ printf("saved genealogies\n");
     printoutput (currentid,1);
     if (hiddenoptions[WRITEMIGRATIONNAME])
     {
-      f_close(migrationnamefile);
+      FCLOSE(migrationnamefile);
     }
     free_ima_main_stuff ();
 #ifdef STDTEST

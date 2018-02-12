@@ -537,7 +537,7 @@ void setup_mapping(char *fname)// JH fixed signficiant bug in this functino 4/5/
   }
 
   XFREE(modeltextline);
-  f_close(nestedmodelfile);
+  FCLOSE(nestedmodelfile);
 }// setup_mapping;
 
 //from a full parameter set down to a nested one 

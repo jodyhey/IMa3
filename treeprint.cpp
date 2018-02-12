@@ -444,7 +444,7 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
     fprintf (treeprintfile, "\n");
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvcptr);
   XFREE (tvmptr);
@@ -803,7 +803,7 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
     fprintf (treeprintfile, "\n");
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvcptr);
   XFREE (tvmptr);
@@ -861,7 +861,7 @@ poptreeprint (int ci)
 
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvptr);
 }                               /* poptreeprint */
@@ -915,7 +915,7 @@ poptreeprint_frompointer (int ci, struct popedge *poptree/*, int step*/)
 
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvptr);
 }                               /* poptreeprint_frompointer */
@@ -1300,7 +1300,7 @@ void printgenealogyweights(int ci,int li)
     }
   }
   fpg "===========================================\n\n");
-  f_close (gweightprintfile);
+  FCLOSE (gweightprintfile);
   gweightprintfile = NULL;
 }  //printgenealogyweights
 

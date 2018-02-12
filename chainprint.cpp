@@ -146,7 +146,7 @@ void output_chaininfo_poptreenum (int currentid)
     for (ci=numchainstotal-1;ci>=0;ci--)
       fprintf(chaininfo_poptreenum_file,"%d\t",cdarray[ci].poptreenum);
     fprintf(chaininfo_poptreenum_file,"\n");
-    f_close(chaininfo_poptreenum_file);
+    FCLOSE(chaininfo_poptreenum_file);
   }
 #ifdef MPI_ENABLED
 	MPI_Barrier(MPI_COMM_WORLD);// is this needed here? 
@@ -203,7 +203,7 @@ void output_chaininfo_betaval (int currentid)
         fprintf(chaininfo_betaval_file,"%.5f\t",beta[ci]);
     }
     fprintf(chaininfo_betaval_file,"\n");
-    f_close(chaininfo_betaval_file);
+    FCLOSE(chaininfo_betaval_file);
   }
   return;
  } /* output_chaininfo_betaval */

@@ -297,7 +297,7 @@ void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
 
 void closeopenout (FILE ** p_to_file, char fname[]) // why a pointer to a pointer? so the address can be passed back
 {
-  f_close (* p_to_file);
+  FCLOSE (* p_to_file);
   if ((* p_to_file = fopen (fname, "a+")) == NULL)
   {
     IM_err(IMERR_OUTPUTFILECHECK,"Error opening text file for writing");
@@ -355,7 +355,7 @@ checkoutfileclosed (FILE ** outfile, char outfilename[])
   }
   fseek(*outfile,0,SEEK_END);
   fsize = ftell(*outfile);
-  f_close (*outfile);
+  FCLOSE (*outfile);
   if (fsize==0)
     remove(outfilename);
 }                               // checkoutfileclosed
@@ -1609,7 +1609,7 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
     fprintf (genealogyinfosavefile, "\n");
   } 
   *lastgenealogysavedvalue = genealogysamples - 1;
-  f_close (genealogyinfosavefile);
+  FCLOSE (genealogyinfosavefile);
   return;
 }                               /* savegenealogyfile */
 

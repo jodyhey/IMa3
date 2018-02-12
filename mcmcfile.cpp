@@ -669,7 +669,7 @@ void readima2mcf (char ima2mcffilename[])
                 " can't load trees, probably because of multiple instances of splittime time conflict with t prior");
       if (ci < numchainspp - 1)
       {
-        f_close (mcffile);
+        FCLOSE (mcffile);
         if ((mcffile = fopen (ima2mcffilename, "r")) == NULL)
         {
            IM_err(IMERR_READFILEOPENFAIL,"Error reopening mcffile: %s", ima2mcffilename);
@@ -1134,7 +1134,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
                 " can't load trees, probably because of multiple instances of splittime time conflict with t prior");
       if (ci < numchainspp - 1)
       {
-        f_close (mcffile);
+        FCLOSE (mcffile);
         if ((mcffile = fopen (mcffilename, "r")) == NULL)
         {
            IM_err(IMERR_READFILEOPENFAIL,"Error reopening mcffile: %s", mcffilename);

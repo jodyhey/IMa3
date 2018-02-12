@@ -949,7 +949,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
     IM_err (IMERR_INFILEFAIL_NLOCI, "The number of loci (%d) is larger than %d\n", nloci, MAXLOCI);
   }
   infilelines += 3;
-  f_close (infile);
+  FCLOSE (infile);
 
   if (npops == 1   /* CR120124.1 single population treated here */)
   {
@@ -1061,7 +1061,7 @@ readdata (char infilename[], int *fpstri,
       calcoptions[MUTATIONPRIORRANGE] = 0;
     }
   }
-  f_close (infile);
+  FCLOSE (infile);
   if (*fpstri >= FPSTRIMAXLENGTH)
       IM_err (IMERR_INPUTFILEINVALID, 
                 "fpstri %d  exceeds max length", *fpstri);

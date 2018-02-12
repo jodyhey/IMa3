@@ -1504,7 +1504,7 @@ void writepriorfile(char priorfilename[],double *popsizepriorvals, double *mprio
     }
     fprintf(priorfile,"%s\n",s);
   }
-  f_close(priorfile);
+  FCLOSE(priorfile);
 } //writepriorfile   old code
   /*
   pp = popsizepriorvals;

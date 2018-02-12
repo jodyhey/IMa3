@@ -1021,7 +1021,7 @@ EFP "cpophg %d fp %d cpop %d \n",cpophg,fp,cpop);
   e->fpop = C[ci]->ancplist[cpophg][fp];
   e->fpophg = cpophg;
 EFP" period %d fpop %d fpophg %d\n",fp,e->fpop,e->fpophg);
-f_close (ef);
+FCLOSE (ef);
 }  /* edgemask_debugprint */
 #endif //TURNONCHECKS
 
@@ -1376,7 +1376,7 @@ double prob_hg_given_g(int ci,int li)
   /*if (debug_probhg_fprint)
   {
     fprintf(debugprintfile,"final logpsum %.6lf\n",logpsum);
-    f_close (debugprintfile);    
+    FCLOSE (debugprintfile);    
   } */
   assert( isnotinf_DBL(logpsum)); 
   assert(isnotnan(logpsum));
