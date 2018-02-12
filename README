@@ -1,0 +1,10 @@
+2/2/2018
+compiling IMa3 on linux 
+to compile a release version mpi-compatible executable (IMa3)
+	make
+to compile a single processor executable (IMa3_singlecpu)
+	make singlecpu
+to compile a testbed version (IMa3_stdtest)
+	make testbed
+to compile a debug version (IMa3)
+	make debug 

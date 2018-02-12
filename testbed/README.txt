@@ -1,0 +1,183 @@
+
+2/2/2018  J. Hey
+
+IMa3 testbed
+
+In windows run using ima3_stdtest.bat
+in linux using ima3_stdtest.sh
+
+both require an executable
+	in windows: IMa3_stdtest.exe 
+	in linux :  IMa3_stdest
+	
+executable can be compiled using: make stdtest
+
+
+
+There are 39 jobs, including:
+	30 runs of type test_#,  where # goes from 0 thru 29
+
+	4 runs of type test_jh2_#,  where # takes values 1,3,4 and 16  
+		these runs are similar to corresponding runs test_1,test_3,test_4 and test_16
+	5 runs of type test_mpi_#, where # takes values 1,3,4,26,27
+		these are similar to corresponding runs test_1,test_3,test_4, test_26 and test_27
+		
+	set up in two batch files as of 1/17/2018
+
+All runs produce a primary output file,  as indicated with the '-o' flag. 
+
+In addition some runs produce additional output files (see below).
+
+Some runs require input from previous runs (see dependencies listed below).
+
+The following input files need to be available: 
+	ima3test8pop2loci.u
+	ima3test4pop2loci.u	
+	ima3test3pop4loci.u
+	ima3test4pop5loci.u
+	pop3_nested_model_test.txt
+	randNums
+	ima3_priorfile_3pops.txt
+
+The batch file is:
+		ima3_stdtest.bat
+		
+Having weird problems copying and running these bat files
+	to copy to a new dir,  open (edit) in notepad, and saveas  to new folder 
+
+compiling and running:
+	for running these tests the program must be compiled with STDTEST defined and with MPI_ENABLED defined
+
+	In command lines listed below the program the executable has been named ima3_stdtest for clarity
+	
+	
+
+test_#  runs  (all single cpu runs):
+------------------------------------
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_1.out -q1 -m0.1 -t1 -b100000 -L5000 -d200 -r1 -c0 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_2.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -r1 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_3.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p23567 -r1245
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_4.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p3567 -r245 -r3 -fima3_test_3.out.mcf
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_5.out -q10 -m1 -t1.5 -r0 -vima3_test_4 -c2 -wpop3_nested_model_test.txt
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_6.out  -b100000 -L5000 -hn10 -hfg -ha0.95 -hb0.8 -d10 -r1 -c3  -gima3_priorfile_3pops.txt
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_7.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j9 -c4 -hn50 -hfs -ha0.98 -d5
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_8.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j5 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_9.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j6 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_10.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j1 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_11.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j7 -p4
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_12.out -q10 -t1.5 -b100000 -L5000  -r1 -j8 -p4
+ima3_stdtest -help  > ima3_test_13.out 
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_14.out -q10 -m1 -t1.5 -b100000 -L5000  -r1  -j9
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_15.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -jx
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_16.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j3
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_17.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0 -c0 
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_18.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0 
+ima3_stdtest -i ima3test4pop5loci.u  -o ima3_test_19.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0 -r5
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_20.out  -q10 -m1 -t1.5 -b100000 -L5000  -j01
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_21.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013  -hn8 -ha0.95 -hb0.9
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_22.out  -q10 -m1 -t1.5 -b100000 -L5000  -j012
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_23.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_24.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0123
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_25.out  -q10 -m1 -t1.5 -b100000 -L5000  -j23
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_26.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn8 -ha0.95 -hb0.9
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_27.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r37 -hn8 -ha0.95 -hb0.9 -fima3_test_26.out
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_28.out  -b100000 -L5000  -j2 -c3 -g ima3_test_25.out.imapriors.txt
+
+ima3_stdtest -i ima3test8pop2loci.u  -o ima3_test_29.out  -q10 -m1 -t1.5 -b100000 -L5000  -j03
+ima3_stdtest -i ima3test8pop2loci.u  -o ima3_test_30.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013
+
+
+test_jh2_# runs (all single cpu runs):
+--------------------------------------
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_jh2_1.out -q1 -m0.1 -t1  -b100000 -L5000 -d200 -r1 -c0 -p4 -jh2
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_jh2_3.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p23567 -r1245  -jh2
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_jh2_4.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p3567 -r245 -r3 -fima3_test_jh2_3.out.mcf  -jh2 
+ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_jh2_16.out -q10 -m1 -t1.5 -b100000 -L5000  -r1 -j3 -jh2
+
+
+type test_mpi_# runs (all with 4 cpus):
+---------------------------------------
+C:\Program Files\Microsoft HPC Pack 2012\Bin\mpiexec -n 4 ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_mpi_1.out -q1 -m0.1 -t1  -b100000 -L5000 -d200 -r1 -c0 -p4 -hn12 -ha0.97 -hb0.85
+C:\Program Files\Microsoft HPC Pack 2012\Bin\mpiexec -n 4 ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_mpi_3.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p23567 -r1245  -hn12 -ha0.97 -hb0.85
+C:\Program Files\Microsoft HPC Pack 2012\Bin\mpiexec -n 4 ima3_stdtest -i ima3test3pop4loci.u -o ima3_test_mpi_4.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p3567 -r245 -r3 -fima3_test_mpi_3.out.mcf   -hn12 -ha0.97 -hb0.85
+C:\Program Files\Microsoft HPC Pack 2012\Bin\mpiexec -n 4 ima3_stdtest -i ima3test4pop2loci.u -o ima3_test_mpi_26.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn8 -ha0.95 -hb0.9
+C:\Program Files\Microsoft HPC Pack 2012\Bin\mpiexec -n 4 ima3_stdtest -i ima3test4pop2loci.u -o ima3_test_mpi_27.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r37 -hn8 -ha0.95 -hb0.9 -fima3_test_mpi_26.out
+
+
+
+
+data files:
+-----------
+ima3test3pop4loci.u
+ima3test4pop5loci.u
+ima3test8pop2loci.u
+ima3test4pop2loci.u
+
+
+additional required files:
+--------------------------
+test_5 requires pop3_nested_model_test.txt
+test_6  requires  ima3_priorfile_3pops.txt
+
+
+dependencies between runs:
+--------------------------
+test_4 must be run after test_3 has completed  (uses mcf file)
+test_5 must be run after test_4 has completed (uses ti file)
+test_27 must be run after test_26 has completed (uses mcf file) 
+test_28 must be run after test_25 has completed  (uses  ima3_test_25.out.imapriors.txt)
+test_jh2_4 must be run after test_jh2_3  has completed  (uses mcf file)
+test_mpi_4 must be run after test_mpi_3 has completed   (uses mcf file)
+test_mpi_27 must be run after test_mpi_26 has completed  (uses mcf file)
+
+
+in addition to basic *.out files,  these other files should be produced:
+------------------------------------------------------------------------
+
+mcf files:
+ima3_test_3.out.mcf.0 
+ima3_test_4.out.mcf.0 
+ima3_test_26.out.mcf.0
+ima3_test_27.out.mcf.0
+
+ima3_test_mpi_3.out.mcf.0  ima3_test_mpi_3.out.mcf.1  ima3_test_mpi_3.out.mcf.2  ima3_test_mpi_3.out.mcf.3  
+ima3_test_mpi_4.out.mcf.0  ima3_test_mpi_4.out.mcf.1  ima3_test_mpi_4.out.mcf.2  ima3_test_mpi_4.out.mcf.3  
+ima3_test_mpi_26.out.mcf.0  ima3_test_mpi_26.out.mcf.1  ima3_test_mpi_26.out.mcf.2   ima3_test_mpi_26.out.mcf.3
+ima3_test_mpi_27.out.mcf.0  ima3_test_mpi_27.out.mcf.1  ima3_test_mpi_27.out.mcf.2  ima3_test_mpi_27.out.mcf.3
+
+ima3_test_jh2_3.out.mcf.0  
+ima3_test_jh2_4.out.mcf.0  
+
+
+burntrend files: 
+ima3_test_3.out.burntrend.out  
+ima3_test_4.out.burntrend.out  
+
+ima3_test_mpi_3.out.burntrend.out 
+ima3_test_mpi_4.out.burntrend.out 
+
+ima3_test_jh2_3.out.burntrend.out 
+ima3_test_jh2_4.out.burntrend.out 
+
+ti files:
+ima3_test_4.out.ti
+ima3_test_mpi_4.out.ti
+ima3_test_jh2_4.out.ti
+
+
+mpt files:
+ima3_test_3.out.mpt
+ima3_test_4.out.mpt  
+
+ima3_test_mpi_3.out.mpt
+ima3_test_mpi_4.out.mpt  
+
+ima3_test_jh2_3.out.mpt
+ima3_test_jh2_4.out.mpt  
+
+imapriors files:
+ima3_test_16.out.imapriors.txt
+ima3_test_25.out.imapriors.txt
+ima3_test_jh2_16.out.imapriors.txt
+
+

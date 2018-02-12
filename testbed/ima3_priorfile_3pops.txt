@@ -1,0 +1,23 @@
+#  new format for priorfile for IMa3 
+#  comments - any line beginning with '#' is a comment and is ignored
+#  keywords (case does not matter):  "tree" "theta" "migration" "time"
+#  a line with a keyword on it has only that keyword on it
+#  the line with "tree" keyword must be the first keyword line after any initial comments 
+#  the first noncomment line after a line with a keyword gives the prior for that corresponding keyword
+#  a line with a treestring or the beginning of a migration matrix specifies a prior
+# example priorfile for 3 population model
+tree
+((0,1):3,2):4
+# splitting time priors set to 1.0 for most recent split, 3.0 for older splits
+time
+((0:1.0,1:1.0):3:3.0,2:3.0):4
+#population size priors set to 1 for populations 0,1 and 2 for others
+theta
+((0:1,1:1):3:2,2:2):4:2
+#migration prior set to 1 for populations 1 and 2 and 3 and 2, others 0.01
+migration
+0.000 0.010 0.010 0.010 0.000
+0.010 0.000 1.000 0.010 0.000
+0.010 1.000 0.000 1.000 0.000
+0.010 0.010 1.000 0.000 0.000
+0.000 0.000 0.000 0.000 0.000
