@@ -197,7 +197,8 @@ aread (FILE * mcffile, const char *name, int atype, int iucheck, void *a)
 
   if (typecheck != atype)
   {
-    IM_err(IMERR_MCFREADFAIL,"variable types do not match: %d  <> %d ", atype, typecheck);
+    if (!(typecheck==6 && atype == 0))  // this mismatch is ok. should only be relevant for some mcfs written before 2/2018 as I changed some writes from  6 to 0 
+      IM_err(IMERR_MCFREADFAIL,"variable types do not match: %d  <> %d ", atype, typecheck);
   }
   switch (atype)
   {
