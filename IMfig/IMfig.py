@@ -691,6 +691,11 @@ def mysplit(s,delims):
     return s.split()
 
 def readimfile():
+    """
+        gets info from the input file
+        returns all information in slist
+        and scale information in scaledpop and scaledtime
+    """
     global numpops
     global gv
     imfile = open(gv["imfilename"],"r")
@@ -1034,7 +1039,7 @@ def poptreeread (poptreestring):
     """ copy of the function in imamp
          use a list of lists to hld poptree
          poptree[i] is the info for population [i]
-        poptree[i][0] is the period the population begins in
+         poptree[i][0] is the period number population [i] starts in
          poptree[i][1] is the period it ends in
          poptree[i][2] is the left up pop
          poptree[i][3] is the right up pop
@@ -1138,52 +1143,66 @@ def yline(y,farright, width, dash, grayamount):
     """ draw a line at a specific height in relative terms """
     aline([[0,y],[farright,y]],width, dash, grayamount)
 
-def centerbox(pop,leftpoint,poptree,popxvals):
+
+def centerbox(pop,leftpoint,rightpoint,poptree,popxvals):
     """
-        centerbox is a recursive function to find locations of population boxes
+        centerbox is a recursive function to find locations of population boxes on the x axis
         pop is the population for which we are finding the left and right sides of the box
 
         centerbox returns:
             width - the difference between right and left side of population it was called with
             center - the center of the population it was called with
             new value of popxvals
-                popxvals are the values to be set,  they start out with values of 0 and box width
+                popxvals[pop] is set,  they start out with values of 0 and box width, but get new values
             leftpoint
                 leftpoint is the point less than which we cannot find values because a box can't be drawn there
                 leftpoint is partly determined by the descendant population and partly by the population
+            rightpoint
+                the rightmost point of any descendant population
 
         Start at the bottom, go up the left side then the right, recursively
         take the width of the left side and the width of the right side,
         put a spacer between, add them, and find the center
         the width and center gets returned to the basal population
+
+        receives the population #,  leftmost side of the ancestor population, rightside,   the tree and popxvals (which this modifies)
+
+        leftpoint starts at 0 for left branch up from root
+            starts at right side of what is returned from the left branch up from the root
+          if terminal pop
+            returns the width and center location for that terminal pop
+        else
+            makes recursive calls for both left and right descendants
+                each returns a width and center
+            overall width left width + spacer + right width
+            overall center   left center + (right center - left center)/2
+            returns the width and center location based on both descendants of that pop
+          center goes in the middle
     """
 
-    if poptree[pop][2] == -1:  ## terminal population
-        return popxvals[pop][1]-popxvals[pop][0],leftpoint + (popxvals[pop][1]-popxvals[pop][0])/ 2.0,popxvals, leftpoint
+    if poptree[pop][2] == -1:  ## pop is a terminal population
+        ## at this point popxvals[pop] holds just the width of the box (i.e. popxvals[pop][0] is 0)
+        popxvals[pop][1] = popxvals[pop][1] - popxvals[pop][0] + leftpoint
+        popxvals[pop][0] = leftpoint
+        return popxvals[pop][1]-popxvals[pop][0],leftpoint + (popxvals[pop][1]-popxvals[pop][0])/ 2.0,popxvals, leftpoint, popxvals[pop][1]
     else:
-        ## deciding on how best to space boxes is tricky
         popspacer = gv["popboxspaceadj"] * popboxspacedefault
-        holdleft = leftpoint
-        popxvals[poptree[pop][2]][0] = leftpoint
-        popxvals[poptree[pop][2]][1] +=  leftpoint
-        (lw,lc, popxvals, leftpoint) = centerbox(poptree[pop][2],leftpoint, poptree,popxvals)
+        (lw,lc, popxvals, leftpoint,rightpoint) = centerbox(poptree[pop][2],leftpoint,rightpoint, poptree,popxvals)
+        rleftpoint = rightpoint + popspacer
+        (rwidth,rcenter, popxvals, rleftpoint,rightpoint) = centerbox(poptree[pop][3],rleftpoint,rightpoint, poptree,popxvals)
+        newwidth = lw + popspacer + rwidth
 
-        leftpoint = leftpoint + lw + popspacer
-        popxvals[poptree[pop][3]][0] +=  leftpoint
-        popxvals[poptree[pop][3]][1] +=  leftpoint
-        (rwidth,rcenter, popxvals, leftpoint) = centerbox(poptree[pop][3],leftpoint, poptree,popxvals)
-        leftpoint = holdleft
-        l = max(leftpoint,\
-                lc + lw/2.0 + popspacer/2.0 - (popxvals[pop][1]-popxvals[pop][0])/2.0)
-
-        r = l + (popxvals[pop][1]-popxvals[pop][0])
-        popxvals[pop][0] =l
-        popxvals[pop][1]= r
-        leftpoint = l
-        return popxvals[pop][1]-popxvals[pop][0],leftpoint + (popxvals[pop][1]-popxvals[pop][0])/ 2.0,popxvals, leftpoint
+        newwidth = popxvals[pop][1] - popxvals[pop][0]
+        newcenter = lc + (rcenter - lc)/2.0
+        if newcenter - (newwidth/2.0) < leftpoint :
+            newcenter += leftpoint - (newcenter - (newwidth/2.0))
+        templeft = newcenter - newwidth/2.0
+        popxvals[pop][0] = templeft
+        popxvals[pop][1]  = templeft + newwidth
+        return newwidth, newcenter,popxvals,leftpoint,rightpoint
 
 def fround(val):
-    """ does rounding """
+    """ crude rounding to a couple decimal points for a positive val"""
     if val==0:
         return "0.0"
     lval = math.log10(val)
@@ -1195,6 +1214,7 @@ def fround(val):
     return str(round(val, rval))
 
 def popadjustx(popxvals,minx_popbox):
+    " shift box locations to the left, as needed to fit with minx_popbox"
     minx = popxvals[0][0]
     for i in range(1,len(popxvals)):
         if minx > popxvals[i][0]:
@@ -1211,6 +1231,14 @@ def setpopbox(ty,slist,scaledtime,rootpop,poptree):
         popbox[i][1] is the upper right
             popbox[i][1][0] contains the xdimension for the right side of the box
             popbox[i][1][1] contains the y dimension for the top of the box
+        slist[4] holds population size info
+            slist[4][4] holds actual parameter names and values
+                slist[4][4][i] holds actual parameter names and values for popsize i
+                    slist[4][4][i][0] is the name
+                    slist[4][4][i][1] is the estimate
+                    slist[4][4][i][2] is lower 95%
+                    slist[4][4][i][3] is upper  95%
+
     """
     wadjust = ""
     for i in range(numpops-1):
@@ -1228,10 +1256,11 @@ def setpopbox(ty,slist,scaledtime,rootpop,poptree):
     for i in range(2*numpops - 1):
 ## left side temporarily at zero, right side temporarily at upper confidence interval
         popxvals.append( [0,slist[4][4][i][1]])
-    (width,c,popxvals, leftpoint) = centerbox(rootpop,0,poptree,popxvals)
+    (width,c,popxvals, leftpoint,rightpoint) = centerbox(rootpop,0,popxvals[rootpop][1],poptree,popxvals)
     popxvals = popadjustx(popxvals,minx_popbox)
     popbox = []
 
+    ## maxwide will be used to adjust the width as a scaler  so the part furthest to the right is not too far out
     maxwide = 0
     for i in range(2*numpops-1):
         if maxwide < (popxvals[i][1] + (slist[4][4][i][3]-slist[4][4][i][1])):
