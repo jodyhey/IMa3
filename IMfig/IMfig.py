@@ -10,7 +10,7 @@
     Tested using python 3.6  but probably runs ok in python 2.7
     Read the documentation for details on running the program
 """
-# from __future__ import absolute_import, division, print_function, unicode_literals
+
 import math
 import sys
 ## some users won't have colormath
@@ -33,7 +33,7 @@ arrowheadwidthdefault = 0.01  ## arrow size
 popboxspacedefault = 0.1  ## spacing between population boxes
 curveheightdefault = 0.03  ## curvature of migration arrows
 tfactor = 1.0  ## a fudge factor for moving things to the right of splittime arrows
-min2NM = 0.0  # not sure why this was 0.0005 ## the smallest value plotted by IM programs for 2NM
+min2NM = 0.0  ## not sure why this was 0.0005 ## the smallest value plotted by IM programs for 2NM
 
 
 ##***********************************************************************************
@@ -61,7 +61,6 @@ def apoint(rpoint):
         tempx = gv["fixedLL"][0] + gv["localxscale"]*gv["globalscale"]*rpoint[0]*(gv["fixedUR"][0]-gv["fixedLL"][0])
     else:
         tempx = gv["fixedLL"][0] + gv["globalscale"]*rpoint[0]*(gv["fixedUR"][0]-gv["fixedLL"][0])
-##    print tempx, fixedUR[0], tempx-fixedUR[0]
     if tempx - gv["fixedUR"][0] > 0 and tempx - gv["fixedUR"][0] < 1e-7:
         tempx = gv["fixedUR"][0]
     if tempx > gv["fixedUR"][0]:
@@ -224,10 +223,9 @@ def curvebox(cdim, cbox, width,color,grayamount, popnum,dash,poptree):
                 else:
                     gcolor.append(color[i])
             boxcolorstring = "%f %f %f setrgbcolor" % (gcolor[0],gcolor[1],gcolor[2])
-            # w("%f %f %f setrgbcolor" % (gcolor[0],gcolor[1],gcolor[2]))
         else:
             boxcolorstring = "%f setgray" % grayamount
-            # w("%f setgray" % grayamount)
+
     w("newpath")
     w("%d  %d  moveto" %(lla[0]+cdim,lla[1]))
     cp1 = [lra[0]-cdim,lra[1]]
@@ -253,14 +251,12 @@ def curvebox(cdim, cbox, width,color,grayamount, popnum,dash,poptree):
     w("closepath")
     w("gsave")
     if gv["rgbcolor"] and dash == 0: ## fill the box with a lighter version of the color used for the lines of the box
-        # w("%f %f %f setrgbcolor" % (lightcolor[0],lightcolor[1],lightcolor[2]))
         w(lightboxfillcolorstring)
         w("fill")
         w("grestore")
     width = float(width)
     w("%f setlinewidth" % (width*gv["globalscale"]))
     w(boxcolorstring)
-    # w("%f %f %f setrgbcolor" % (poptree[popnum][5][0],poptree[popnum][5][1],poptree[popnum][5][2]))
     w("stroke")
     if gv["simplecolor"] or gv["rgbcolor"]:
         w("0 0 0  setrgbcolor")
@@ -364,8 +360,6 @@ def migrationcurvearrow(val2NM,head,tail,direc, color):
     curveheight = curveheightdefault
     c2height = arrowheadwidthdefault
     headwidth = c2height*1.5*gv["arrowheightadj"]
-    # width = 1.5
-    # width = 2.5
     width = 3.5
     if (direc == 0): ## arrow to the right,  line is shifted up, text is below line
         textpoint=[tail[0],tail[1]-curveheight]
@@ -738,7 +732,6 @@ def readimfile():
                 slist[i][1] = True
                 if slist[i][0] == "pop names":
                     numpops = len(slist[i][4])
-##                print slist[i][0]
         if checkdone:
             break
         imfileline  = imfile.readline()
@@ -760,7 +753,6 @@ def readimfile():
 ##***********************************************************************************
 def parenth(tempcurrent,poptree,poptreestring,stringspot,ancestralpopnums,rootpop,nextnode,periodi):
     current = ancestralpopnums[tempcurrent]
-##    print "current : ", current, " nextnode : ", nextnode
     stringspot += 1
     while poptreestring[stringspot].isspace():
         stringspot += 1
@@ -1892,7 +1884,7 @@ def dostuff(args):
 ##Alternatively, if desired the user can uncomment this block and define the working directory and 'cmdstr':
 
 ## -- comment this block out when running from the command line --
-import os
+##import os
 ##os.chdir(r"E:\genemod\ML-MCMC\SEAI\IMa3_work\IMfig\testbedwork")  ## directory where the input file is located
 ##cmdstr = r"IMfig.py -iBaHzSwYr_200loci_mode3ghost_j1_mp5.out -odebugBaHzSwYr_200loci_mode3ghost_j1_mp5.eps -ms -v -e"
 ##sys.argv = cmdstr.split()
