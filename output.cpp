@@ -1785,6 +1785,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   int totaltreecount = 0, numnonzero = 0;
   double temphi = -1.0;
   int hii;
+  int counthipcp;
   int numnotproposed = 0;
   int uniformprior = (strlen(topologypriorinfostring) == 0);
   double temp1 = 1.0;
@@ -1851,6 +1852,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   assert (tempsum == totaltreecount * (npops - (modeloptions[ADDGHOSTPOP]==1) - 2));
 #endif
   
+  counthipcp=0;
   for (i=0;i<numpoptopologies;i++) //if (fatssarray[i].count > 0)
   {
     if (modeloptions[ADDGHOSTPOP]==0)
@@ -1860,8 +1862,11 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     if (fatssarray[i].ppcp > temphi)
     {
       temphi = fatssarray[i].ppcp;
+      counthipcp = 1;
       hii = i;
     }
+    if (fatssarray[i].ppcp == temphi)
+      counthipcp += 1;
   }
   FP "%s",outputbanner("Estimated Posterior Probabilities of Population Tree Topologies"));
   FP "Population Names\n");
@@ -1914,14 +1919,12 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     printnewickstring(outfile,fatssarray[0].treestr,NULL,1);
     FP "\n");
   }
-  if (modeloptions[ADDGHOSTPOP]==0)
-    FP " Tree topology with highest estimated product of the posterior clade probabilities (ppcp): %s\n",fatssarray[hii].treestr);
-  else
-  {
-    FP " Tree topology with highest estimated product of the posterior clade probabilities (ppcp): %s\n",fatssarray[hii].treestrnoghost);
-    FP "     -estimated product of the posterior clade probabilities (ppcp): %.7f\n",temphi);
-    FP "     -topology with ghost outgroup included: %s\n",fatssarray[hii].treestr);
-  }
+  FP " Product of the posterior clade probabilities (ppcp), example tree topology with highest value : %s\n",fatssarray[hii].treestr);
+  if (modeloptions[ADDGHOSTPOP]==1)
+    FP "     -example topology without ghost outgroup included: %s\n",fatssarray[hii].treestrnoghost);
+  FP "     -estimated product of the posterior clade probabilities (ppcp): %.7f\n",temphi);
+  FP "     -total number of topologies with this same ppcp value: %d\n",counthipcp);
+
   FP "\nTree Topology Recorded Frequencies - only trees with nonzero counts listed,  sorted high to low\n");
   FP "------------------------------------------------------------------------------------------------\n");
   if (modeloptions[ADDGHOSTPOP]==0)
