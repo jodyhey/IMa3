@@ -3,7 +3,7 @@
 /* for debugging - do not include in release */
 
 
-/* 
+/*
 some useful functions to check things
 
 the following functions create files:
@@ -17,7 +17,7 @@ following functions check that some things match what is expected
 
   checkgenealogy()
   checkpoptree()
-  void checkprobs(int ci, int li)  recalculate the likelihood,  and the main priors to see if results are valid numbers and if they match what is currently held 
+  void checkprobs(int ci, int li)  recalculate the likelihood,  and the main priors to see if results are valid numbers and if they match what is currently held
   checkgenealogyweights(int ci)  check that sums of weights equal the overall weights
 
 
@@ -42,11 +42,11 @@ struct treevals
   double dtime;
   double timei;
   int migcount;
-  int migcounthg; //hgstuff 
+  int migcounthg; //hgstuff
   int startpop;
   int finpop;
   int startpophg; //hgstuff
-  int finpophg; //hgstuff 
+  int finpophg; //hgstuff
   int mut;
   int A[MAXLINKED];
   double dlikeA[MAXLINKED];
@@ -252,8 +252,8 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
     while (tvcptr[i].dtime > C[ci]->poptree[checkfpop].time)
     {
       checkfpop = C[ci]->poptree[checkfpop].down;
-    } 
-    
+    }
+
     if (checkfpop != tvcptr[i].finpop || tvcptr[i].finpop >= numtreepops)
       tvcptr[i].flag = 5;
     if (L[li].model == STEPWISE)
@@ -444,7 +444,7 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
     fprintf (treeprintfile, "\n");
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvcptr);
   XFREE (tvmptr);
@@ -611,8 +611,8 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
     while (tvcptr[i].dtime > C[ci]->poptree[checkfpop].time)
     {
       checkfpop = C[ci]->poptree[checkfpop].down;
-    } 
-    
+    }
+
     if (checkfpop != tvcptr[i].finpop || tvcptr[i].finpop >= numtreepops)
       tvcptr[i].flag = 5;
     if (L[li].model == STEPWISE)
@@ -803,7 +803,7 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
     fprintf (treeprintfile, "\n");
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvcptr);
   XFREE (tvmptr);
@@ -861,7 +861,7 @@ poptreeprint (int ci)
 
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvptr);
 }                               /* poptreeprint */
@@ -915,13 +915,13 @@ poptreeprint_frompointer (int ci, struct popedge *poptree/*, int step*/)
 
   }
   fprintf (treeprintfile, "\n");
-  f_close (treeprintfile);
+  FCLOSE (treeprintfile);
   treeprintfile = NULL;
   XFREE (tvptr);
 }                               /* poptreeprint_frompointer */
 
 /* 1 check migs, but not length , 2 check mighg but not  mig, 3 check neither mig or mighg, 4 check it all except mignum, 0 check everything including lengths*/
-#define epsilon 0.0000000001  //1e-10 
+#define epsilon 0.0000000001  //1e-10
 void checkgenealogy(int ci, int li, int mode )
 {
 
@@ -1056,12 +1056,12 @@ void checkpoptree(int ci,int mode) // mode: 0 do all checks, 1 skip period check
   int  temppoptreenum;
   if (mode==0 && modeloptions[POPTREETOPOLOGYUPDATE]==1)
   {
-    poptreewrite (ci, temppoptreestring); 
+    poptreewrite (ci, temppoptreestring);
     temppoptreenum = getpoptreestringnum(temppoptreestring);
     assert(strcmp(C[ci]->chainpoptreestring,temppoptreestring)==0);
     assert (C[ci]->poptreenum ==temppoptreenum);
   }
-  
+
   for (i=0;i<numtreepops;i++)
   {
     if (i<npops)
@@ -1094,7 +1094,7 @@ void checkpoptree(int ci,int mode) // mode: 0 do all checks, 1 skip period check
     {
       if (mode < 2)
         assert (i < C[ci]->poptree[i].down);
-      assert(C[ci]->poptree[i].time < C[ci]->poptree[C[ci]->poptree[i].down].time);  
+      assert(C[ci]->poptree[i].time < C[ci]->poptree[C[ci]->poptree[i].down].time);
       assert(C[ci]->poptree[C[ci]->poptree[i].down].up[0] == i || C[ci]->poptree[C[ci]->poptree[i].down].up[1] == i );
     }
     if (mode == 0)
@@ -1135,7 +1135,7 @@ void checkprobs(int ci, int locusi)
     lbi = locusi;
     lui = lbi + 1;
   }
-  
+
   init_probcalc (&pcalc);
   init_genealogy_weights (&holdgweight);
   for (li=lbi;li<lui;li++)
@@ -1165,11 +1165,11 @@ void checkprobs(int ci, int locusi)
       break;
     }
     assert( isnan_(pdg)==0); // chec if is nan
-    assert( isnotinf_DBL(pdg)); 
+    assert( isnotinf_DBL(pdg));
     if (pdg == 0.0)
       assert(C[ci]->G[li].pdg==0.0);
     else
-      assert (checkfloatsclose(C[ci]->G[li].pdg,pdg));  
+      assert (checkfloatsclose(C[ci]->G[li].pdg,pdg));
     sumpdg += pdg;
 
     /* to check probg have to check the overall probg while changing just locus li */
@@ -1180,33 +1180,33 @@ void checkprobs(int ci, int locusi)
     tw = treeweight (ci, li,treeweightcallcode);
     sum_subtract_treeinfo (&C[ci]->allgweight, &C[ci]->G[li].gweight,&holdgweight);
     initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &pcalc);
-   
+
     assert( isnan_(pcalc.probg)==0); // chec if is nan
-    assert( isnotinf_DBL(pcalc.probg)); 
+    assert( isnotinf_DBL(pcalc.probg));
     if (calcoptions[DONTCALCGENEALOGYPRIOR]==0)
       assert( pcalc.probg != 0.0);
 
 
-    assert(checkfloatsclose(C[ci]->allpcalc.probg,pcalc.probg)); 
+    assert(checkfloatsclose(C[ci]->allpcalc.probg,pcalc.probg));
    // assert(fclose05(C[ci]->allpcalc.probg,pcalc.probg));// checks within 5%
-    
+
     if (hiddenoptions[HIDDENGENEALOGY])
     {
       phggg = prob_hg_given_g(ci,li);
       assert( isnan_(phggg)==0); // chec if is nan
-      assert( isnotinf_DBL(phggg)); 
+      assert( isnotinf_DBL(phggg));
       if (phggg == 0.0)
         assert(C[ci]->G[li].hgprob==0.0);
       else
-        assert (checkfloatsclose(C[ci]->G[li].hgprob,phggg));  
-       
+        assert (checkfloatsclose(C[ci]->G[li].hgprob,phggg));
+
       sumphggg += phggg;
     }
   }
   if (locusi < 0)   // multiple loci, check summed values
   {
     assert( isnan_(sumpdg)==0); // chec if is nan
-    assert( isnotinf_DBL(sumpdg)); 
+    assert( isnotinf_DBL(sumpdg));
     if (calcoptions[DONTCALCLIKELIHOODMUTATION] != 1)
     {
       assert(sumpdg != 0.0);
@@ -1215,11 +1215,11 @@ void checkprobs(int ci, int locusi)
     if (hiddenoptions[HIDDENGENEALOGY])
     {
       assert( isnan_(sumphggg)==0); // chec if is nan
-      assert( isnotinf_DBL(sumphggg)); 
+      assert( isnotinf_DBL(sumphggg));
       if (sumphggg == 0.0)
         assert(C[ci]->allpcalc.probhgg==0.0);
       else
-        assert (checkfloatsclose(C[ci]->allpcalc.probhgg,sumphggg));  
+        assert (checkfloatsclose(C[ci]->allpcalc.probhgg,sumphggg));
     }
   }
   free_probcalc (&pcalc);
@@ -1261,7 +1261,7 @@ void printgenealogyweights(int ci,int li)
     for (j = 0; j < C[ci]->itheta[i].wp.n; j++)
     {
       c = (int) gweight->cc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
-      csum += c; 
+      csum += c;
       f = (float) gweight->fc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
       fsum += f;
       hc = (float) gweight->hcc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
@@ -1300,7 +1300,7 @@ void printgenealogyweights(int ci,int li)
     }
   }
   fpg "===========================================\n\n");
-  f_close (gweightprintfile);
+  FCLOSE (gweightprintfile);
   gweightprintfile = NULL;
 }  //printgenealogyweights
 
@@ -1316,7 +1316,7 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
 
   if (calcoptions[DONTCALCGENEALOGYPRIOR]==1)
     return;
-  // first check that the total count of coalescent events for each locus is correct 
+  // first check that the total count of coalescent events for each locus is correct
   for (li=0;li<nloci;li++)
   {
     c=0;
@@ -1351,7 +1351,7 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
       ca += (int) C[ci]->allgweight.cc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
       fa += C[ci]->allgweight.fc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
       hca += C[ci]->allgweight.hcc[C[ci]->itheta[i].wp.p[j]][C[ci]->itheta[i].wp.r[j]];
-    
+
     }
     //assert ((C[ci]->allpcalc.qintegrate[i] != 0.0 && (ca > 0 || fa > 0.0)) || (C[ci]->allpcalc.qintegrate[i] == 0.0 && ca == 0 && fa == 0.0));
     // this would only work with prior of 1  - see qintegrate()
@@ -1383,17 +1383,17 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
         ca +=
           (int) C[ci]->allgweight.mc[C[ci]->imig[i].wp.p[j]][C[ci]->imig[i].wp.r[j]][C[ci]->imig[i].
                                                               wp.c[j]];
-        fa += 
+        fa +=
           C[ci]->allgweight.fm[C[ci]->imig[i].wp.p[j]][C[ci]->imig[i].wp.r[j]][C[ci]->imig[i].wp.c[j]];
-    
+
       }
       //assert ((C[ci]->allpcalc.mintegrate[i] != 0.0 && (ca > 0 || fa > 0.0)) || (C[ci]->allpcalc.mintegrate[i] == 0.0 && ca == 0 && fa == 0.0));
-      // this does not actually does not work  because mintegrate uses a cutoff 
+      // this does not actually does not work  because mintegrate uses a cutoff
       // also would only work with prior of 1  - see qintegrate()
       assert (checkfloatsclose( (double) c, (double) ca));
       assert (checkfloatsclose(f,fa));
     }
-    // check some hyperor prior stuff 
+    // check some hyperor prior stuff
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1) for (i = 0; i < nummigrateparams; i++)
     {
 
@@ -1401,16 +1401,16 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
       if (modeloptions[EXPOMIGRATIONPRIOR]==1)
       {
         if (C[ci]->imig[i].dir==0)
-          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors)); 
+          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors));
         else
-          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors)); 
+          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors));
       }
       else
       {
         if (C[ci]->imig[i].dir==0)
-          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors)); 
+          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors));
         else
-          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors)); 
+          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors));
       }
     }
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1) for (i = 0; i < nummigrateparampairs; i++)
@@ -1434,7 +1434,7 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
     assert (n==C[ci]->itheta[ii].wp.n);
   }
   return;
-}                               /*void checkgenealogyweights(int ci) */  
+}                               /*void checkgenealogyweights(int ci) */
 
 /* simple check of whether C[ci]->allpcalc.probhgg equals the sum of the individual locus values */
 void check_hgprob_sums(int ci)
@@ -1464,16 +1464,16 @@ void checkdetailedbalance(double newlikelihood, double oldlikelihood, double new
 	if (calcoptions[CALCMARGINALLIKELIHOOD])
 	{
 		temp = beta * (newlikelihood - oldlikelihood) + (newprior - oldprior) + (propose_old_given_new - propose_new_given_old);
-		aforward = (temp >= 0.0) ? 0.0 : temp; 
+		aforward = (temp >= 0.0) ? 0.0 : temp;
 		temp = beta * (-(newlikelihood - oldlikelihood))  - (newprior - oldprior) - (propose_old_given_new - propose_new_given_old);
-		abackward = (temp >= 0.0) ? 0.0 : temp; 
+		abackward = (temp >= 0.0) ? 0.0 : temp;
 	}
 	else
 	{
 		temp = beta * (newlikelihood - oldlikelihood + newprior - oldprior) + (propose_old_given_new - propose_new_given_old);
-		aforward = (temp >= 0.0) ? 0.0 : temp; 
+		aforward = (temp >= 0.0) ? 0.0 : temp;
 		temp = beta * (-(newlikelihood - oldlikelihood + newprior - oldprior)) - (propose_old_given_new - propose_new_given_old);
-		abackward = (temp >= 0.0) ? 0.0 : temp; 
+		abackward = (temp >= 0.0) ? 0.0 : temp;
 	}
   if (calcoptions[CALCMARGINALLIKELIHOOD])
   {
@@ -1497,14 +1497,14 @@ void checkdetailedbalance_chainswap(double likelihood_i, double likelihood_k, do
 	if (calcoptions[CALCMARGINALLIKELIHOOD])
 	{
 		temp = (beta_i - beta_k) * (likelihood_k - likelihood_i);
-		aforward =  (temp >= 0.0) ? 0.0 : temp; 
-    abackward = ( (-temp) >= 0.0) ? 0.0 : -temp; 
+		aforward =  (temp >= 0.0) ? 0.0 : temp;
+    abackward = ( (-temp) >= 0.0) ? 0.0 : -temp;
 	}
 	else
 	{
     temp = (beta_i - beta_k) * (likelihood_k + prior_k - likelihood_i -  prior_i) ;
-		aforward =  (temp >= 0.0) ? 0.0 : temp; 
-    abackward = ( (-temp) >= 0.0) ? 0.0 : -temp; 
+		aforward =  (temp >= 0.0) ? 0.0 : temp;
+    abackward = ( (-temp) >= 0.0) ? 0.0 : -temp;
 
 
 	}
@@ -1548,9 +1548,9 @@ compare_genealogy_weights (struct genealogy_weights *gw1,struct genealogy_weight
   }
 } // compare_genealogy_weights()
 
-/* some debugging code to catch probability floating point problems 
+/* some debugging code to catch probability floating point problems
   simple,  used only after call to an updating function
-  this really should not be necessary*/ 
+  this really should not be necessary*/
 void pcheck(int ci, int fromcode)
 {
   if (isnan_(C[ci]->allpcalc.pdg))

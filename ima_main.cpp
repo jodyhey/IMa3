@@ -2,87 +2,90 @@
 
 #define GLOBVARS
 #include "ima.hpp"
+#include <stack>
 
 /*  some compilation commands
-mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 
+mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3
 mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 -fpermissive
  */
 
 /********* variables local to ima_main.cpp.***********/   /*   global variables are declared in ima.hpp using gextern/extern */
 
-static char *infilename; 
-static char *loadfilebase; 
-static char *outfilename; 
-static char command_line[COMMANDLINESTRINGLENGTHMAX]; 
-static char defaultpriorfilename[14]= "imapriors.txt"; 
-static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text              
-static char genealogyinfosavefilename[FNSIZE]; 
-static char heatingterm_str[50], modeloptions_str[50], calcoptions_str[50], outputoptions_str[50],runoptions_str[50], priors_str[50];                    
-static char infile_name[FNSIZE]; 
-static char mcfreadfilename[FNSIZE]; 
-static char mcfwritefilename[FNSIZE]; 
-static char migplotfilename[FNSIZE]; 
-static char migrationnamefilename[FNSIZE]; 
-static char nestedmodelfilename[FNSIZE] = {'\0'};                      
-static char oldoutfilename[FNSIZE]; 
-static char priorfilename[FNSIZE]; 
-static char timeinfostring[80]; 
-static char topologypriorinfostring[COMMANDLINESTRINGLENGTHMAX] = {'\0'};                      
-static double generationtime; 
-static double hilike, hiprob;                   
-static double currlike, currprob;                   
-//static double hilike_rec,hiprob_rec; 
-static double hval1, hval2;                       
-static double scaleumeaninput = 0;                      
-static FILE *genealogyinfosavefile; 
-static FILE *migplotfile; 
-static FILE *migrationnamefile; 
-static FILE *outfile; 
-static int **migcount,*migcountdata, *migfrom, *migto;                      
-static int *fpstri; 
-static int burndone; 
-static int burndurationmode, cdurationmode;                       
-static int burntrendstartdelay; 
-static int continuerun = 1;      
+static char *infilename;
+static char *loadfilebase;
+static char *outfilename;
+static char *burnfilename;
+static char *runfilename;
+static char command_line[COMMANDLINESTRINGLENGTHMAX];
+static char defaultpriorfilename[14]= "imapriors.txt";
+static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text
+static char genealogyinfosavefilename[FNSIZE];
+static char heatingterm_str[50], modeloptions_str[50], calcoptions_str[50], outputoptions_str[50],runoptions_str[50], priors_str[50];
+static char infile_name[FNSIZE];
+static char mcfreadfilename[FNSIZE];
+static char mcfwritefilename[FNSIZE];
+static char migplotfilename[FNSIZE];
+static char migrationnamefilename[FNSIZE];
+static char nestedmodelfilename[FNSIZE] = {'\0'};
+static char oldoutfilename[FNSIZE];
+static char priorfilename[FNSIZE];
+static char timeinfostring[80];
+static char topologypriorinfostring[COMMANDLINESTRINGLENGTHMAX] = {'\0'};
+static double generationtime;
+static double hilike, hiprob;
+static double currlike, currprob;
+//static double hilike_rec,hiprob_rec;
+static double hval1, hval2;
+static double scaleumeaninput = 0;
+static FILE *genealogyinfosavefile;
+static FILE *migplotfile;
+static FILE *migrationnamefile;
+static FILE *outfile;
+static int **migcount,*migcountdata, *migfrom, *migto;
+static int *fpstri;
+static int burndone;
+static int burndurationmode, cdurationmode;
+static int burntrendstartdelay;
+static int continuerun = 1;
 static int usegenerationtimedefault;
-static int genealogiestosave; 
-static int gsampinflength; 
-static int heatmode; 
-static int lastgenealogysaved = 0; 
-static int maxedoutgenealogysave = 0;                      
-static int memforgenealogiessaved = 0;                      
-static int migrationnamefrom,migrationnameto; 
-static int numgenealogyfiles; 
-static int phylogeniestorecord; 
-static int printint; 
-static int recordint; 
-static int savegenealogyint; 
-static int swaptries_per_cpu; 
-static int time_t_size= sizeof(time_t);                       
-static int trenddoublepoint; 
-static int trendspot = 0;                      
-static long burnduration, chainduration;                       
-static int mcmcrecords = 0;     
+static int genealogiestosave;
+static int gsampinflength;
+static int heatmode;
+static int lastgenealogysaved = 0;
+static int maxedoutgenealogysave = 0;
+static int memforgenealogiessaved = 0;
+static int migrationnamefrom,migrationnameto;
+static int numgenealogyfiles;
+static int phylogeniestorecord;
+static int printint;
+static int recordint;
+static int savegenealogyint;
+static int swaptries_per_cpu;
+static int time_t_size= sizeof(time_t);
+static int trenddoublepoint;
+static int trendspot = 0;
+static long burnduration, chainduration;
+static int mcmcrecords = 0;
 static int mcmcrecords_old = 0;
 static int genealogysamples_old = 0;
 static int burninsteps_old = 0;
 static int noburn_mcfload = 0;
 static int runsteps_old = 0;
-static long seed_for_ran1; 
-static time_t endtime; 
-static time_t lasttime; 
-static time_t starttime;      
+static long seed_for_ran1;
+static time_t endtime;
+static time_t lasttime;
+static time_t starttime;
 
 /******* variables that are extern in some other files *********/
 
 /* arrays that are indexed by numpops,  all should have length MAXPOPS_PHYLOGENYESTIMATION + 1 */
-int numdistinctpopulationpairs[] = {0,0,1,6,25,90,301,966,3025,9330}; /* total number of possible distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */  
+int numdistinctpopulationpairs[] = {0,0,1,6,25,90,301,966,3025,9330}; /* total number of possible distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */
 int numtreesarray[] = {0,1,1,3,18,180,2700,56700,1587600}; // numer of distinct tree topologies with different #'s of populations
-int hashvalmaxes[] = {0,0,2,10,50,100,300,1000,3000,10000}; // hashvalue range 
+int hashvalmaxes[] = {0,0,2,10,50,100,300,1000,3000,10000}; // hashvalue range
 
 #ifdef MPI_ENABLED
 MPI_Datatype MPI_updatescalar;  // used for passing updatescalar structures among processes
-MPI_Op myOp_updatescalarsum;   // used to make a function for summing MPI_updatescalar using MPI_Reduce 
+MPI_Op myOp_updatescalarsum;   // used to make a function for summing MPI_updatescalar using MPI_Reduce
 #endif
 
 /***** extern function prototypes *****/
@@ -92,15 +95,15 @@ extern void addoutgroup(char s[]);  // declared in alltreestings.cpp
 static int checkrunfile(char *runfilename);
 static void free_ima_main_stuff ();
 static char *releaseinfostring();
-static void scan_commandline (int argc, char *argv[], int currentid); 
+static void scan_commandline (int argc, char *argv[], int currentid);
 static void begin_outputfile_info_string (void);
 static void set_mode_check_inconsistent_options(void);
-static void start (int argc, char *argv[], int currentid); 
+static void start (int argc, char *argv[], int currentid);
 static void qupdate (int currentid );
-static void savegenealogyinfo (int currentid); 
-static void reset_after_burn (int currentid); 
+static void savegenealogyinfo (int currentid);
+static void reset_after_burn (int currentid);
 static void writeburntrendfile (int currentid);
-static int run (int currentid); 
+static int run (int currentid);
 static void inctrend (int m, int t, struct value_record *v, double newval);
 static void trend_reset (struct value_record *v, int nv);
 static void trendrecord (int loadarrayj, int currentid);
@@ -112,7 +115,7 @@ static void loadgenealogyvalues (void);
 static void printoutput (int currentid,int finaloutput);
 static void intervaloutput (FILE * outto, int currentid);
 static void output_update_scalars(int z,int currentid, char updatestr[]);
-static void check_to_record (int currentid); 
+static void check_to_record (int currentid);
 static void record_migration_names();
 static int comparethermos(const void *a, const void *b);
 void commit_mpi_updatescalar(void);
@@ -120,6 +123,9 @@ void commit_mpi_updatescalar(void);
 void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo *inout, int *len, MPI_Datatype *type);
 #endif
 //void printupdatescalarinfo (FILE * outto, int currentid);  stopped using 6/7/2017
+#ifdef XMLOUTPUT
+std::stack<TiXmlElement*> xstack;
+#endif
 
 int main ( int argc, char *argv[]);
 
@@ -136,7 +142,7 @@ int checkrunfile(char *runfilename)
   {
     ch = (char) getc (runfile);
 	   fflush(runfile);
-    f_close (runfile);
+    FCLOSE (runfile);
     if ((char) toupper (ch) == 'Y')
     {
 		    return 1;
@@ -179,8 +185,8 @@ free_ima_main_stuff ()
     free_2Dint_contiguous(migcount,migcountdata);
     XFREE (migfrom);
     XFREE (migto);
-  } 
-  
+  }
+
 
   if (infilename != NULL)
   {
@@ -208,7 +214,7 @@ static char *releaseinfostring()
 #ifdef INDEVELOPMENT
     sprintf (rs,"IMa3 in Development. Most Recent Release Version: %s",IMA3RELEASEVERSION);
 #endif
-  rs[sizeof(rs)-1] = '\0';  // just in case it has written past the end 
+  rs[sizeof(rs)-1] = '\0';  // just in case it has written past the end
   return rs;
 }
 
@@ -224,13 +230,14 @@ scan_commandline (int argc, char *argv[], int currentid)
    * is never used by the code:  Cp, Ep, Wp, Yp.  These variable flags
    * are being left in for completeness
    */
-  int Bp, Cp, Dp, Fp, Gp, Hfp, Hnp,/* Hkp, */ Hap, Hbp, Ip, Jp, Lp, Mp, Op, Pp,
+   //JK: Adding Np var for unique IMburn/run files
+  int Bp, Cp, Dp, Fp, Gp, Hfp, Hnp,/* Hkp, */ Hap, Hbp, Ip, Jp, Lp, Mp, Np, Op, Pp,
     Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
   double tempf;
 
   int samplemcmcinterval;
   struct tm *starttimeinfo;
-  int numthingstosave; 
+  int numthingstosave;
   int Ap = 0;  // use -a for debugging things that need a flag
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
@@ -238,7 +245,7 @@ scan_commandline (int argc, char *argv[], int currentid)
   time (&starttime);
   //time (&remained_starttime);
 #ifdef MPI_ENABLED
-		if (numprocesses > 1)	
+		if (numprocesses > 1)
   {
     rc = MPI_Bcast(&starttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 //printf("1 %d %llu\n",currentid,starttime);
@@ -252,7 +259,7 @@ scan_commandline (int argc, char *argv[], int currentid)
 
   starttimeinfo = localtime(&starttime);
   strftime(timeinfostring,80,"%x - %X", starttimeinfo);
-      
+
   numchainstotal  = DEFAULTNUMCHAINS;      /* default value */
   numchainspp =  DEFAULTNUMCHAINS;      /* default value */
   genealogiestosave = -1;
@@ -270,6 +277,7 @@ scan_commandline (int argc, char *argv[], int currentid)
   Jp = 0;                       /* used for programmer options */
   Lp = 0;                       /* duration of chain */
   Mp = 0;                       /* migration rate max */
+  Np = 0;                       /* Expanded filepaths for IMburn/run */
   Op = 0;                       /* output file */
   Pp = 0;                       /* output options */
   Qp = 0;                       /* Theta max scalar */
@@ -294,13 +302,13 @@ scan_commandline (int argc, char *argv[], int currentid)
   }
   if ((argc == 2 && ((char) toupper (argv[1][0]) == 'H' || (char) toupper (argv[1][1]) == 'H') ) || argc == 1)
   {
-    if (currentid == HEADNODE)  // print help screen then exit 
+    if (currentid == HEADNODE)  // print help screen then exit
     {
       printf ("IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman \n");
   #ifdef STDTEST
       printf ("\n\n==================\nSTANDARD TEST MODE\n");
   #ifdef RANDOM_NUMBERS_FROM_FILE
-      printf ("USES randNums FILE\n");    
+      printf ("USES randNums FILE\n");
   #endif
       printf ("==================\n\n");
   #endif
@@ -308,10 +316,10 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("%s\n",buildtimestring);
   #ifdef DEBUG
       printf ("  -Executable compiled with DEBUG defined\n");
-  #endif 
+  #endif
   #ifdef MPI_ENABLED
       printf ("  -Executable compiled with MPI enabled\n");
-  #endif 
+  #endif
       printf ("This program is run using a command line interface\n");
       printf ("To execute, type the program name followed by command line flags and options \n");
       printf ("If compiled with MPI_ENABLED,  IMa3 can be run with multiple cpus\n");
@@ -326,13 +334,13 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    2 Joint posterior density calculations, for LLR tests of nested models, use with -r0 -w\n");
       printf ("    3 Get prior distribution terms from file (requires filename given with -g )\n");
       /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-      /* as of 8/23/2011 this is still in progress,  do not show this help output in release versions 
+      /* as of 8/23/2011 this is still in progress,  do not show this help output in release versions
       printf ("    4 Calculate the marginal likelihood, must specify -hn (odd number > 50 chains),  -hf, -ha, and -hb are ignored\n"); */
       printf ("-d  Number of steps between sampling genealogies (default 100)\n");
       printf ("-f  Name of file with saved Markov chain state generated in previous run (use with -r3)\n");
       printf ("-g  Name of file for parameter priors, default: '%s'\n",defaultpriorfilename);
       printf ("-h  Heating terms (MCMC mode only): \n");
-      //printf ("  -hf Heating model: l linear ; g geometric\n");  // 6/15/2017 stopped showing this in menu, geometric is default,  
+      //printf ("  -hf Heating model: l linear ; g geometric\n");  // 6/15/2017 stopped showing this in menu, geometric is default,
       printf ("  -hn Number of chains \n");
       //printf ("  -hk Number of chain swap attempts per step (default = number of chains)\n"); //  jh no longer used as of 6/16/2016  now using setswaptries()
       printf ("  -ha First heating parameter (less than, but near 1.  The more chains, the closer to 1)\n");
@@ -364,7 +372,7 @@ scan_commandline (int argc, char *argv[], int currentid)
 
 
       printf ("-L  Run duration. Duration depends on integer or floating point value and other settings\n");
-      printf ("     if integer value, run duration depends on value and other settings\n"); 
+      printf ("     if integer value, run duration depends on value and other settings\n");
       printf ("       If estimating population phylogeny (-j0), # of phylogenies to save, 10 steps per save\n");
       printf ("       If fixed phylogeny in MCMC mode, # of genealogies to save\n");
       printf ("         This value times -d value sets the # of steps in the chain after burnin \n");
@@ -392,16 +400,17 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    5 Print burntrend file at end of burnin period\n");
       printf ("    6 When loading mcf files (-r3,-r7) do not load sampled values (i.e. use previous run as burnin)\n");
       printf ("    7 Load *.mcf file if present AND save to *.mcf file.\n");
-      printf ("       No burn done if *.mcf is present. Use to continue a run by repeating the same command line.\n"); 
+      printf ("       No burn done if *.mcf is present. Use to continue a run by repeating the same command line.\n");
+      printf ("    8 Use uniqpe IMburn/run files with outfilename as a prefix \n");
       printf ("-s  Random number seed (default is taken from current time)\n");
       printf ("-t  Maximum time of population splitting\n");
       printf ("-u  Generation time in years (default is %d) \n", GENERATIONTIMEDEFAULT);
       printf ("      Only needed if demographically scaled histograms are desired in fixed phylogeny runs\n");
       printf ("-v  Base name (no extension) of *.ti files with genealogy data  (requires use of -r0) \n");
-      printf ("-w  Name of file with nested models to be tested (requires use of -r0), invokes –c2\n");
+      printf ("-w  Name of file with nested models to be tested (requires use of -r0), invokes ï¿½c2\n");
       printf ("-x  Set phylogeny priors for pairs of sampled populations (requires -j0)\n");
       printf ("      e.g. -x 0 1 0.5  set relative prior on all trees with 0,1 as sisters to 0.5 (default is 1)\n");
-      printf ("      can have multiple -x terms in command line\n"); 
+      printf ("      can have multiple -x terms in command line\n");
       printf ("-y  Mutation rate scalar for relevant loci\n");
       printf ("      Only needed if demographically scaled histograms are desired in fixed phylogeny runs\n");
       printf ("      Only needed in LOAD-GENEALOGY Mode (-r0) and if mutation rates not known for all loci\n");
@@ -421,8 +430,8 @@ all flags begin with '-'
 -most flags are single letter flags
 -some are double letter flags: (e.g. jh)
 -some flags are followed by a string or a character, others by an in int or a float
--All flags are followed by at least something,no flag is followed by nothing 
-it is ok to have spaces between a flag and its values 
+-All flags are followed by at least something,no flag is followed by nothing
+it is ok to have spaces between a flag and its values
 
 */
     strcpy (command_line, "");
@@ -437,7 +446,7 @@ it is ok to have spaces between a flag and its values
     for (i=0;i<CALOPTIONSNUMBER;i++)calcoptions[i]=0;
     for (i=0;i<OUTPUTOPTIONSNUMBER;i++) outputoptions[i]=0;
     for (i=0;i<PRINTBURNTREND + 1;i++) runoptions[i]=0;
-    
+
     for (i = 1; i < argc; i++)
     {
       strcat (command_line, argv[i]);
@@ -512,7 +521,7 @@ it is ok to have spaces between a flag and its values
 	///AS: Should time be broadcast or should each processor have its own time?
           time (&lasttime);
 #ifdef MPI_ENABLED
-		        if (numprocesses > 1)	
+		        if (numprocesses > 1)
           {
             rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	         if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -530,7 +539,7 @@ it is ok to have spaces between a flag and its values
             burndone = 1;
 #ifdef MPI_ENABLED
 		        /*rc = MPI_Bcast(&burndone, 1, MPI_INT, currentid, MPI_COMM_WORLD);
-		        if (rc !=MPI_SUCCESS) 
+		        if (rc !=MPI_SUCCESS)
             {
 			        MPI_Abort(MPI_COMM_WORLD,-1);
 			        return;
@@ -554,7 +563,7 @@ it is ok to have spaces between a flag and its values
         }
         break;
       case 'D':
-        samplemcmcinterval = atoi (&pstr[0]);  //samplemcmcinterval is just a local variable. used befow depending on whether -j0 or not 
+        samplemcmcinterval = atoi (&pstr[0]);  //samplemcmcinterval is just a local variable. used befow depending on whether -j0 or not
         Dp = 1;
         break;
       case 'F':
@@ -580,7 +589,7 @@ it is ok to have spaces between a flag and its values
           break;
         case 'N':
           numchainstotal = atoi (&pstr[0]);
-          /* set and check numchainspp */ 
+          /* set and check numchainspp */
           numchainspp = numchainstotal/numprocesses;
           Hnp = 1;
           break;
@@ -623,14 +632,14 @@ it is ok to have spaces between a flag and its values
           {
             if (!isdigit (pstr[j]))
             {
-              if (toupper(pstr[j]) == 'X')  // 10/30/2017  ran out of digits for modeloptions, awkward 
+              if (toupper(pstr[j]) == 'X')  // 10/30/2017  ran out of digits for modeloptions, awkward
               {
                 modeloptions[ONEPOPSIZEPARAMETER] = 1;
               }
               else
                 IM_err (IMERR_COMMANDLINEFORMAT, "model option flag -j should be followed by a digit: %s", pstr);
             }
-            //if (atoi (&pstr[j] ) >= MODELOPTIONSNUMBER  )  can't use this when we have 10 options and using 'X' 
+            //if (atoi (&pstr[j] ) >= MODELOPTIONSNUMBER  )  can't use this when we have 10 options and using 'X'
               //IM_err (IMERR_OPTIONNUMBERFAIL, "model option flag -j followed by option number out of allowed range : %d", atoi (&pstr[j] ));
             else
               modeloptions[atoi (&pstr[j])] = 1;
@@ -666,9 +675,9 @@ it is ok to have spaces between a flag and its values
                 if (toupper(pstr[j])=='A') // treat 'A' as SKIPMOSTUSCALAROUTPUT, can be necessary if # of digits gets too high for hiddenoptions
                   hiddenoptions[SKIPMOSTUSCALAROUTPUT] = 1;
                 if (toupper(pstr[j])=='B') // treat 'B' as STOPMOSTINTERVALOUTPUT
-                  hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;                  
+                  hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;
                 if (toupper(pstr[j])=='C') // treat 'C' as READOLDMCFFILE  //jh1_17_2018
-                  hiddenoptions[READOLDMCFFILE] = 1; 
+                  hiddenoptions[READOLDMCFFILE] = 1;
               }
               pstr[j] = '\0';
               j--;
@@ -862,9 +871,9 @@ it is ok to have spaces between a flag and its values
     if (runoptions[LOADRUN])
     {
       IM_err (IMERR_COMMANDLINEINCOMPAT, " Conflicting command line arguments, cannot estimate marginal likelihood in Load mode (-r0)");
-    }  
+    }
     if (!Hfp)  // no heat mode set on command line
-      heatmode = HFULL; 
+      heatmode = HFULL;
     else
     {
       if (heatmode != HFULL)
@@ -895,7 +904,7 @@ it is ok to have spaces between a flag and its values
           if (!Hbp) {
             hval2 = 0.8;
 	          }
-          // if (hval1 > 1.0)  //6/11/2010 JH  stopped this,  it turns out numbers slightly higher than 1 can be useful when the are 
+          // if (hval1 > 1.0)  //6/11/2010 JH  stopped this,  it turns out numbers slightly higher than 1 can be useful when the are
             // a large number of chains
             // IM_err (IMERR_COMMANDLINEHEATINGTERMS, "ha commandline term is out of range, should be <= 1");
           if (hval1 > 1.1) //6/11/2010  JH  added this to avoid values much larger than 1
@@ -920,21 +929,21 @@ it is ok to have spaces between a flag and its values
   /* setting  mcmc step intervals:
     regardless of sampling phylgoenies or not
       default mcmc checking is RECORDINTERVALDEFAULT 10
-      this applies to everything an ESS can be calcualted on 
-      can't mess with this because it might mess up calculating autocorrelations and ESS values 
+      this applies to everything an ESS can be calcualted on
+      can't mess with this because it might mess up calculating autocorrelations and ESS values
     if NOT sampling phylogenies:
       default genealogy sampling is SAMPLEGENEALOGYINTERVALDEFAULT  100
         savegenealogyint = SAMPLEGENEALOGYINTERVALDEFAULT
-      -d gives the interval for sampling genealogies 
+      -d gives the interval for sampling genealogies
       mcmc checking is set to the default RECORDINTERVALDEFAULT 10
-    if sampling phylogenies: 
+    if sampling phylogenies:
       genealogies are not sampled
-        savegenealogyint = -1 
+        savegenealogyint = -1
   */
   recordint = RECORDINTERVALDEFAULT;   // this is fixed and is not a command line option
   if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
   {
-    if (!Dp) 
+    if (!Dp)
       savegenealogyint = SAMPLEGENEALOGYINTERVALDEFAULT;
     else
       savegenealogyint = samplemcmcinterval;
@@ -950,7 +959,7 @@ it is ok to have spaces between a flag and its values
   }
   else
     usegenerationtimedefault = 0;
-  if (!Zp) 
+  if (!Zp)
   {
     printint = PRINTINTDEFAULT;
 	 }
@@ -971,7 +980,7 @@ it is ok to have spaces between a flag and its values
   {
     calcoptions[LOADPRIORSFROMFILE] = 1;
   }
-  
+
   if (!Mp && modeloptions[NOMIGRATION] != 1 && !calcoptions[LOADPRIORSFROMFILE] && npops > 1)
   {
     IM_err (IMERR_MISSINGCOMMANDINFO,
@@ -1001,7 +1010,7 @@ it is ok to have spaces between a flag and its values
     else
       burntrendstartdelay = BURNTRENDSTARTDELAYDEFAULT;
   }
-	 if (!Sp) 
+	 if (!Sp)
   {
     seed_for_ran1 = (long) time (NULL);
   }
@@ -1022,15 +1031,15 @@ it is ok to have spaces between a flag and its values
       IM_err (IMERR_COMMANDLINEINCOMPAT," Migration must be included in the model for population topology updating");
     if (runoptions[LOADRUN] ||
         modeloptions[PARAMETERSBYPERIOD] ||
-        modeloptions[MIGRATIONBETWEENSAMPLED] || 
+        modeloptions[MIGRATIONBETWEENSAMPLED] ||
         modeloptions[NOMIGBETWEENNONSISTERS] )
         IM_err (IMERR_COMMANDLINEINCOMPAT," Model options incompatible with population topology updating");
     if (runoptions[LOADRUN])
       IM_err (IMERR_COMMANDLINEINCOMPAT," Run options incompatible with population topology updating");
-    if (calcoptions[FINDJOINTPOSTERIOR] )//|| calcoptions[LOADPRIORSFROMFILE])  // cannot have complex priors with phylogeny updating, as priors need to change with tree 
+    if (calcoptions[FINDJOINTPOSTERIOR] )//|| calcoptions[LOADPRIORSFROMFILE])  // cannot have complex priors with phylogeny updating, as priors need to change with tree
       IM_err (IMERR_COMMANDLINEINCOMPAT," Calculation options incompatible with population topology updating");
-    if ( outputoptions[PRINTTMRCA]|| 
-        outputoptions[THISTDIVIDEBYPRIOR]|| 
+    if ( outputoptions[PRINTTMRCA]||
+        outputoptions[THISTDIVIDEBYPRIOR]||
         outputoptions[MIGRATEHIST]||
         outputoptions[PRINTJOINTTEST])
       IM_err (IMERR_COMMANDLINEINCOMPAT," Output options incompatible with population topology updating");
@@ -1049,8 +1058,8 @@ it is ok to have spaces between a flag and its values
   }
   if (( modeloptions[NOMIGBETWEENNONSISTERS] ||
         modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS] ||
-        modeloptions[MIGRATIONBETWEENSAMPLED] || 
-        //modeloptions[ADDGHOSTPOP] || 
+        modeloptions[MIGRATIONBETWEENSAMPLED] ||
+        //modeloptions[ADDGHOSTPOP] ||
         modeloptions[PARAMETERSBYPERIOD] ||
        /* modeloptions[EXPOMIGRATIONPRIOR] ||  */
         npops == 1 ||
@@ -1115,9 +1124,31 @@ it is ok to have spaces between a flag and its values
  }
 
 if (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1)
-  calcoptions[LOADPRIORSFROMFILE] = 0;  
+  calcoptions[LOADPRIORSFROMFILE] = 0;
+  const int ucbuffer = 200;
+  if (burndurationmode == TIMEINF) {
+      std::stringstream s("");
+      if (runoptions[UNIQUEBURNRUN]) {
+          s << outfilename << ".IMburn";
+      } else {
+          s << "IMburn";
+      }
+      burnfilename = (char *) malloc(s.str().size()+1);
+      strcpy(burnfilename,s.str().c_str());
+  }
+  if (cdurationmode == TIMEINF) {
+      std::stringstream s("");
+      if (runoptions[UNIQUEBURNRUN]) {
+          s << outfilename << ".IMrun";
+      } else {
+          s << "IMrun";
+      }
+      runfilename = (char *) malloc(s.str().size()+1);
+      strcpy(runfilename,s.str().c_str());
+  }
+
  return;
-}                               // scan_commandline 
+}                               // scan_commandline
 
 /*  this prints basic info to a string, fpstr, that later gets printed to the output file */
 void
@@ -1131,7 +1162,7 @@ begin_outputfile_info_string (void)
 #ifdef STDTEST
   SP "\n\n==================\nSTANDARD TEST MODE\n");
 #ifdef RANDOM_NUMBERS_FROM_FILE
-  SP "USES randNums FILE\n");    
+  SP "USES randNums FILE\n");
 #endif
   SP "==================\n\n");
 #endif
@@ -1143,7 +1174,7 @@ begin_outputfile_info_string (void)
 
   SP "\nJob Started: %s\n",timeinfostring);
   SP "%s",outputbanner("input and starting information"));
-  
+
 
   if (calcoptions[DONTCALCLIKELIHOODMUTATION])
     SP "\n\n**NO DATA ** - Data likelihoods set to constant  posterior should equal prior \n\n");
@@ -1173,12 +1204,12 @@ begin_outputfile_info_string (void)
   {
     SP "  Saved genealogy sample filename: %s\n", genealogyinfosavefilename);
   }
-  if (outputoptions[MIGRATEHIST])  
+  if (outputoptions[MIGRATEHIST])
   {
     SP "  Saved distributions of migration event counts filename: %s%s\n",  outfilename,".mpt");
   }
     if (usegenerationtimedefault)
-    SP "\n  Generation Time set to DEFAULT :  1 year\n"); 
+    SP "\n  Generation Time set to DEFAULT :  1 year\n");
   else
     SP "\n  Generation Time (years): %.2lf\n",generationtime);
   SP "\n");
@@ -1287,7 +1318,7 @@ begin_outputfile_info_string (void)
 
 void set_mode_check_inconsistent_options(void)
 {
- // set runmode between 0 and NUMRUNMODES 
+ // set runmode between 0 and NUMRUNMODES
  if (modeloptions[POPTREETOPOLOGYUPDATE])
   {
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
@@ -1302,7 +1333,7 @@ void set_mode_check_inconsistent_options(void)
        if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
         runmode = HGHYPERPRIORmode5;//5
        else
-         runmode = HGmode6; //6 
+         runmode = HGmode6; //6
      }
      else
      {
@@ -1418,13 +1449,13 @@ void start (int argc, char *argv[], int currentid)
   int i;
   FILE *checkfile;
   int rc = 0;
-  
+
   thetaprior = mprior = tprior = -1.0;
   scan_commandline (argc, argv,currentid);
   int mcf0found,mcffound;
   set_mode_check_inconsistent_options(); // set runmode
   if (runmode == GHYPERPRIORmode2 || runmode == HGHYPERPRIORmode5)
-    runoptions[DONTSAVEGENEALOGIES] = 1; 
+    runoptions[DONTSAVEGENEALOGIES] = 1;
 
 
   if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
@@ -1433,12 +1464,12 @@ void start (int argc, char *argv[], int currentid)
     chain0topolupdates = 0;
     chain0topolswaps = 0;
     poptopologiessampled = 0;
-    poptopologyproposedlist = static_cast<int *> (calloc ( (size_t) numtreesarray[npops],sizeof (int)));  // initialize at 0 
+    poptopologyproposedlist = static_cast<int *> (calloc ( (size_t) numtreesarray[npops],sizeof (int)));  // initialize at 0
   }
-  
+
   if (runoptions[DONTSAVEGENEALOGIES]==0)
   {
-	  if (currentid == HEADNODE) 
+	  if (currentid == HEADNODE)
    {
        sprintf(genealogyinfosavefilename, "%s.ti", outfilename); // would not hurt to have other nodes set for this, why only on currentid ?
 	  }
@@ -1448,12 +1479,12 @@ void start (int argc, char *argv[], int currentid)
   {
     sprintf(oldoutfilename, "%s.old", outfilename);
   }
-  setseeds (seed_for_ran1 * (currentid+1));  // JH bad bug,  change from currentid  to currentid+1 
+  setseeds (seed_for_ran1 * (currentid+1));  // JH bad bug,  change from currentid  to currentid+1
   setlogfact ();
   setheat (hval1, hval2, heatmode, currentid);
   if (runoptions[SAVEMCSTATEFILE] || runoptions[SAVELOADSAMEMCFFILE])
   {
-    sprintf(mcfwritefilename, "%s.mcf.%d", outfilename, currentid);  
+    sprintf(mcfwritefilename, "%s.mcf.%d", outfilename, currentid);
   }
   begin_outputfile_info_string ();
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
@@ -1484,7 +1515,7 @@ void start (int argc, char *argv[], int currentid)
     if (modeloptions[EXPOMIGRATIONPRIOR])
     {
       expo_m_mean = mprior;
-      hyperprior_expo_m_mean = -1.0; // not in use 
+      hyperprior_expo_m_mean = -1.0; // not in use
       hyperprior_uniform_m_max = -1.0; // i.e. not in use
     }
     else
@@ -1503,47 +1534,47 @@ void start (int argc, char *argv[], int currentid)
       }
     }
   }
-  // set doRYupdate and doNWupdate 
+  // set doRYupdate and doNWupdate
   doRYupdate = 0;
-#ifdef DO_RY1UPDATE  
+#ifdef DO_RY1UPDATE
       doRYupdate = 1;
 #endif
     doNWupdate = 0;
-#ifdef DO_NWUPDATE  
+#ifdef DO_NWUPDATE
     if (hiddenoptions[HIDDENGENEALOGY]==0 && modeloptions[NOMIGRATION] == 0)
       doNWupdate = 1;
 #endif
-  setup (infilename, fpstri, fpstr,priorfilename, topologypriorinfostring,currentid); // setup() is in initialize.cpp and does all the big structures like L, C, T 
+  setup (infilename, fpstri, fpstr,priorfilename, topologypriorinfostring,currentid); // setup() is in initialize.cpp and does all the big structures like L, C, T
   add_previous_run_info_to_output(fpstri, fpstr);
-  if (runoptions[LOADMCSTATE]) // set name of mcf file to read 
+  if (runoptions[LOADMCSTATE]) // set name of mcf file to read
   {
 	  if (strcmp(&mcfreadfilename[strlen(mcfreadfilename)-4],".mcf")==0)
-      sprintf(mcfreadfilename, "%s.%d", mcfreadfilename, currentid); 
+      sprintf(mcfreadfilename, "%s.%d", mcfreadfilename, currentid);
     else
-      sprintf(mcfreadfilename, "%s.mcf.%d", mcfreadfilename, currentid);  
+      sprintf(mcfreadfilename, "%s.mcf.%d", mcfreadfilename, currentid);
     readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
     mcf_was_read = 1;
   }
   else
     mcf_was_read =0;
 
-  if (runoptions[SAVELOADSAMEMCFFILE]) // check if mcf file is present and read if it is 
+  if (runoptions[SAVELOADSAMEMCFFILE]) // check if mcf file is present and read if it is
   {
-    sprintf(mcfwritefilename, "%s.mcf.%d", outfilename, currentid);  
-    sprintf(mcfreadfilename, "%s", mcfwritefilename); 
+    sprintf(mcfwritefilename, "%s.mcf.%d", outfilename, currentid);
+    sprintf(mcfreadfilename, "%s", mcfwritefilename);
     runoptions[SAVEMCSTATEFILE] = 1;
     mcffound = 0;
     if (currentid == HEADNODE)
       mcf0found = 0;
-    if ((checkfile = fopen (mcfreadfilename, "r")) != NULL) 
+    if ((checkfile = fopen (mcfreadfilename, "r")) != NULL)
     {
       fclose (checkfile);
       sprintf(oldoutfilename, "%s.old", outfilename);
-      //runoptions[LOADMCSTATE] = 1;  
+      //runoptions[LOADMCSTATE] = 1;
       readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
       mcf_was_read = 1;
       /*burndurationmode = TIMESTEPS;
-      burnduration = (int) 0;  // no burn,  regardless of -b value 
+      burnduration = (int) 0;  // no burn,  regardless of -b value
       if (runoptions[MCFLOADONLYSTATESPACE] == 1)  // ignore saved values in .mcf and .ti file, set burndone ==0 to overright .ti file with reset_after_burn
         burndone = 0;
       else
@@ -1560,12 +1591,12 @@ void start (int argc, char *argv[], int currentid)
     numpriormcfruns += 1;
     burndurationmode = TIMESTEPS;
     if (runoptions[MCFLOADONLYSTATESPACE] == 1 )
-      burnduration = (int) 0;  // no burn,  regardless of -b value 
+      burnduration = (int) 0;  // no burn,  regardless of -b value
     if (runoptions[MCFLOADONLYSTATESPACE] == 1 || runoptions[LOADMCSTATE])  // make new .ti file, set burndone ==0 to overright .ti file with reset_after_burn
       burndone = 0;
     else
       burndone = 1;
-    //checkhighs(whichiscoldchain(),currentid,0); gets done anyway below 
+    //checkhighs(whichiscoldchain(),currentid,0); gets done anyway below
     //setheat (hval1, hval2, heatmode, currentid); under some circumstances might want to reset heat terms after loading mcf files
     mcffound = 1;
     if (currentid == HEADNODE)
@@ -1593,12 +1624,12 @@ void start (int argc, char *argv[], int currentid)
     else
     {
       runsteps_old = runsteps = burninsteps_old = burninsteps = genealogysamples_old = 0;
-      mcmcrecords_old = mcmcrecords; 
+      mcmcrecords_old = mcmcrecords;
       mcmcrecords = 0;
     }
 
 #ifdef MPI_ENABLED
-		  if (numprocesses > 1)	
+		  if (numprocesses > 1)
     {
       rc = MPI_Bcast(&mcf0found, 1, MPI_INT, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	   if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -1608,16 +1639,16 @@ void start (int argc, char *argv[], int currentid)
       IM_err (IMERR_MCFREADFAIL, "not all cpus found an MCF file");
     if (mcf0found)
     {
-      time(&lasttime); // set lasttime, same as if the burn had just finished 
+      time(&lasttime); // set lasttime, same as if the burn had just finished
 #ifdef MPI_ENABLED
-		    if (numprocesses > 1)	
+		    if (numprocesses > 1)
       {
         rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	     if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
 	     }
 #endif
     }
-    //else  file does not exist,  do a regular run 
+    //else  file does not exist,  do a regular run
   }
   else
     numpriormcfruns = 0;
@@ -1626,7 +1657,7 @@ void start (int argc, char *argv[], int currentid)
   gsampinflength = calc_gsampinf_length ();
   checkhighs(whichiscoldchain(),currentid,1);
   // AS: TODO Looks like outputoptions has to be broadcast as well
-  if (outputoptions[MIGRATEHIST]) 
+  if (outputoptions[MIGRATEHIST])
   {
     sprintf(migplotfilename, "%s.mpt", outfilename);
     migcount = alloc2Dint_contiguous(&migcountdata, (nloci + (nloci > 1)),nummigdirs);
@@ -1638,12 +1669,12 @@ void start (int argc, char *argv[], int currentid)
       migto[i] = atoi(strchr(migration_counts[0][i].str,'>')+1);
     }
 
-  } 
+  }
   if (runoptions[PRINTBURNTREND] && modeloptions[POPTREETOPOLOGYUPDATE])
     init_burn_phylogeny_counts();
 #ifdef DEBUG
 /*  code for reading in mcf file written by IMa2
-   useful for debugging 
+   useful for debugging
   do
   {
     if (GSAMPINFOEXTRA)
@@ -1660,10 +1691,10 @@ void start (int argc, char *argv[], int currentid)
     8/25/2017  added mini-burn code,
     when topology is updated, it seems like burnin takes forever
     possibe that a lot of this is associated with getting genealogies and poptrees in sync
-    so maybe it would help if just burned genealogies for awhile before starting all the other updates 
-    just made numminiburn numbers up 
+    so maybe it would help if just burned genealogies for awhile before starting all the other updates
+    just made numminiburn numbers up
     this does seem to help
-    makes sense because the genealogies start out as pretty arbitrary with respect to the model 
+    makes sense because the genealogies start out as pretty arbitrary with respect to the model
     also played around a lot with extra hg updates during the run,  but this does not seem to help
   */
   if ( (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1) && runoptions[LOADRUN]==0 && (runoptions[LOADMCSTATE] == 0 || runoptions[SAVELOADSAMEMCFFILE]==1))
@@ -1676,7 +1707,7 @@ void start (int argc, char *argv[], int currentid)
         numminiburn = 100;
       else if (meanss < 30.0)
         numminiburn = 1000;
-      else 
+      else
         numminiburn = 10000;
       if (dominiburn)
       {
@@ -1691,7 +1722,7 @@ void start (int argc, char *argv[], int currentid)
               update_hidden_genealogy (ci, li, &topolchange, &tmrcachange);
           }
         }
-        //if (currentid == HEADNODE) 
+        //if (currentid == HEADNODE)
         //  printf("mini-burn done\n");
       }
     }
@@ -1699,13 +1730,13 @@ void start (int argc, char *argv[], int currentid)
 
 /* 4/13/2017   JH redid qupdate with a different scheme for managing the intervals between updates */
 /* interval is # steps _between_,  period is interval + 1,  minimum interval is 0  (every step) */
-#define GENEALOGYUPDATEINTERVAL 0  
+#define GENEALOGYUPDATEINTERVAL 0
 #define POPTOPOLUPDATEINTERVAL 0
 #define USCALARUPDATEINTERVAL  9
 #define CHAINSWAPINTERVAL 0
 #define POPRYUPDATEINTERVAL  1
 #define POPNWUPDATEINTERVAL  1
-#define POPSLIDEUPDATEINTERVAL 1 
+#define POPSLIDEUPDATEINTERVAL 1
 #define MIGPRIORUPDATEINTERVAL  9
 #define QPRIORUPDATEINTERVAL  9
 #define MIGPRIORNOTINTREEUPDATEINTERVAL 500
@@ -1715,11 +1746,11 @@ void qupdate (int currentid)
 /* updatecounter is a simple stucture to determine when things get updated
   .interval is # steps between updates  (0 means update every step)
   .count is the current # of steps since last update
-  By starting .count at a nonzero value,  can stagger updates that  have the same intervals 
-  can also set .interval+1 values to be prime numbers 
+  By starting .count at a nonzero value,  can stagger updates that  have the same intervals
+  can also set .interval+1 values to be prime numbers
 
   to turn off an update set .interval to INTMAX
-  */ 
+  */
   struct updatecounter{
     int interval;
     int count;
@@ -1733,7 +1764,7 @@ void qupdate (int currentid)
   static struct updatecounter migpriornit_uc,qprior_uc,qpriornit_uc;
   int mpa;
   int mpanitattempt,mpanitaccept;
-  int poptopolchange,poptmrcachange; 
+  int poptopolchange,poptmrcachange;
   int trypoptopolchange,trypoptmrcachange;
   if (step==0)
   {
@@ -1749,25 +1780,25 @@ void qupdate (int currentid)
     poptopol_uc.interval = POPTOPOLUPDATEINTERVAL;
     migprior_uc.count = 3;
     migprior_uc.interval = MIGPRIORUPDATEINTERVAL;
-    uscale_uc.count = 1; // stagger these updates with respect to others 
+    uscale_uc.count = 1; // stagger these updates with respect to others
     uscale_uc.interval = USCALARUPDATEINTERVAL ;
     chainswap_uc.count = 0;
     chainswap_uc.interval = CHAINSWAPINTERVAL;
     migpriornit_uc.count = 0;
     migpriornit_uc.interval =   MIGPRIORNOTINTREEUPDATEINTERVAL;
-    qprior_uc.count = 4; // stagger these updates with respect to others 
+    qprior_uc.count = 4; // stagger these updates with respect to others
     qprior_uc.interval  = QPRIORUPDATEINTERVAL;
-    qpriornit_uc.count = 250; // stagger these updates with respect to others 
+    qpriornit_uc.count = 250; // stagger these updates with respect to others
     qpriornit_uc.interval = QPRIORNOTINTREEUPDATEINTERVAL;
 }
 
 #ifdef TURNONCHECKS
   checkgenealogy(0,0,0);
 #endif //TURNONCHECKS
-  int z = whichiscoldchain();  // if cold chain not on this cpu, then z=-1 
+  int z = whichiscoldchain();  // if cold chain not on this cpu, then z=-1
 
   /* update genealogies */
-  if (gene_uc.interval >= gene_uc.count) 
+  if (gene_uc.interval >= gene_uc.count)
   {
     for (ci = 0; ci < numchainspp; ci++)
     {
@@ -1803,10 +1834,10 @@ checkgenealogyweights(ci);
               #ifdef TURNONCHECKS
               pcheck(ci,1);
               #endif
-                  
+
             }
           }
-        
+
 #ifdef TURNONCHECKS
         checkgenealogy(ci,li,1);
         checkprobs(ci,-1);
@@ -1832,17 +1863,17 @@ checkgenealogyweights(ci);
           }
         }
       }
-      
+
     }
     gene_uc.count = 0;
   }
   else
   {
-      gene_uc.count += 1;  
+      gene_uc.count += 1;
   } // geneealogy
 
-  /*  poptree topology updating  */ 
-  if (npops > 1  && modeloptions[POPTREETOPOLOGYUPDATE] == 1) 
+  /*  poptree topology updating  */
+  if (npops > 1  && modeloptions[POPTREETOPOLOGYUPDATE] == 1)
   {
     if (poptopol_uc.count >= poptopol_uc.interval )
     {
@@ -1871,7 +1902,7 @@ checkgenealogyweights(ci);
   }//poptopol
 
   /*  poptree population branch slide updating   */
-  if (npops > 1  && modeloptions[POPTREETOPOLOGYUPDATE] == 0 && hiddenoptions[HIDDENGENEALOGY]==1) 
+  if (npops > 1  && modeloptions[POPTREETOPOLOGYUPDATE] == 0 && hiddenoptions[HIDDENGENEALOGY]==1)
   {
     if (popslide_uc.count >= popslide_uc.interval )
     {
@@ -1898,7 +1929,7 @@ checkgenealogyweights(ci);
     {
       popslide_uc.count += 1;
     }
-  }//popslide 
+  }//popslide
 
   /* poptree RY update */
   if (doRYupdate)
@@ -1908,7 +1939,7 @@ checkgenealogyweights(ci);
       for (ci = 0; ci < numchainspp; ci++)
       {
         periodpick = randposint (numsplittimes);
-        if (hiddenoptions[HIDDENGENEALOGY]==1) 
+        if (hiddenoptions[HIDDENGENEALOGY]==1)
           changed = changet_RYhg (ci, periodpick);
         else
           changed = changet_RY1 (ci, periodpick);
@@ -1928,7 +1959,7 @@ checkgenealogyweights(ci);
     {
       popRY_uc.count += 1;
     }
-  } //RY  
+  } //RY
   /* poptree NW update */
   if (doNWupdate)
   {
@@ -2011,7 +2042,7 @@ checkgenealogyweights(ci);
       {
         for (ci = 0; ci < numchainspp; ci++)
         {
-          for (j = 0; j < nummigrateparams; j++) 
+          for (j = 0; j < nummigrateparams; j++)
           {
             mpa = update_migration_prior_intree(ci,j);
             #ifdef TURNONCHECKS
@@ -2036,7 +2067,7 @@ checkgenealogyweights(ci);
       {
         for (ci = 0; ci < numchainspp; ci++)
         {
-          for (j = 0; j < numpopsizeparams; j++) 
+          for (j = 0; j < numpopsizeparams; j++)
           {
             mpa = update_popsize_prior_intree(ci,j);
             #ifdef TURNONCHECKS
@@ -2082,7 +2113,7 @@ checkgenealogyweights(ci);
         migpriornit_uc.count += 1;
       }
       //now do popsize terms not in the current tree
-      if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) 
+      if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
       {
         if (qpriornit_uc.count >= qpriornit_uc.interval)
         {
@@ -2107,7 +2138,7 @@ checkgenealogyweights(ci);
     }
   } //migprior
 
-  /* chain swapping */ 
+  /* chain swapping */
   if (numchainspp > 1)
   {
     if (chainswap_uc.count >= chainswap_uc.interval)
@@ -2116,20 +2147,20 @@ checkgenealogyweights(ci);
       {
 #ifdef MPI_ENABLED
         // 7/7/2016  used to call both swapchains and swapchains_bwprocesses  but finally figured out this was unnecessary and just let swapchains_bwprocesses do both
-        // thse num... vars are really just for debugging 
+        // thse num... vars are really just for debugging
         int numattemptwithin = 0;
         int numattemptbetween = 0;
         int numsuccesswithin = 0;
         int numsuccessbetween = 0;
 
         swapchains_bwprocesses(currentid, swaptries_per_cpu,  &numattemptwithin,&numattemptbetween,&numsuccesswithin,&numsuccessbetween);
-        
-#endif 
+
+#endif
 	     }
       else // numprocesses == 1
       {
         qswapped = swapchains (1,swaptries_per_cpu); // qswapped never used
-       
+
       }
       chainswap_uc.count = 0;
     }
@@ -2144,23 +2175,23 @@ checkgenealogyweights(ci);
   for (ci=0;ci<numchainspp;ci++)
   {
     checkgenealogyweights(ci);
-    pcheck(ci,0);// just in case I missed something 
+    pcheck(ci,0);// just in case I missed something
   }
 #endif
   return;
 }                               /* qupdate */
-#undef GENEALOGYUPDATEINTERVAL   
-#undef POPTOPOLUPDATEINTERVAL 
-#undef USCALARUPDATEINTERVAL 
-#undef CHAINSWAPINTERVAL 
-#undef POPRYUPDATEINTERVAL  
-#undef POPNWUPDATEINTERVAL  
-#undef POPSLIDEUPDATEINTERVAL 
-#undef MIGPRIORUPDATEINTERVAL 
-#undef QPRIORUPDATEINTERVAL  
-#undef MIGPRIORNOTINTREEUPDATEINTERVAL 
+#undef GENEALOGYUPDATEINTERVAL
+#undef POPTOPOLUPDATEINTERVAL
+#undef USCALARUPDATEINTERVAL
+#undef CHAINSWAPINTERVAL
+#undef POPRYUPDATEINTERVAL
+#undef POPNWUPDATEINTERVAL
+#undef POPSLIDEUPDATEINTERVAL
+#undef MIGPRIORUPDATEINTERVAL
+#undef QPRIORUPDATEINTERVAL
+#undef MIGPRIORNOTINTREEUPDATEINTERVAL
 #undef QPRIORNOTINTREEUPDATEINTERVAL
-#undef HIDDENGENEALOGYUPDATEEXTRA 
+#undef HIDDENGENEALOGYUPDATEEXTRA
 
 #undef BRANCHUPDATEFRAC
 
@@ -2174,7 +2205,7 @@ void reset_after_burn (int currentid)
   //time (&chainstarttime);
   checkhighs(whichiscoldchain(),currentid,1);
 #ifdef MPI_ENABLED
-		/*if (numprocesses > 1)	
+		/*if (numprocesses > 1)
   {
     //rc = MPI_Bcast(&chainstarttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 //printf("5 %d %llu\n",currentid,chainstarttime);
@@ -2190,7 +2221,7 @@ void reset_after_burn (int currentid)
     time (&timer);
   }
 #ifdef MPI_ENABLED
-		if (numprocesses > 1)	
+		if (numprocesses > 1)
   {
     rc = MPI_Bcast(&timer, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	 if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2204,7 +2235,7 @@ void reset_after_burn (int currentid)
 
   for (li = 0; li < nloci; li++)
   {
-   
+
     for (ui = 0; ui < L[li].nlinked; ui++)
     {
       for (j = 0; j < L[li].u_rec[ui].num_uptypes; j++)
@@ -2243,7 +2274,7 @@ void reset_after_burn (int currentid)
   checkautoc (1, burndone, burninsteps, currentid);
   if (runoptions[DONTSAVEGENEALOGIES]==0)
   {
-	   if (currentid == HEADNODE) 
+	   if (currentid == HEADNODE)
     if (runoptions[MCFLOADONLYSTATESPACE] && mcf_was_read) // write a .ti file,  possibly overwriting one of the same name (which is ok)
     {
       if ((genealogyinfosavefile = fopen (genealogyinfosavefilename, "w")) == NULL)
@@ -2290,12 +2321,12 @@ void reset_after_burn (int currentid)
         fprintf (genealogyinfosavefile,"\n");
       }
       fprintf (genealogyinfosavefile, "VALUESSTART\n");
-      f_close (genealogyinfosavefile);
+      FCLOSE (genealogyinfosavefile);
 	   }
   }
   if (runoptions[SAVEMCSTATEFILE])
   {
-    //writemcf (mcfwritefilename,command_line,mcmcrecords,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run 
+    //writemcf (mcfwritefilename,command_line,mcmcrecords,hilike_rec,hiprob_rec,currentid);   // can be useful to save after the burn in case something happens to the rest of the run
     writemcf (mcfwritefilename,command_line,mcmcrecords,mcmcrecords_old,genealogysamples_old,burninsteps_old,runsteps_old,hilike,hiprob,currentid);
   }
 
@@ -2315,7 +2346,7 @@ void writeburntrendfile (int currentid)
   int rc;
   time (&burntrendtime);
 #ifdef MPI_ENABLED
-		if (numprocesses > 1)	
+		if (numprocesses > 1)
   {
     rc = MPI_Bcast(&burntrendtime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	 if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2334,7 +2365,7 @@ void writeburntrendfile (int currentid)
     sprintf(oldburntrendfilename, "%s.old", burntrendfilename); // set the name of the old burntrend file
     if (file_exists(oldburntrendfilename))
       remove (oldburntrendfilename);   // delete that file
-    rename (burntrendfilename, oldburntrendfilename);  // now rename the current burtrend file to that old name 
+    rename (burntrendfilename, oldburntrendfilename);  // now rename the current burtrend file to that old name
     if ((burntrendfile = fopen (burntrendfilename, "w")) == NULL)
     {
       IM_err (IMERR_CREATEFILEFAIL,
@@ -2359,7 +2390,7 @@ void writeburntrendfile (int currentid)
         fprintf (burntrendfile,"    Input File Tree rewritten with standard ordering and ghost population outgroup: %s\n",temppoptreestring);
       }
     }
-    
+
     fprintf (burntrendfile, "========================================\n");
 /*#ifdef INDEVELOPMENT
     output_update_scalars(whichiscoldchain(),currentid);
@@ -2372,10 +2403,10 @@ void writeburntrendfile (int currentid)
     fprintf (burntrendfile, "Current Step #: %d \n\n", step);
     if (trendspot > 1 && currentid == HEADNODE)
       callasciitrend (burntrendfile,trenddoublepoint,trendspot);
-    else if (trendspot <= 1 && currentid == HEADNODE) 
+    else if (trendspot <= 1 && currentid == HEADNODE)
     {
-      fprintf(burntrendfile, "burn period too short to plot trends,  trend recording begins at step %d \n",burntrendstartdelay); 
-    } 
+      fprintf(burntrendfile, "burn period too short to plot trends,  trend recording begins at step %d \n",burntrendstartdelay);
+    }
     fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %s\n",timestring(seconds));
 		  //fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %d hours, %d minutes, %d seconds \n",
     //  (int) seconds / (int) 3600,((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),(int) seconds - (int) 60 *((int) seconds / (int) 60));
@@ -2384,22 +2415,22 @@ void writeburntrendfile (int currentid)
   }
   else
   {
-    //need to do some operations on all nodes so that MPI works 
+    //need to do some operations on all nodes so that MPI works
     //intervaloutput() and outputburntopologycounts()  make MPI_Reduce() calls,  and these must be made on all processors
 /*#ifdef INDEVELOPMENT
     output_update_scalars(whichiscoldchain(),currentid);
 #endif */
-    intervaloutput (NULL, currentid);  
+    intervaloutput (NULL, currentid);
     if (modeloptions[POPTREETOPOLOGYUPDATE])
       outputburntopologycounts(NULL,currentid);
   }
 }                               // writeburntrendfile
 
 /* run() determines the status of a run in terms of whether it is in the burnin phase or not
-  and of whether the run should keep going. 
+  and of whether the run should keep going.
   if the burnin period has just ended,  some work is done
-  run()  also  checks to see if it is time to print an output file 
-  returns 0 (stop) or 1 (continue run) 
+  run()  also  checks to see if it is time to print an output file
+  returns 0 (stop) or 1 (continue run)
 */
 int run (int currentid)
 {
@@ -2407,8 +2438,8 @@ int run (int currentid)
   static int printburntrendstep = 0, burnrecordi = 1;
   int tempburndone;
   int rc = 0; //AS: return code for MPI C bindings
-  char runfilename[] = "IMrun";
-  char burnfilename[] = "IMburn";
+  //char runfilename[] = "IMrun";
+  //char burnfilename[] = "IMburn";
   time_t timer;
   if (burndone)
   {
@@ -2416,7 +2447,7 @@ int run (int currentid)
     {
       case TIMESTEPS:
         {
-          return (step < (chainduration + burninsteps)); ///AS: Is this correct? 
+          return (step < (chainduration + burninsteps)); ///AS: Is this correct?
           break;
 	       }
       case TIMEINF:
@@ -2435,7 +2466,7 @@ int run (int currentid)
 	         }
           time (&timer);
 #ifdef MPI_ENABLED
-		        if (numprocesses > 1)	
+		        if (numprocesses > 1)
           {
             rc = MPI_Bcast(&timer, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	         if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2445,7 +2476,7 @@ int run (int currentid)
           {
             time (&lasttime);
 #ifdef MPI_ENABLED
-		        if (numprocesses > 1)	
+		        if (numprocesses > 1)
           {
             rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	         if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2453,25 +2484,25 @@ int run (int currentid)
 #endif
             if (currentid == HEADNODE)
             {
-              
+
               continuerun = checkrunfile(runfilename);
             }
 #ifdef MPI_ENABLED
-		          if (numprocesses > 1)	
+		          if (numprocesses > 1)
             {
               rc = MPI_Bcast(&continuerun, 1, MPI_INT, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	           if (rc !=MPI_SUCCESS) {
 			             MPI_Abort(MPI_COMM_WORLD,-1);
-              } 
+              }
 	           }
 #endif
-	           if (continuerun == 0) 
+	           if (continuerun == 0)
             {
 		            return(0);
 	           }
             else
             {
-		            if (currentid == HEADNODE) 
+		            if (currentid == HEADNODE)
               {
                 if (runoptions[DONTSAVEGENEALOGIES]==0 && genealogysamples > 0)
                 {
@@ -2480,12 +2511,12 @@ int run (int currentid)
 		            }
               printoutput (currentid,0);
 #ifdef MPI_ENABLED
-		            if (numprocesses > 1) 
+		            if (numprocesses > 1)
               {
 			             MPI_Barrier(MPI_COMM_WORLD);// is this necessary ??
 		            }
-#endif 
-              
+#endif
+
             }
           }
           return (1);
@@ -2516,7 +2547,7 @@ int run (int currentid)
         time (&timer);
         tempburndone = (timer - lasttime) > burnduration;
 #ifdef MPI_ENABLED
-		      if (numprocesses > 1)	
+		      if (numprocesses > 1)
         {
           rc = MPI_Bcast(&timer, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	       if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2530,7 +2561,7 @@ int run (int currentid)
       return (0);
       break;
     }
-    // plot burn trend if called for 
+    // plot burn trend if called for
     if (runoptions[PRINTBURNTREND] && (tempburndone || step >= burntrendstartdelay))
     {
       if (burnrecordi == recordint)
@@ -2543,11 +2574,11 @@ int run (int currentid)
         burnrecordi++;
       }
       if (tempburndone)
-      {  
+      {
         if (noburn_mcfload == 0)
           writeburntrendfile (currentid);
 /*#ifdef MPI_ENABLED
-		      if (numprocesses > 1) 
+		      if (numprocesses > 1)
         {
 			       //MPI_Barrier(MPI_COMM_WORLD);// is this necessary ??
 		      }
@@ -2558,7 +2589,7 @@ int run (int currentid)
         {
           if (currentid == HEADNODE)
           {
-              
+
             tempburndone = !checkrunfile(burnfilename);
             if (tempburndone==0) // continue burn
             {
@@ -2569,17 +2600,17 @@ int run (int currentid)
           }
 
 #ifdef MPI_ENABLED
-		        if (numprocesses > 1)	
+		        if (numprocesses > 1)
           {
             rc = MPI_Bcast(&tempburndone, 1, MPI_INT, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	         if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
 	         }
 #endif
-	         if (tempburndone == 0) 
+	         if (tempburndone == 0)
           {
-		          time (&lasttime); // start the clock again, continue burn 
+		          time (&lasttime); // start the clock again, continue burn
 #ifdef MPI_ENABLED
-		          if (numprocesses > 1)	
+		          if (numprocesses > 1)
             {
               rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	           if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
@@ -2631,23 +2662,23 @@ void trend_reset (struct value_record *v, int nv)
 
 /* Using trendrecord()
 This function records trend lines
-It works on instances of struct value_record 
-the value_record must first be initialized (probably in initialize.c) 
-Code for a particular value_record or array of value_records 
+It works on instances of struct value_record
+the value_record must first be initialized (probably in initialize.c)
+Code for a particular value_record or array of value_records
 can be placed in trendrecord at two places:
   in the "if (burndone && reset == 0) " section
   and in the "if (recordinc == recordtrendinc)" section
 
 explanation for how trendline data are accumulated:
- - movespot is the point at which values are deleted from the array, 
+ - movespot is the point at which values are deleted from the array,
  - each new value is added to the end of the array (i.e. at trendspot)
  - all values from one position past movespot up to the end of the array are moved down one position
- - this erases the value at movespot and makes room for a new value at the end. 
- -each time the replacement point (movespot) reaches the end of the array the time 
-	period between additions doubles 
-values are added more slowly as the run proceeds.  
-- this is because the time period doubles when movespot reaches the end 
-- the values to the left of movespot have half the density (in time) of those to the right 
+ - this erases the value at movespot and makes room for a new value at the end.
+ -each time the replacement point (movespot) reaches the end of the array the time
+	period between additions doubles
+values are added more slowly as the run proceeds.
+- this is because the time period doubles when movespot reaches the end
+- the values to the left of movespot have half the density (in time) of those to the right
 */
 //AS: adding currentid, so I can start recording values correctly on the head node
 //2/7/2014
@@ -2694,7 +2725,7 @@ void trendrecord (int loadarrayj, int currentid)
             trend_reset (L[li].kappa_rec->v, 1);
           }
         }
-        
+
       }
     }
       for (k = 0; k < lastperiodnumber; k++)
@@ -2728,7 +2759,7 @@ void trendrecord (int loadarrayj, int currentid)
       if (lpgpd_v->do_trend)
       {
 	      int z = whichiscoldchain();
-	      if (z >= 0 && currentid == HEADNODE) 
+	      if (z >= 0 && currentid == HEADNODE)
         {
           if (hiddenoptions[HIDDENGENEALOGY] == 0)
 	          inctrend (movespot, trendspot, lpgpd_v,
@@ -2738,24 +2769,24 @@ void trendrecord (int loadarrayj, int currentid)
                   C[z]->allpcalc.probg + C[z]->allpcalc.pdg + C[z]->allpcalc.probhgg);
 	      }
 	#ifdef MPI_ENABLED
-	      if (z < 0 && currentid == HEADNODE) 
+	      if (z < 0 && currentid == HEADNODE)
         {
 		      probrec = 0.0;
 		      int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1313, MPI_COMM_WORLD, &status);
-		      if (rc != MPI_SUCCESS) 
+		      if (rc != MPI_SUCCESS)
           {
 			      MPI_Abort(MPI_COMM_WORLD, rc);
 		      }
 		      inctrend (movespot, trendspot, lpgpd_v, probrec);
 	      }
-	      if (z >=0 && currentid != 0) 
+	      if (z >=0 && currentid != 0)
        {
           if (hiddenoptions[HIDDENGENEALOGY]==0)
 		          probrec = C[z]->allpcalc.probg + C[z]->allpcalc.pdg;
           else
             probrec = C[z]->allpcalc.probg + C[z]->allpcalc.pdg + C[z]->allpcalc.probhgg;
 		      int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1313, MPI_COMM_WORLD);
-		      if (rc != MPI_SUCCESS) 
+		      if (rc != MPI_SUCCESS)
           {
 			      MPI_Abort(MPI_COMM_WORLD, rc);
 		      }
@@ -2765,25 +2796,25 @@ void trendrecord (int loadarrayj, int currentid)
       if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_trend)
       {
 	      int z = whichiscoldchain();
-	      if (z >= 0 && currentid == HEADNODE) 
+	      if (z >= 0 && currentid == HEADNODE)
         {
-          if (npops - modeloptions[ADDGHOSTPOP] < MINPOPSFORDISTANCE) // for fewer than 6 populations record the pop id #, else record the distance to tree 0 
+          if (npops - modeloptions[ADDGHOSTPOP] < MINPOPSFORDISTANCE) // for fewer than 6 populations record the pop id #, else record the distance to tree 0
 	           inctrend (movespot, trendspot, poptreeuinfo->v, (double) C[z]->poptreenum);
           else
             inctrend (movespot, trendspot, poptreeuinfo->v,(double) RFtreedis[C[z]->poptreenum]);
 	      }
 	#ifdef MPI_ENABLED
-	      if (z < 0 && currentid == HEADNODE) 
+	      if (z < 0 && currentid == HEADNODE)
        {
 		      probrec = 0.0;
 		      int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 13131, MPI_COMM_WORLD, &status);
-		      if (rc != MPI_SUCCESS) 
+		      if (rc != MPI_SUCCESS)
           {
 			      MPI_Abort(MPI_COMM_WORLD, rc);
 		      }
 		      inctrend (movespot, trendspot, poptreeuinfo->v, probrec);
 	      }
-	      if (z >=0 && currentid != 0) 
+	      if (z >=0 && currentid != 0)
        {
           if (npops - modeloptions[ADDGHOSTPOP] < MINPOPSFORDISTANCE)
 		          probrec = (double) C[z]->poptreenum;
@@ -2794,12 +2825,12 @@ void trendrecord (int loadarrayj, int currentid)
 	      }
 	#endif
 	    }
-     for (j = 0; j < lastperiodnumber; j++) 
+     for (j = 0; j < lastperiodnumber; j++)
      {
-        if (T[j].v->do_trend) 
+        if (T[j].v->do_trend)
         {
 		      int z = whichiscoldchain();
-		      if (z >= 0 && currentid == HEADNODE) 
+		      if (z >= 0 && currentid == HEADNODE)
         {
 	         inctrend (movespot, trendspot, T[j].v, C[z]->tvals[j]);
 		      }
@@ -2807,17 +2838,17 @@ void trendrecord (int loadarrayj, int currentid)
 		      if (z < 0 && currentid == HEADNODE) {
 			      probrec = 0.0;
 			      int rc =  MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1717, MPI_COMM_WORLD, &status);
-			      if (rc != MPI_SUCCESS) 
+			      if (rc != MPI_SUCCESS)
          {
 				      MPI_Abort(MPI_COMM_WORLD, rc);
 			      }
 			      inctrend (movespot, trendspot, T[j].v, probrec);
 		      }
-		      if (z >= 0 && currentid != 0) 
+		      if (z >= 0 && currentid != 0)
         {
 			      probrec = C[z]->tvals[j];
 			      int rc =  MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1717, MPI_COMM_WORLD);
-			      if (rc != MPI_SUCCESS) 
+			      if (rc != MPI_SUCCESS)
          {
 				        MPI_Abort(MPI_COMM_WORLD, rc);
 			      }
@@ -2830,22 +2861,22 @@ void trendrecord (int loadarrayj, int currentid)
     {
       if (runoptions[LOADRUN] == 0)
       {
-        for (ui = 0; ui < L[li].nlinked; ui++)if (L[li].u_rec[ui].v->do_trend) 
+        for (ui = 0; ui < L[li].nlinked; ui++)if (L[li].u_rec[ui].v->do_trend)
         {
 		        int z = whichiscoldchain();
-		        if (z >= 0 && currentid == HEADNODE)  
+		        if (z >= 0 && currentid == HEADNODE)
           {
             inctrend (movespot, trendspot, L[li].u_rec[ui].v, C[z]->G[li].uvals[ui]);
 		        }
 #ifdef MPI_ENABLED
-		        if (z < 0 && currentid == HEADNODE) 
+		        if (z < 0 && currentid == HEADNODE)
           {
 			         probrec = 0.0;
 			         int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1414, MPI_COMM_WORLD, &status);
 			         if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
 			         inctrend (movespot, trendspot, L[li].u_rec[ui].v, probrec);
 		        }
-		        if (z >= 0 && currentid != 0) 
+		        if (z >= 0 && currentid != 0)
           {
 			         probrec = C[z]->G[li].uvals[ui];
 			         int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1414, MPI_COMM_WORLD);
@@ -2854,22 +2885,22 @@ void trendrecord (int loadarrayj, int currentid)
 #endif
 		      }
 	     }
-      if (L[li].model == HKY) 
+      if (L[li].model == HKY)
       {
 		      int z = whichiscoldchain();
-		      if (z >= 0 && currentid == HEADNODE) 
+		      if (z >= 0 && currentid == HEADNODE)
         {
 	         inctrend (movespot, trendspot, L[li].kappa_rec->v, C[z]->G[li].kappaval);
 		      }
 #ifdef MPI_ENABLED
-		      if (z < 0 && currentid == HEADNODE) 
+		      if (z < 0 && currentid == HEADNODE)
         {
 			       probrec = 0.0;
 			       int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1515, MPI_COMM_WORLD, &status);
 			       if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
 			       inctrend (movespot, trendspot, L[li].kappa_rec->v, probrec);
 		      }
-		      if (z >=0 && currentid != 0) 
+		      if (z >=0 && currentid != 0)
         {
 			       probrec = C[z]->G[li].kappaval;
 			       int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1515, MPI_COMM_WORLD);
@@ -2915,7 +2946,7 @@ void recordval (struct value_record *v, double val)
   {
     k = (int) (GRIDSIZE * val / v->plotrange.max);
   }
-  
+
   if (k < 0)
   {
     v->beforemin++;
@@ -2977,7 +3008,7 @@ this works on instances of struct value_record
 the value_record must be initiatlized (e.g. in initialize.c,  see e.g. init_g_rec)
 this includes a call to init_value_record()
 
-insert line(s) code into record()  below,  to make a call to recordval() 
+insert line(s) code into record()  below,  to make a call to recordval()
 
 */
 
@@ -3030,10 +3061,10 @@ void record_migrations (int z)
     {
       recordval (&migration_counts [i][k], (double) migcount[i][k]);
     }  */
-  } 
+  }
 }                               //record_migrations
 
-void checkhighs (int z,int currentid, int reset) 
+void checkhighs (int z,int currentid, int reset)
 {
   int rc = 0; //AS: return code for MPI C bindings
   double lowprob = -1e100;
@@ -3051,7 +3082,7 @@ void checkhighs (int z,int currentid, int reset)
   }
   else if (reset)
   {
-    hilike = currlike = hiprob = currprob = lowprob; 
+    hilike = currlike = hiprob = currprob = lowprob;
   }
 
 #ifdef MPI_ENABLED
@@ -3066,7 +3097,7 @@ void checkhighs (int z,int currentid, int reset)
     rc = MPI_Send(temp, 4, MPI_DOUBLE, 0, 12321, MPI_COMM_WORLD);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
   }
-	 if (z < 0 && currentid == HEADNODE) // receive roottime 
+	 if (z < 0 && currentid == HEADNODE) // receive roottime
   {
 		  rc = MPI_Recv(temp, 4, MPI_DOUBLE, MPI_ANY_SOURCE, 12321, MPI_COMM_WORLD, &status);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
@@ -3087,7 +3118,7 @@ void checkhighs (int z,int currentid, int reset)
 		  rc = MPI_Send(&currprob, 1, MPI_DOUBLE, 0, 232381, MPI_COMM_WORLD);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	 }
-	 if (z < 0 && currentid == HEADNODE) // receive roottime 
+	 if (z < 0 && currentid == HEADNODE) // receive roottime
   {
 		  rc = MPI_Recv(&hilike, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232321, MPI_COMM_WORLD, &status);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
@@ -3096,9 +3127,9 @@ void checkhighs (int z,int currentid, int reset)
 		  rc = MPI_Recv(&hiprob, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232361, MPI_COMM_WORLD, &status);
 		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		  rc = MPI_Recv(&currprob, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 232381, MPI_COMM_WORLD, &status);
-		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc); 
-	 } 
-  MPI_Barrier(MPI_COMM_WORLD); // should be a way to do this better that avoids a barrier 
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+	 }
+  MPI_Barrier(MPI_COMM_WORLD); // should be a way to do this better that avoids a barrier
   */
 #endif
   //printf("currlike: %.2lf hilike: %.2lf currprob: %.2lf hiprob: %.2lf\n",currlike,hilike,currprob,hiprob);
@@ -3128,15 +3159,15 @@ void record (int currentid)
 
  /*
   current and highest likelihoods and genealogy priors
- */ 
+ */
  checkhighs(z,currentid,0);
 
   if (outputoptions[PRINTTMRCA])
   {
     for (li = 0; li < nloci; li++)
     {
-	
-	    if (z >= 0 && currentid == HEADNODE) 
+
+	    if (z >= 0 && currentid == HEADNODE)
      {
 	      recordval (L[li].g_rec->v, C[z]->G[li].roottime);
 	    }
@@ -3147,7 +3178,7 @@ void record (int currentid)
 		     rc = MPI_Send(&rtime, 1, MPI_DOUBLE, 0, 2323, MPI_COMM_WORLD);
 		     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	    }
-	    if (z < 0 && currentid == HEADNODE) // receive roottime 
+	    if (z < 0 && currentid == HEADNODE) // receive roottime
      {
 		     double rtime = 0.0;
 		     rc = MPI_Recv(&rtime, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 2323, MPI_COMM_WORLD, &status);
@@ -3160,25 +3191,25 @@ void record (int currentid)
 
   if (domutationscalarupdate) for (li = 0; li < nloci; li++)
   {
-    if (z >= 0) 
+    if (z >= 0)
     {
     G = &(C[z]->G[li]);
     }
     for (ui = 0; ui < L[li].nlinked; ui++)
     {
-	    if (z >= 0 && currentid == HEADNODE) 
+	    if (z >= 0 && currentid == HEADNODE)
      {
 	      recordval (L[li].u_rec[ui].v, G->uvals[ui]);
 	    }
 #ifdef MPI_ENABLED
-	    if (z >=0 && currentid !=0) 
+	    if (z >=0 && currentid !=0)
       {
 		    double uvals = G->uvals[ui];
 		    rc = MPI_Send(&uvals, 1, MPI_DOUBLE, 0, 2424, MPI_COMM_WORLD);
 		    if (rc != MPI_SUCCESS)
 			    MPI_Abort(MPI_COMM_WORLD, rc);
 	    }
-	    if (z < 0 && currentid == HEADNODE) 
+	    if (z < 0 && currentid == HEADNODE)
       {
 		    double uvals = 0.0;
 		    rc = MPI_Recv(&uvals, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 2424, MPI_COMM_WORLD, &status);
@@ -3190,21 +3221,21 @@ void record (int currentid)
     }
     if (L[li].model == HKY)
     {
-	    if (z >= 0 && currentid == HEADNODE) 
+	    if (z >= 0 && currentid == HEADNODE)
       {
 	          recordval (L[li].kappa_rec->v, G->kappaval);
 	    }
 #ifdef MPI_ENABLED
-	    if (numprocesses > 1) 
+	    if (numprocesses > 1)
       {
-		    if (z >= 0 && currentid != 0) 
+		    if (z >= 0 && currentid != 0)
         {
 			    double kval = G->kappaval;
 			    rc = MPI_Send(&kval, 1, MPI_DOUBLE, 0, 2345, MPI_COMM_WORLD);
 			    if (rc != MPI_SUCCESS)
 				    MPI_Abort(MPI_COMM_WORLD, rc);
 		    }
-		    if (z < 0 && currentid == HEADNODE) 
+		    if (z < 0 && currentid == HEADNODE)
         {
 			    double kval = 0.0;
 			    rc = MPI_Recv(&kval, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 2345, MPI_COMM_WORLD, &status);
@@ -3218,23 +3249,23 @@ void record (int currentid)
   }
   for (j = 0; j < lastperiodnumber; j++)
   {
-	  if ( z >= 0) 
+	  if ( z >= 0)
     {
-	    assert (C[z]->tvals[j] > T[j].pr.min && C[z]->tvals[j] < T[j].pr.max); // causes a bug when using a priorfile with -c4 thermodynamic integration 
+	    assert (C[z]->tvals[j] > T[j].pr.min && C[z]->tvals[j] < T[j].pr.max); // causes a bug when using a priorfile with -c4 thermodynamic integration
 	  }
-	  if (z >= 0 && currentid == HEADNODE) 
+	  if (z >= 0 && currentid == HEADNODE)
     {
 	        recordval (T[j].v, C[z]->tvals[j]);
 	  }
 #ifdef MPI_ENABLED
-	  if (z >= 0 && currentid != 0) 
+	  if (z >= 0 && currentid != 0)
     {
 		  double tvals = C[z]->tvals[j];
 		  rc = MPI_Send(&tvals, 1, MPI_DOUBLE, 0, 2525, MPI_COMM_WORLD);
 		  if (rc != MPI_SUCCESS)
 			MPI_Abort(MPI_COMM_WORLD, rc);
 	  }
-	  if (z < 0 && currentid == HEADNODE) 
+	  if (z < 0 && currentid == HEADNODE)
     {
 		  double tvals = 0.0;
 		  rc = MPI_Recv(&tvals, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 2525, MPI_COMM_WORLD, &status);
@@ -3249,7 +3280,7 @@ void record (int currentid)
     for (j = 0; j < nummigrateparams; j++)
     {
       mj = j;
-	     if ( z >= 0) 
+	     if ( z >= 0)
       {
         if (modeloptions[EXPOMIGRATIONPRIOR])
         {
@@ -3262,18 +3293,18 @@ void record (int currentid)
           assert (mval < hyperprior_uniform_m_max && mval > 0.0);
         }
 	     }
-	     if (z >= 0 && currentid == HEADNODE) 
+	     if (z >= 0 && currentid == HEADNODE)
       {
 	           recordval (mh[j].v, mval);
 	     }
 #ifdef MPI_ENABLED
-	     if (z >= 0 && currentid != 0) 
+	     if (z >= 0 && currentid != 0)
       {
 		    rc = MPI_Send(&mval, 1, MPI_DOUBLE, 0, 25251, MPI_COMM_WORLD);
 		    if (rc != MPI_SUCCESS)
 			   MPI_Abort(MPI_COMM_WORLD, rc);
 	     }
-	     if (z < 0 && currentid == HEADNODE) 
+	     if (z < 0 && currentid == HEADNODE)
       {
 		    mval = 0.0;
 		    rc = MPI_Recv(&mval, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 25251, MPI_COMM_WORLD, &status);
@@ -3287,22 +3318,22 @@ void record (int currentid)
     {
       for (j = 0; j < numpopsizeparams; j++)
       {
-	       if ( z >= 0) 
+	       if ( z >= 0)
         {
           mval = C[z]->itheta[j].pr.max;
 	       }
-	       if (z >= 0 && currentid == HEADNODE) 
+	       if (z >= 0 && currentid == HEADNODE)
         {
          recordval (qh[j].v, mval);
 	       }
 #ifdef MPI_ENABLED
-	       if (z >= 0 && currentid != 0) 
+	       if (z >= 0 && currentid != 0)
         {
 		      rc = MPI_Send(&mval, 1, MPI_DOUBLE, 0, 25251, MPI_COMM_WORLD);
 		      if (rc != MPI_SUCCESS)
 			     MPI_Abort(MPI_COMM_WORLD, rc);
 	       }
-	       if (z < 0 && currentid == HEADNODE) 
+	       if (z < 0 && currentid == HEADNODE)
         {
 		      mval = 0.0;
 		      rc = MPI_Recv(&mval, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 25251, MPI_COMM_WORLD, &status);
@@ -3327,9 +3358,9 @@ void record (int currentid)
     int i,k;
     int rc = (nloci + (nloci > 1)) * nummigdirs;
     if (z >= 0)
-      record_migrations (z);  // puts counts into migcount 
+      record_migrations (z);  // puts counts into migcount
 
-    if (z>= 0  && currentid == HEADNODE) 
+    if (z>= 0  && currentid == HEADNODE)
     {
       for (i = 0; i < nloci + (nloci > 1); i++)
         for (k = 0; k < nummigdirs; k++)
@@ -3338,15 +3369,15 @@ void record (int currentid)
         }
      }
 #ifdef MPI_ENABLED
-    if (z >= 0 && currentid != HEADNODE) 
+    if (z >= 0 && currentid != HEADNODE)
     {
-      /*can do MPI_Send and MPI_Recv of 2D array because it was malloced 
+      /*can do MPI_Send and MPI_Recv of 2D array because it was malloced
         as a contiguous block using alloc2Dint_contiguous() */
       rc = MPI_Send(&(migcount[0][0]), rc, MPI_INT, 0, 97525, MPI_COMM_WORLD); // must make sure the address is the location where the integers begin,  not the pointer
       if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
     }
-    if (z < 0 && currentid == HEADNODE) 
+    if (z < 0 && currentid == HEADNODE)
     {
     double tvals = 0.0;
     rc = MPI_Recv(&(migcount[0][0]), rc, MPI_INT, MPI_ANY_SOURCE, 97525, MPI_COMM_WORLD, &status); // must make sure the address is the location where the integers begin,  not the pointer
@@ -3370,17 +3401,17 @@ void record (int currentid)
   if (calcoptions[CALCMARGINALLIKELIHOOD])
   {
     summarginlikecalc();
-  }  
+  }
   if (modeloptions[POPTREETOPOLOGYUPDATE] == 1 && currentid == HEADNODE)
     poptopologiessampled +=1;
-  if (modeloptions[POPTREETOPOLOGYUPDATE] == 1  && z >= 0) // should record one tree for every time the CPU with the cold chain comes thru here, 
+  if (modeloptions[POPTREETOPOLOGYUPDATE] == 1  && z >= 0) // should record one tree for every time the CPU with the cold chain comes thru here,
   {
     poptopologycounts[C[z]->poptreenum] += 1;
     assert (beta[z] == 1.0);
   }
   if (modeloptions[POPTREETOPOLOGYUPDATE] == 1) // add the current topology number from the cold chain to poptopologysequence
   {
-	    if (z >= 0 && currentid == HEADNODE) 
+	    if (z >= 0 && currentid == HEADNODE)
      {
        poptopologysequence.vals[poptopologysequence.currentlength] = C[z]->poptreenum;
        poptopologysequence.disvals[poptopologysequence.currentlength] =  (double) RFtreedis[C[z]->poptreenum];
@@ -3394,7 +3425,7 @@ void record (int currentid)
 		     rc = MPI_Send(&ptn, 1, MPI_INT, 0, 179, MPI_COMM_WORLD);
 		     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	    }
-	    if (z < 0 && currentid == HEADNODE) // receive roottime 
+	    if (z < 0 && currentid == HEADNODE) // receive roottime
      {
 		     ptn = 0;
 		     rc = MPI_Recv(&ptn, 1, MPI_INT, MPI_ANY_SOURCE, 179, MPI_COMM_WORLD, &status);
@@ -3416,18 +3447,18 @@ void record (int currentid)
        }
      }
   }
-  
+
   return;
 }                               /* record */
 
-/* 
+/*
   whichiscoldchain()  examines the beta values to see which one is 1.0
   and returns the corresponding chain number.
 
   Important:  if there are multiple cpus,  then the current cpu may not have a chain with beta == 1.0
-  in this case this function returns -1. 
+  in this case this function returns -1.
 
-  This function is called alot, as the return value can be used to see, not only does the current cpu have the cold chain, 
+  This function is called alot, as the return value can be used to see, not only does the current cpu have the cold chain,
   but also, if it does,  which chain # it is.
 */
 
@@ -3460,7 +3491,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 //  request = new MPI_Request[1];
 
 ///Allocate memory for the full gsampinf only if I am on the head node
-//else, I only need a local structure to be filled up, then I'll send that to the head node	
+//else, I only need a local structure to be filled up, then I'll send that to the head node
   if (genealogysamples == 0)
   {
     if (cdurationmode == TIMESTEPS)
@@ -3505,7 +3536,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
   }
 ///AS: creating local gsampinf float array instead of length gsampinflength
 //AS: ideally should do a check for cduration mode here as well and allocate gsampinflocal accordingly
-	if (currentid != 0) {	
+	if (currentid != 0) {
 		gsampinflocal = static_cast<float *> (malloc (gsampinflength * sizeof (float)));
 	}
 
@@ -3515,7 +3546,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
     fflush(stdout);
     maxedoutgenealogysave = 1;
     //bcast bug .  should replace currentid with 0  ??
-#ifdef MPI_ENABLED	
+#ifdef MPI_ENABLED
 		//rc = MPI_Bcast(&maxedoutgenealogysave, 1, MPI_INT, currentid, MPI_COMM_WORLD);
     rc = MPI_Bcast(&maxedoutgenealogysave, 1, MPI_INT, 0, MPI_COMM_WORLD);
 		  if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
@@ -3596,22 +3627,22 @@ void savegenealogyinfo (int currentid)        // use floats to save space
   if (currentid != 0)
     XFREE(gsampinflocal);
 #endif  //MPI_ENABLED
-	
+
 	return;
   }
 }                               /* savegenealogyinfo */
 
 
-void loadgenealogyvalues (void)  // only called when current node is HEADNODE 
+void loadgenealogyvalues (void)  // only called when current node is HEADNODE
 {
   char filenamewildcard[FNSIZE];
   char *ctp, *textline, *dataline, *c, tempc;
              /* CR 111019.1 increase from 12 to 20 handles larger data values */
-  int charspervalue = 20; 
+  int charspervalue = 20;
   FILE *sfile;
   int i, j, numgenealogies, totalnumgenealogies;
   /* int filefound, nofile; */
-  char *defaultdir; 
+  char *defaultdir;
   struct dirent *dir_entry;
   DIR *dp;
   int numfiles = 0;
@@ -3649,9 +3680,9 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
    * /a.out                -> /
    * a.out                 -> ./
    */
-  imaDirBase (loadfilebase, &defaultdir); 
+  imaDirBase (loadfilebase, &defaultdir);
   len_defaultdir = strlen (defaultdir);
-  
+
   if ((dp = opendir (defaultdir)) == NULL)
   {
     IM_err (IMERR_TIFILE, "cannot open directory: %s", defaultdir);
@@ -3672,18 +3703,18 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
   len_base = strlen (basename);
   while ((dir_entry = readdir(dp)) != NULL)
   {
-    if (!strncmp(dir_entry->d_name, basename, len_base)) 
+    if (!strncmp(dir_entry->d_name, basename, len_base))
     {
       l2 = strlen (dir_entry->d_name);
       if (!strcmp (&dir_entry->d_name[l2 - 3], ".ti"))
-      {  
-        numgenealogyfiles++; 
+      {
+        numgenealogyfiles++;
         /* We found one. */
         genealogysavefilename = static_cast<char *> (malloc ((len_defaultdir + l2 + 1) * sizeof (char)));
         sprintf (genealogysavefilename, "%s%s", defaultdir, dir_entry->d_name);
 
         /* Count the number of gene genealogies of the found file. */
-        if ((sfile = fopen (genealogysavefilename, "r")) == NULL) 
+        if ((sfile = fopen (genealogysavefilename, "r")) == NULL)
         {
           IM_err (IMERR_TIFILE, " cannot open .ti file");
         }
@@ -3739,19 +3770,19 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
 
   while ((dir_entry = readdir(dp)) != NULL)
   {
-    if (!strncmp(dir_entry->d_name, basename, len_base)) 
+    if (!strncmp(dir_entry->d_name, basename, len_base))
     {
       l2 = strlen (dir_entry->d_name);
       if (!strcmp (&dir_entry->d_name[l2 - 3], ".ti"))
-      {  
+      {
         numfiles++;
         /* We found one. */
-        genealogysavefilename = static_cast<char *> 
+        genealogysavefilename = static_cast<char *>
                 (malloc ((len_defaultdir + l2 + 1) * sizeof (char)));
         sprintf (genealogysavefilename, "%s%s", defaultdir, dir_entry->d_name);
 
         /* Count the number of gene genealogies of the found file. */
-        if ((sfile = fopen (genealogysavefilename, "r")) == NULL) 
+        if ((sfile = fopen (genealogysavefilename, "r")) == NULL)
         {
           IM_err (IMERR_TIFILE, " cannot open .ti file");
         }
@@ -3768,7 +3799,7 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
               ||  ((float) loaded/ (float) (loaded + notloaded)) <= load_fraction)
               //JH 7/24/09  change this to using a proportion((float) loaded / (float) notloaded) <= load_notload_ratio)
           {
-            gsampinf[loaded] = static_cast<float *> 
+            gsampinf[loaded] = static_cast<float *>
                     (malloc (gsampinflength * sizeof (float)));
             c = dataline;
             for (i = 0; i < gsampinflength; i++)
@@ -3798,7 +3829,7 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
 
   SP "  END OF HEADER INFORMATION FROM FIRST GENEALOGY FILE\n");
   SP "  ----------------------------------------------\n\n");
-  
+
   SP "  Number of files loaded : %d  total number of genealogies used: %d out of a total of: %d \n", numgenealogyfiles, loaded, totalnumgenealogies);
   printf("  Number of files loaded : %d  total number of genealogies used: %d out of a total of: %d \n", numgenealogyfiles, loaded, totalnumgenealogies);
   fflush(stdout);
@@ -3823,12 +3854,12 @@ void loadgenealogyvalues (void)  // only called when current node is HEADNODE
 // }
   XFREE (textline);
   XFREE (dataline);
-  XFREE (defaultdir); 
+  XFREE (defaultdir);
 }                               /* sang chul's loadgenealogyvalues */
 
 /* reorganized printoutput()  6/13/2017 */
-void 
-printoutput (int currentid, int finaloutput)         // mostly calls functions in output.c   - called only for printing a results file  
+void
+printoutput (int currentid, int finaloutput)         // mostly calls functions in output.c   - called only for printing a results file
 {
   int i;
   long seconds;
@@ -3840,7 +3871,18 @@ printoutput (int currentid, int finaloutput)         // mostly calls functions i
   int rc = 0;
   time(&startoutputtime);
 
-/*   printoutput()  open outout file,  deal with old outputfile */  
+  #ifdef XMLOUTPUT
+  char s[200];
+  int n = sprintf(s,"%s.xml",outfilename);
+  TiXmlDocument doc;
+  TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  doc.LinkEndChild(decl);
+  TiXmlElement *output = new TiXmlElement("Output");
+  doc.LinkEndChild(output);
+  xstack.push(output);
+  #endif
+
+/*   printoutput()  open outout file,  deal with old outputfile */
   if (runoptions[LOADRUN] == 0)
   {
     if ((cdurationmode == TIMEINF || runoptions[SAVELOADSAMEMCFFILE]) && currentid == HEADNODE)
@@ -3860,7 +3902,7 @@ printoutput (int currentid, int finaloutput)         // mostly calls functions i
   else
     outfile = NULL;
 
-/*   printoutput()  call printrunbasics()*/  
+/*   printoutput()  call printrunbasics()*/
   runsteps = step - burninsteps;
   printrunbasics (outfile, runoptions[LOADRUN], fpstr, burninsteps, burninsteps_old,runsteps_old,mcmcrecords_old,genealogysamples_old,recordint,mcmcrecords, savegenealogyint, hilike,hiprob);
 
@@ -3868,23 +3910,23 @@ printoutput (int currentid, int finaloutput)         // mostly calls functions i
 printf("printed run basics\n");
 #endif
 
-/*   printoutput()  print acceptance rates and autoc table*/  
-  if (runmode != LOADGmode4) // any mode running mcmc 
+/*   printoutput()  print acceptance rates and autoc table*/
+  if (runmode != LOADGmode4) // any mode running mcmc
   {
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       FP "%s",outputbanner("MCMC Information"));
     }
 
-    callprintacceptancerates (outfile, currentid); 
+    callprintacceptancerates (outfile, currentid);
 #ifdef STDTEST
 printf("printed acceptance rates\n");
 #endif
-    if (numchainstotal > 1) 
+    if (numchainstotal > 1)
     {
 	     printchaininfo (outfile, heatmode, hval1, hval2, currentid);
     }
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       callprintautoctable (outfile/*, step*/);
       /* get joint splittime peak */
@@ -3896,18 +3938,18 @@ printf("printed acceptance rates\n");
 printf("printed autoc table\n");
 #endif
 
-/*   printoutput()  share topology counts across chains, print topology posterior*/  
+/*   printoutput()  share topology counts across chains, print topology posterior*/
     if (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1)
     {
 /*#ifdef INDEVELOPMENT
-    //output_update_scalars(whichiscoldchain(),currentid, updatestr); // gets update scalar info from chain 0,  puts it in updatestr and sends updatestr to cpu 0 
+    //output_update_scalars(whichiscoldchain(),currentid, updatestr); // gets update scalar info from chain 0,  puts it in updatestr and sends updatestr to cpu 0
     //if (currentid == HEADNODE)
       //FP "%s",updatestr);
     //printupdatescalarinfo (outfile,currentid);  stopped using 6/7/2017
 #endif */
 
       int *totalpoptopologycounts = static_cast<int *> (malloc ((size_t) numpoptopologies * sizeof (int))); // had calloc here and it would not work with mpi_reduce ??
-      int *poptopologyproposedlist_rec = static_cast<int *> (malloc ( (size_t) numpoptopologies * sizeof (int)));  
+      int *poptopologyproposedlist_rec = static_cast<int *> (malloc ( (size_t) numpoptopologies * sizeof (int)));
       int rc;
       if (numprocesses > 1)
       {
@@ -3920,18 +3962,20 @@ printf("printed autoc table\n");
       }
       else
       {
-        
+
         for (i = 0;i<numpoptopologies;i++)
         {
           totalpoptopologycounts[i] = poptopologycounts[i];
           poptopologyproposedlist_rec[i] = poptopologyproposedlist[i];
         }
-      } 
-      if (currentid == HEADNODE) 
+      }
+      if (currentid == HEADNODE)
       {
         poptopologiessampled = 0;
         for (i = 0;i<numpoptopologies;i++)
           poptopologiessampled += totalpoptopologycounts[i];
+
+
         sort_and_print_alltreestrings(outfile, totalpoptopologycounts,poptopologyproposedlist_rec,&topologypriorinfostring[0]);
       }
       XFREE(poptopologyproposedlist_rec);
@@ -3946,7 +3990,7 @@ printf("printed autoc table\n");
         assert (totalpoptopologycounts[i] >= 0);
       }
       assert (tsum == mcmcrecords); */
-      /* check that no two beta values are identical  
+      /* check that no two beta values are identical
       int j;
       for (i=0;i<numchainspp-1;i++)
         for (j=i+1;j<numchainspp;j++)
@@ -3958,7 +4002,7 @@ printf("printed autoc table\n");
   {
     if (npops >=3  && npops <= 5 && !runoptions[LOADRUN] && outputoptions[PRINTJOINTTEST])
     {
-/*   printoutput()  joint t distribution*/  
+/*   printoutput()  joint t distribution*/
       return_joint_t (multitpeak);
       FP "\nEstimated joint splitting time from multi-dimensional histogram\n");
       FP "  number of bins per dimension %d\n", NUMTARRAYBINS);
@@ -3968,7 +4012,7 @@ printf("printed autoc table\n");
         FP "   %s\t%.3lf\n", T[i].str, multitpeak[i]);
       FP "\n\n");
     }
-/*   printoutput()  greater thans,  means and variances */  
+/*   printoutput()  greater thans,  means and variances */
     if (outputoptions[PARAMGREATERTHAN])
     {
       print_greater_than_tests (outfile);
@@ -3981,7 +4025,7 @@ printf("printed greater than tests\n");
 #ifdef STDTEST
 printf("printed means variances correlations\n");
 #endif
-/*   printoutput()  get marginal peaks*/  
+/*   printoutput()  get marginal peaks*/
     if (!calcoptions[DONTCALCLIKELIHOODMUTATION])
     {
       p = numpopsizeparams + nummigrateparams ;
@@ -3992,7 +4036,7 @@ printf("printed means variances correlations\n");
         eexpsum = (struct extendnum *) malloc ((size_t) ((genealogysamples + 1) * sizeof (struct extendnum)));
 
       findmarginpeaks (outfile, holdpeakloc);
-/*   printoutput()  get joint peaks*/  
+/*   printoutput()  get joint peaks*/
       if (runmode == LOADGmode4 && calcoptions[FINDJOINTPOSTERIOR])
       {
         closeopenout (&outfile, outfilename);
@@ -4008,20 +4052,21 @@ printf("found peaks\n");
 #endif
     }
   }
-/*   printoutput()  print histograms*/  
-  if (currentid == HEADNODE) 
+/*   printoutput()  print histograms*/
+  if (currentid == HEADNODE)
   {
+
     printhistograms (outfile, mcmcrecords, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
 #ifdef STDTEST
 printf("printed histograms\n");
 #endif
-/*   printoutput()  print ascii trends*/  
+/*   printoutput()  print ascii trends*/
     FP "\n\n===================================================\n");
     if (!outputoptions[DONTPRINTASCIITREND] && runmode != LOADGmode4)
     {
       if (trendspot <= 1)
       {
-        FP "run too short to plot trends\n"); 
+        FP "run too short to plot trends\n");
       }
       else
       {
@@ -4031,13 +4076,13 @@ printf("printed histograms\n");
 #ifdef STDTEST
 printf("printed trends\n");
 #endif
-      } 
+      }
     }
     callasciitrend (outfile,trenddoublepoint,trendspot);
 #ifdef STDTEST
 printf("printed trends\n");
 #endif
-/*   printoutput()  print ascii curves*/  
+/*   printoutput()  print ascii curves*/
     FP "%s",outputbanner("ASCII Curves - Approximate Posterior Densities"));
 
     callasciicurves (outfile,mcmcrecords);
@@ -4045,7 +4090,7 @@ printf("printed trends\n");
 printf("printed ascii curves\n");
 #endif
   }
-/*   printoutput()  print migration histogram file  - almost certainly broken as of 1/17/2018*/  
+/*   printoutput()  print migration histogram file  - almost certainly broken as of 1/17/2018*/
   if (outputoptions[MIGRATEHIST] && nummigrateparams > 0  && currentid == HEADNODE)
   {
     if ((migplotfile = fopen (migplotfilename, "w")) == NULL)
@@ -4057,14 +4102,14 @@ printf("printed ascii curves\n");
   #ifdef STDTEST
   printf("printed migration histogram\n");
   #endif
-    f_close (migplotfile);
+    FCLOSE (migplotfile);
   }
   if (hiddenoptions[WRITEMIGRATIONNAME])
   {
-    f_close(migrationnamefile);
-    migrationnamefile = fopen (migrationnamefilename, "a"); // file is kept open 
+    FCLOSE(migrationnamefile);
+    migrationnamefile = fopen (migrationnamefilename, "a"); // file is kept open
   }
-/*   printoutput()  print timing information*/  
+/*   printoutput()  print timing information*/
   time (&endtime);
   endoutputtime = endtime;
   totaloutputseconds += difftime(endoutputtime,startoutputtime);
@@ -4079,7 +4124,7 @@ printf("printed ascii curves\n");
   {
     totaltime = (time_t) seconds;
   }
-  if (currentid == HEADNODE) 
+  if (currentid == HEADNODE)
   {
     FP "\nTime Elapsed : %s \n",timestring(seconds));
     FP "Time spent running analyses after mcmc finished : %s\n",timestring(totaloutputseconds));
@@ -4107,11 +4152,11 @@ printf("printed ascii curves\n");
     strftime(timeinfostring,80,"%x - %X", endtimeinfo);
     FP "\nJob Finished: %s\n",timeinfostring);
     FP "\nEND OF OUTPUT\n");
-    f_close (outfile);
+    FCLOSE (outfile);
     fflush(stdout);
   }
 #ifdef MPI_ENABLED
-		if (numprocesses > 1)	
+		if (numprocesses > 1)
   {
     rc = MPI_Bcast(&totaltime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
 	 	 if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
@@ -4126,10 +4171,17 @@ printf("printed ascii curves\n");
 #ifdef STDTEST
 printf("done printing output\n");
 #endif
+#ifdef XMLOUTPUT
+if (currentid == HEADNODE) {
+//doc.LinkEndChild(runbasics);
+doc.SaveFile(s);
+xstack.pop();
+}
+#endif
   return;
 }                               /* printoutput */
 
-/* this is generally just turned on when in development */ 
+/* this is generally just turned on when in development */
 void output_update_scalars(int z,int currentid, char updatestr[])
 {
   static int updatestri = 0;
@@ -4138,13 +4190,13 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 #ifdef MPI_ENABLED
   MPI_Status status;
 #endif
-  int rc = 0; 
+  int rc = 0;
 #define UP updatestri += sprintf(&updatestr[updatestri],
 
   if (z >= 0)
   {
     zid = currentid;
-    updatestri = 0; 
+    updatestri = 0;
     UP "\nPopulation Tree Update Scalars, chain 0\n---------------------------------------\n");
     if (doRYupdate) for (ti=0;ti<numsplittimes;ti++)
     {
@@ -4154,7 +4206,7 @@ void output_update_scalars(int z,int currentid, char updatestr[])
     {
       UP "NW update, time period %d, update scalar %.4f  overall acceptance rate %.4f \n",ti,C[z]->NWwidthinfo[ti].updatescalarval,C[z]->NWwidthinfo[ti].allaccp/(float) C[z]->NWwidthinfo[ti].alltries);
     }
-    /* 5/3/2017  not using popslideinfo.updatescalarval  
+    /* 5/3/2017  not using popslideinfo.updatescalarval
     if (hiddenoptions[HIDDENGENEALOGY] == 1)
     {
       UP "Branch slide update, update scalar %.4f  overall acceptance rate %.4f \n",C[z]->branchslideinfo.updatescalarval,C[z]->branchslideinfo.allaccp/(float) C[z]->branchslideinfo.alltries);
@@ -4166,7 +4218,7 @@ void output_update_scalars(int z,int currentid, char updatestr[])
      rc = MPI_Send(updatestr,1000, MPI_CHAR, 0, 12377, MPI_COMM_WORLD); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
 		    if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
     }
-#endif 
+#endif
   }
 #undef UP
   if (currentid ==0 && z < 0)// current process is 0, must receive updatestr
@@ -4175,7 +4227,7 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 		  //rc = MPI_Recv(&updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
     rc = MPI_Recv(updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
 		  if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
-#endif  //MPI_ENABLED 
+#endif  //MPI_ENABLED
   }
 }  // output_update_scalars
 
@@ -4183,22 +4235,22 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 #ifdef MPI_ENABLED
 /* reduction operation for updatescalarinfo -  ignore type, just trust that it's our struct type */
 void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo *inout, int *len, MPI_Datatype *type){
-  for (int i=0; i<*len; i++) 
+  for (int i=0; i<*len; i++)
   {
-    inout[i].updatescalarval += in[i].updatescalarval;            
+    inout[i].updatescalarval += in[i].updatescalarval;
     inout[i].updatescalaradjustval += in[i].updatescalaradjustval;
-    inout[i].updatescalarvalmin += in[i].updatescalarvalmin;      
-    inout[i].updatescalarvalmax += in[i].updatescalarvalmax;      
-    inout[i].targetupdaterate += in[i].targetupdaterate;          
-    inout[i].recentaccp += in[i].recentaccp;                      
-    inout[i].recenttries += in[i].recenttries;                    
-    inout[i].allaccp += in[i].allaccp;                            
-    inout[i].alltries += in[i].alltries;                          
-    inout[i].numattemptscheck += in[i].numattemptscheck;          
+    inout[i].updatescalarvalmin += in[i].updatescalarvalmin;
+    inout[i].updatescalarvalmax += in[i].updatescalarvalmax;
+    inout[i].targetupdaterate += in[i].targetupdaterate;
+    inout[i].recentaccp += in[i].recentaccp;
+    inout[i].recenttries += in[i].recenttries;
+    inout[i].allaccp += in[i].allaccp;
+    inout[i].alltries += in[i].alltries;
+    inout[i].numattemptscheck += in[i].numattemptscheck;
   }
   return;
-} 
-#endif 
+}
+#endif
 
 /*void printupdatescalarinfo (FILE * outto, int currentid) stopped using 6/7/2017
 {
@@ -4238,7 +4290,7 @@ void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo
       i+=1;
     }
   }
-  if (currentid == HEADNODE) 
+  if (currentid == HEADNODE)
   {
     fprintf(outto,"\n=========================\nUpdate Scalar Information\n=========================\n");
     fprintf(outto,"update      \tscalar\tadjust\tmin\tmax\ttarget\t#recAcp\t#recTry\t#Acp\t#Try\t#check\n");
@@ -4260,22 +4312,32 @@ void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo
         MPI_Abort(MPI_COMM_WORLD, rc);
 #endif
     }
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       fprintf(outto,"%s\t%0.4lf\t%0.4lf\t%0.4lf\t%0.4lf\t%0.4lf\t%d\t%d\t%d\t%d\t%d\n",sistrings[i],suminfo.updatescalarval,suminfo.updatescalaradjustval,suminfo.updatescalarvalmin,suminfo.updatescalarvalmax,suminfo.targetupdaterate,suminfo.recentaccp,suminfo.recenttries,suminfo.allaccp,suminfo.alltries,suminfo.numattemptscheck);
     }
   }
 } //printupdatescalarinfo  stopped using 6/7/2017 */
 
-/* this is called from within qupdate with results to be sent to stdout  
-  and it is called from writeburntrendfile()  with results to be sent to the burntrendfile 
+/* this is called from within qupdate with results to be sent to stdout
+  and it is called from writeburntrendfile()  with results to be sent to the burntrendfile
   also gathers topologycounts to cpu 0 from other cpus */
 
-/*JH 4/27/2016  moved the main step condition outside of this so it would not get called so often, to save some waiting in mpi */ 
+/*JH 4/27/2016  moved the main step condition outside of this so it would not get called so often, to save some waiting in mpi */
 void intervaloutput (FILE * outto, int currentid)
 {
   int rc = 0; //AS: Return code for MPI C bindings
   int poptreenum_rec;
+#ifdef XMLOUTPUT
+  char s[200];
+  int n = sprintf(s,"%s.intervals.xml",outfilename);
+  TiXmlDocument doc;
+  TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  doc.LinkEndChild(decl);
+  TiXmlElement *intervals = new TiXmlElement("Interval");
+  doc.LinkEndChild(intervals);
+  xstack.push(intervals);
+#endif
 #ifdef MPI_ENABLED
 	MPI_Status status;
   int totaltopol_rec, chain0topol_rec, chain0topolswaps_rec;
@@ -4286,24 +4348,24 @@ void intervaloutput (FILE * outto, int currentid)
   if (currentid == HEADNODE)
     //printsteps (outto, like_rec, probg_rec, burndone,burninsteps);
     printsteps (outto, currlike, currprob, burndone,burninsteps);
-  if (z >=0 && currentid == HEADNODE) 
+  if (z >=0 && currentid == HEADNODE)
     poptreenum_rec = C[z]->poptreenum;
 #ifdef MPI_ENABLED
   else
   {
-    if (z >=0 && currentid != 0) 
+    if (z >=0 && currentid != 0)
     {
       rc = MPI_Send(&C[z]->poptreenum, 1, MPI_INT, 0, 13137, MPI_COMM_WORLD);
 	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     }
-    if (z < 0 && currentid == HEADNODE) 
+    if (z < 0 && currentid == HEADNODE)
     {
       rc = MPI_Recv(&poptreenum_rec, 1,MPI_INT, MPI_ANY_SOURCE, 13137, MPI_COMM_WORLD, &status);
 	     if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     }
   }
   #endif
-   if (modeloptions[POPTREETOPOLOGYUPDATE]==1) // do the reduction for all processors 
+   if (modeloptions[POPTREETOPOLOGYUPDATE]==1) // do the reduction for all processors
    {
 #ifdef MPI_ENABLED
   if (numprocesses > 1)
@@ -4318,10 +4380,10 @@ void intervaloutput (FILE * outto, int currentid)
 		if (rc != MPI_SUCCESS)
 				MPI_Abort(MPI_COMM_WORLD, rc);
    }
-#endif	
-    if (numchainstotal > 1 && currentid == HEADNODE) 
+#endif
+    if (numchainstotal > 1 && currentid == HEADNODE)
     {
-      if (outto != NULL) fprintf(outto,"\nCurrent Population Topology #: %d   Current Topology String: %s\n",poptreenum_rec,alltreestrings[poptreenum_rec]); 
+      if (outto != NULL) fprintf(outto,"\nCurrent Population Topology #: %d   Current Topology String: %s\n",poptreenum_rec,alltreestrings[poptreenum_rec]);
       if (outto != NULL) fprintf(outto,"\nPopulation Topology Updates Across Chains\n-----------------------------------------\n");
       if (numprocesses > 1)
       {
@@ -4344,8 +4406,8 @@ void intervaloutput (FILE * outto, int currentid)
       if (outto != NULL) fprintf(outto,"\nTotal Number of Topology Updates: %d\n",totaltopolupdates);
     }
 /*#ifdef INDEVELOPMENT
-      /// causing some MPI crash on MUST ?? 
-   //output_update_scalars(whichiscoldchain(),currentid, updatestr); // gets update scalar info from chain 0,  puts it in updatestr and sends updatestr to cpu 0 
+      /// causing some MPI crash on MUST ??
+   //output_update_scalars(whichiscoldchain(),currentid, updatestr); // gets update scalar info from chain 0,  puts it in updatestr and sends updatestr to cpu 0
    // if (currentid == HEADNODE)
     //  if (outto != NULL) fprintf(outto,"%s",updatestr);
     //printupdatescalarinfo (outto,currentid);   stopped using 6/7/2017
@@ -4353,13 +4415,13 @@ void intervaloutput (FILE * outto, int currentid)
    }
    if (hiddenoptions[STOPMOSTINTERVALOUTPUT]==0) // turning off chunk of interval output to reduce screen text when debugging
    {
-     
+
      if (numprocesses > 1)
         printcurrent_tvals (stdout,currentid);
      else
-        printcurrentvals (outto); // only works with 1 processor   4/19/2017 
+        printcurrentvals (outto); // only works with 1 processor   4/19/2017
      callprintacceptancerates (outto, currentid);
-     if (currentid == HEADNODE) 
+     if (currentid == HEADNODE)
      {
         callprintautoctable (outto );
         if (burndone && modeloptions[POPTREETOPOLOGYUPDATE] && hiddenoptions[CALCGEWEKEZ])
@@ -4367,12 +4429,18 @@ void intervaloutput (FILE * outto, int currentid)
      }
      if (numchainstotal > 1)
      {
-        printchaininfo (outto, heatmode, hval1, hval2, currentid); 
+        printchaininfo (outto, heatmode, hval1, hval2, currentid);
 
-     }   
+     }
    } // hiddenoptions[STOPMOSTINTERVALOUTPUT]==0
   if (outto==stdout)
     fflush(stdout);
+#ifdef XMLOUTPUT
+  else if (currentid == HEADNODE) {
+      doc.SaveFile(s);
+      xstack.pop();
+  }
+ #endif
   return;
 }                               /* intervaloutput */
 
@@ -4435,7 +4503,7 @@ void commit_mpi_updatescalar(void)
     int alltries;
     int numattemptscheck;   // the number of attempts to use for calculating the recent acceptance rate
   }; */
-  //MPI_Datatype MPI_updatescalar;  // declared at top of this file, and with extern in swapchains 
+  //MPI_Datatype MPI_updatescalar;  // declared at top of this file, and with extern in swapchains
   int mpi_updatescalar_blocklengths[10] = {1,1,1,1,1,1,1,1,1,1};
   MPI_Datatype mpi_updatescalar_types[10]={MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_INT,MPI_INT,MPI_INT,MPI_INT,MPI_INT};
   MPI_Aint mpi_updatescalar_displacements[10];
@@ -4461,10 +4529,10 @@ void commit_mpi_updatescalar(void)
 /*
   one cpu is the head node and handles the output  this has currentid value of 0 == HEADNODE
   currentid has nothing to do with the where the cold chain is
-  this could be on any node 
+  this could be on any node
 
   the head node (i.e. cpu with currentid == HEADNODE) is used for almost all output operations (exception is mcf files - every node has one of those)
-  the head node broadcasts, sends and receives stuff from the others as needed 
+  the head node broadcasts, sends and receives stuff from the others as needed
 */
 int main (int argc, char *argv[])
 {
@@ -4476,8 +4544,8 @@ int main (int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &numprocesses);
 	 MPI_Comm_rank(MPI_COMM_WORLD, &currentid);
   commit_mpi_updatescalar();
-  MPI_Op_create((MPI_User_function *) jh_mpi_sum_scalerstruct, true, &myOp_updatescalarsum); // makes the jh_mpi_sum_scalerstruct function work wtih MPI_Reduce 
-#else 
+  MPI_Op_create((MPI_User_function *) jh_mpi_sum_scalerstruct, true, &myOp_updatescalarsum); // makes the jh_mpi_sum_scalerstruct function work wtih MPI_Reduce
+#else
   numprocesses = 1;
   currentid = 0;
 #endif
@@ -4493,7 +4561,7 @@ int main (int argc, char *argv[])
   start (argc, argv, currentid);
   if (runoptions[LOADRUN])
   {
-	   if (currentid == HEADNODE) 
+	   if (currentid == HEADNODE)
     {
 	    loadgenealogyvalues ();
 	    mcmcrecords = genealogysamples; // why is mcmcrecords needed when runoptions[LOADRUN] ?
@@ -4501,10 +4569,10 @@ int main (int argc, char *argv[])
    printoutput (currentid,0);
 	  if (currentid == HEADNODE)
 	    free_ima_main_stuff ();
-  } 
+  }
   else  // !runoptions[LOADRUN]
   {
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
   	   printf ("Starting Markov chain.\n");
       fflush(stdout);
@@ -4513,7 +4581,7 @@ int main (int argc, char *argv[])
     step = 0;
     mcmcrecords = 0;
 
-    while (run (currentid))  // main mcmc loop 
+    while (run (currentid))  // main mcmc loop
     {
       qupdate (currentid);
       if ((step / (int) printint) * (int) printint == step && step > 0)
@@ -4532,9 +4600,9 @@ int main (int argc, char *argv[])
 #ifdef TURNONCHECKS
 //    if (burndone)
   //    chaininfo_print(currentid,recordint);
-#endif //TURNONCHECKS 
+#endif //TURNONCHECKS
 	     step++;
-    }  //  run() mcmc loop 
+    }  //  run() mcmc loop
 
 #ifdef STDTEST
 printf("done mcmc\n");
@@ -4554,7 +4622,7 @@ printf("saved genealogies\n");
     printoutput (currentid,1);
     if (hiddenoptions[WRITEMIGRATIONNAME])
     {
-      f_close(migrationnamefile);
+      FCLOSE(migrationnamefile);
     }
     free_ima_main_stuff ();
 #ifdef STDTEST

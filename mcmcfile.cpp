@@ -6,55 +6,55 @@
 checkpoint file usage
 
 runoptions[]
-    2 Save the state of the Markov chain in a file - named with extension .mcf (MCMC mode only) 
+    2 Save the state of the Markov chain in a file - named with extension .mcf (MCMC mode only)
     3 Start run by loading a previously saved *.mcf file; requires -f (data and priors must be the same)
     6 With mcf files (-r2,-r3) record and load only the MCMC state space (useful to treat a previous run as a burnin)
     7 Load *.mcf file if present AND save to *.mcf file. Use for repeating command lines.  No burn done if *.mcf present
 
 
-r2 The mcf file(s) are saved after the burnin in done  (unless -b0) and at the end of the run. 
+r2 The mcf file(s) are saved after the burnin in done  (unless -b0) and at the end of the run.
 Saves state space in all chains,  with one file per cpu.
 If -j0  (population topology updating), it also records the population tree for each chain and the current values of poptopologycounts
 Unless -r6 is invoked it also saves update rate stats,  autocorrelation values and (if -j0) tree phylogeny counts
-  
+
 -r3 loads the mcf file(s) using the filename given with -f  and starts a new run.
 
 using -r23 to overwrite previous files  (e.g. to continue a run that has been stopped)
 If a previous -r2 run has been done,  then additional -r23 runs can be done using the same previous filename for -o and and using the same name for -f
-This causes the previous results file and the previous mcf file(s) to be overwritten 
-If the burnin is all done,  then the -r23 run should be started using -b0.  This will prevent resetting of accumulated update rate statistics. 
+This causes the previous results file and the previous mcf file(s) to be overwritten
+If the burnin is all done,  then the -r23 run should be started using -b0.  This will prevent resetting of accumulated update rate statistics.
 
 -r6 prevents reading of information from the mcf file(s) on update rate statistics,  autocorrelation values, and tree phylogeny counts
-This can be useful if the mcf file being loaded is only needed to initialize the state space. 
-For example, if treating the previous run as just a burnin run and you want to start collecting samples from that point. 
+This can be useful if the mcf file being loaded is only needed to initialize the state space.
+For example, if treating the previous run as just a burnin run and you want to start collecting samples from that point.
 
 The order of things written to the mcf file is nearly arbitrary.  The mcf file can be large.
 */
 
-/* stuff for writing and reading the state of the mcmc to a file 
+/* stuff for writing and reading the state of the mcmc to a file
 to write the state of the mcmc state space to a file
 call writemcmc(int ci)
-to load it from a file 
+to load it from a file
 call readmcmc(int ci)
 
 writemcmc() and readmcmc() are basically copies of each other for the reading and writing of data.
 
-To simplify writing them and so they can use mostly the same actual text, 
+To simplify writing them and so they can use mostly the same actual text,
 a simple macro 'aa' is reset for each to call either aread() or awrite() respectively
 
-readmcmc() also has some initiation stuff 
+readmcmc() also has some initiation stuff
 
-codes for atype 
+codes for atype
 0  for integer
 1  for long
 2  for float
 3  for double
 4  for character
 5  for unsigned long
-6 for unsigned short 
+6 for unsigned short
 */
 
-int netsteps; //jh 1_17_2018 
+int netsteps; //jh 1_17_2018
 
 
 /* some extern prototypes */
@@ -78,8 +78,8 @@ void read_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chain
 /**** LOCAL FUNCTIONS *****/
 
 #define MCFVARNAMEWRITE  // causes names of variables to be written and read along with data, helps with debugging and  has only a small effect on file size so makes sense to leave it in
-// don't use if reading in mcf files from IMa2 
-//#undef MCFVARNAMEWRITE 
+// don't use if reading in mcf files from IMa2
+//#undef MCFVARNAMEWRITE
 
 void
 awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
@@ -100,7 +100,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
   fprintf (mcffile, "%d %d ", atype, iu);
 #endif
   isnumerical = atype != 4;
-  
+
   switch (atype)
   {
   case 0:
@@ -197,7 +197,8 @@ aread (FILE * mcffile, const char *name, int atype, int iucheck, void *a)
 
   if (typecheck != atype)
   {
-    IM_err(IMERR_MCFREADFAIL,"variable types do not match: %d  <> %d ", atype, typecheck);
+    if (!(typecheck==6 && atype == 0))  // allow a 6/0 mismatch, which is ok when reading. should only be relevant for some mcfs written before 2/2018 as I changed some writes from  6 to 0
+      IM_err(IMERR_MCFREADFAIL,"variable types do not match: %d  <> %d ", atype, typecheck);
   }
   switch (atype)
   {
@@ -245,7 +246,7 @@ init_p (void)
        reset_poptree (ci, C[ci]->chainpoptreestring);
        fillplist (ci);
        fillancplist (ci);
-       set_iparam_poptreeterms (ci); // 5/11/2017  this seems to be needed here to set the wp.n terms correctly// also fills descendantpops 
+       set_iparam_poptreeterms (ci); // 5/11/2017  this seems to be needed here to set the wp.n terms correctly// also fills descendantpops
         for (i = 0; i < 2 * npops - 1; i++)
         {
           if (C[ci]->poptree[i].e == -1)
@@ -264,7 +265,7 @@ init_p (void)
     for (li = 0; li < nloci; li++)
     {
       setzero_genealogy_weights (&C[ci]->G[li].gweight);
-      int treeweightcallcode = 0;  // a debugging code,  if treeweight has an error results are written to an output file with this code 
+      int treeweightcallcode = 0;  // a debugging code,  if treeweight has an error results are written to an output file with this code
       int tw = treeweight (ci, li,treeweightcallcode);
       switch (L[li].model)
       {
@@ -313,7 +314,7 @@ init_p (void)
     }
     initialize_integrate_tree_prob (ci, &(C[ci]->allgweight),
                                     &C[ci]->allpcalc);
-    /* if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) don't need this here,  its done in setup_iparams() 
+    /* if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) don't need this here,  its done in setup_iparams()
     {
       init_hyperprior_arrays(ci);
       if (ci==ARBCHAIN)
@@ -427,9 +428,9 @@ void write_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chai
 } //write_struct_chainstate_record_updates_and_values
 #undef aa
 
-/*  
-  read_autoc_record and read_struct_chainstate_record_updates_and_values() are pretty much copies of 
-  write_autoc_record() and   write_struct_chainstate_record_updates_and_values() 
+/*
+  read_autoc_record and read_struct_chainstate_record_updates_and_values() are pretty much copies of
+  write_autoc_record() and   write_struct_chainstate_record_updates_and_values()
 */
 /* read values for an instance of struct autoc*/
 #ifdef aa
@@ -467,7 +468,7 @@ void read_autoc_record(FILE *mcffile,char *vstr,struct autoc *ac)
   cctempstr = strcat(strcpy(tempstr,vstr),"_autoc_vals");
   aa cctempstr,3,AUTOCNEXTARRAYLENGTH,&(ac->vals[0]));
 }
-#undef aa 
+#undef aa
 
 /* read values for an instance of struct chainstate_record_updates_and_values */
 #ifdef aa
@@ -480,7 +481,7 @@ void read_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chain
   char tempstr[NAMELENGTH];
   char holdstr[NAMELENGTH];
   const char *cctempstr;
-  
+
   cctempstr = strcat(strcpy(tempstr,x->str),"_num_uptypes");
   aa cctempstr,0,1,&x->num_uptypes);
   for (i=0;i<x->num_uptypes;i++)
@@ -532,7 +533,7 @@ void read_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chain
 #endif /* aa */
 #define aa  aread(mcffile,
 
-/* copy of ima2 readmcf 
+/* copy of ima2 readmcf
   this is for debugging when we want to read in genealogies generated by IMa2
 */
 /*readmcf() is very similar to writemcf(), except it includes some mallocs() and a small number of initializations at the end*/
@@ -544,8 +545,8 @@ if the number of chains in the current run (call this cc for now) is different t
 	then the mcffile is closed and reopened and the chains are reloaded in to the next available positions
 	this keeps getting done until all the cc positions in C[] have been loaded  */
 /* need to revise this so that if cc > cf,  then all chains above cf are copied from the chain cf
-  this way we are less likely to have a chain that is much better than its beta value, 
-  at least compared to what happens when we start copying low number chains into highly heated positions */ 
+  this way we are less likely to have a chain that is much better than its beta value,
+  at least compared to what happens when we start copying low number chains into highly heated positions */
 
 void readima2mcf (char ima2mcffilename[])
 {
@@ -563,7 +564,7 @@ void readima2mcf (char ima2mcffilename[])
 
   for (ci = 0; ci < numchainspp; ci++)
   {
-// tvalues 
+// tvalues
     largetimeflag = 0;
     for (i = 0; i < numsplittimes; i++)
     {
@@ -574,7 +575,7 @@ void readima2mcf (char ima2mcffilename[])
         C[ci]->poptree[C[ci]->droppops[i + 1][1]].time = C[ci]->tvals[i];
     }
 
-    //mutation scalars 
+    //mutation scalars
     for (li = 0; li < nloci; li++)
     {
       if (nloci > 1 || L[li].nlinked > 0)
@@ -635,12 +636,12 @@ void readima2mcf (char ima2mcffilename[])
         C[ci]->G[li].gtree[i].cmm = j-1; // cmm is handled differently in ima3
        /* if (** JH 8/12/2014 COMMENTED OUT POP ASSIGNMENT STUFF ** assignmentoptions[POPULATIONASSIGNMENT] == 1)
         {
-          aa "asn", 0, 1, &(C[ci]->G[li].gtree[i].pop)); 
+          aa "asn", 0, 1, &(C[ci]->G[li].gtree[i].pop));
         } */
 
         if (L[li].model == HKY && i >= L[li].numgenes)
         {
-          /* don't think need to save scalefactors, as they get recalculated by makefrac 
+          /* don't think need to save scalefactors, as they get recalculated by makefrac
              aa "C[ci]->G[li].gtree[i].scalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].scalefactor[0]));
              aa "C[ci]->G[li].gtree[i].oldscalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].oldscalefactor[0]));  */
           for (j = 0; j < L[li].numsites; j++)
@@ -664,12 +665,12 @@ void readima2mcf (char ima2mcffilename[])
     }
     if ((checkeofc = (char) fgetc (mcffile)) == EOF)
     {
-      if (ci == lastci)  
+      if (ci == lastci)
         IM_err (IMERR_MCFSPLITTIMEPROB,
                 " can't load trees, probably because of multiple instances of splittime time conflict with t prior");
       if (ci < numchainspp - 1)
       {
-        f_close (mcffile);
+        FCLOSE (mcffile);
         if ((mcffile = fopen (ima2mcffilename, "r")) == NULL)
         {
            IM_err(IMERR_READFILEOPENFAIL,"Error reopening mcffile: %s", ima2mcffilename);
@@ -731,7 +732,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
       assert(i==C[ci]->currallbetapos); // i should be redundant once started using currallbetapos
     }
 
-    //updatescalars if called for 
+    //updatescalars if called for
     if (hiddenoptions[HIDDENGENEALOGY]==1)
     {
       aa "branchslidescaler",3,1,&(C[ci]->branchslideinfo.updatescalarval));
@@ -742,14 +743,14 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
         aa "RYwidthscalar", 3, 1, &(C[ci]->RYwidthinfo[i].updatescalarval));
       if (doNWupdate)
         aa "NWwidthscalar", 3, 1, &(C[ci]->NWwidthinfo[i].updatescalarval));
-    }     
-    // tvalues 
+    }
+    // tvalues
     for (i = 0; i < numsplittimes; i++)
       aa "tvalue", 3, 1, &(C[ci]->tvals[i]));
     // hyperpriors
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     {
-      /* mltorhpriors and mrtolpriors are each a dictionary, must copy to a list of doubles */ 
+      /* mltorhpriors and mrtolpriors are each a dictionary, must copy to a list of doubles */
       double *temppriors =  static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
         temppriors[i] = getvalue(poppairs[i],C[ci]->mltorhpriors);
@@ -757,10 +758,10 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
         temppriors[i] = getvalue(poppairs[i],C[ci]->mrtolhpriors);
       aa "mrtolhpriors",3,numdistinctpopulationpairs[npops],temppriors);
-      XFREE(temppriors); 
+      XFREE(temppriors);
       aa "qhpriors",3,numpopsets,C[ci]->qhpriors);
     }
-    //mutation scalars 
+    //mutation scalars
     for (li = 0; li < nloci; li++)
     {
       if (nloci > 1 || L[li].nlinked > 0)
@@ -811,7 +812,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
         }
         if (L[li].model == HKY && i >= L[li].numgenes)
         {
-          /* don't think need to save scalefactors, as they get recalculated by makefrac 
+          /* don't think need to save scalefactors, as they get recalculated by makefrac
              aa "C[ci]->G[li].gtree[i].scalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].scalefactor[0]));
              aa "C[ci]->G[li].gtree[i].oldscalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].oldscalefactor[0]));  */
           for (j = 0; j < L[li].numsites; j++)
@@ -823,7 +824,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
       }
 #ifdef TURNONCHECKS
       //gtreeprint(ci,li);
-#endif //TURNONCHECKS 
+#endif //TURNONCHECKS
     }
   }
   if (hiddenoptions[READOLDMCFFILE]==0) //jh 1_17_2018
@@ -834,8 +835,8 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     temp = runsteps + runsteps_old;
     aa "runsteps",0,1,&temp);
     aa "numpriormcfruns",0,1,&numpriormcfruns);
-    long temptotaltime = (long) totaltime;// copy to a long so aa still works 
-    aa "totaltime",1,1,&temptotaltime); 
+    long temptotaltime = (long) totaltime;// copy to a long so aa still works
+    aa "totaltime",1,1,&temptotaltime);
   }
   // now do the various instances of struct chainstate_record_updates_and_values
   // everything from this point on goes at the end of the file
@@ -898,10 +899,10 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     aa "netsteps",0,1,&netsteps);
     aa "mcmcrecords",0,1,&mcmcrecords);
   }
-  else  
+  else
   {
     int temp;
-    if (runoptions[DONTSAVEGENEALOGIES] == 1)  // put 0 in for genealogysamples because none will have been saved in the .ti file 
+    if (runoptions[DONTSAVEGENEALOGIES] == 1)  // put 0 in for genealogysamples because none will have been saved in the .ti file
       temp = 0;
     else
       temp = genealogysamples + genealogysamples_old;
@@ -909,7 +910,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     temp = mcmcrecords + mcmcrecords_old;
     aa "mcmcrecords",0,1,&temp);
   }
-  
+
   aa "hilike",3,1,&hilike);
   aa "hiprob",3,1,&hiprob);
 
@@ -920,7 +921,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     aa "totaltopolupdates",0,1,&totaltopolupdates);
     aa "chain0topolupdates",0,1,&chain0topolupdates);
     aa "chain0topolswaps",0,1,&chain0topolswaps);
-    
+
     aa "poptopologysequence.currentlength",0,1,&poptopologysequence.currentlength);
     aa "poptopologysequence.maxlength",0,1,&poptopologysequence.maxlength);
     assert (poptopologysequence.maxlength >  poptopologysequence.currentlength);
@@ -931,15 +932,15 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
       unsigned short *tempa = static_cast<unsigned short *>  (malloc (poptopologysequence.currentlength * sizeof(unsigned short)));
       for (i=0;i< poptopologysequence.currentlength;i++)
         tempa[i] = (unsigned short) poptopologysequence.disvals[i];
-      aa "poptopologysequence.disvals",6,poptopologysequence.currentlength,tempa); 
-      XFREE(tempa); 
+      aa "poptopologysequence.disvals",6,poptopologysequence.currentlength,tempa);
+      XFREE(tempa);
     }
   }
 
   fclose (mcffile);
 #ifdef TURNONCHECKS
       //gtreeprint(0,0);
-#endif //TURNONCHECKS 
+#endif //TURNONCHECKS
 //prob_hg_given_g(0,0);
 }                               /* writemcf */
 
@@ -958,8 +959,8 @@ if the number of chains in the current run (call this cc for now) is different t
 	then the mcffile is closed and reopened and the chains are reloaded in to the next available positions
 	this keeps getting done until all the cc positions in C[] have been loaded  */
 /* need to revise this so that if cc > cf,  then all chains above cf are copied from the chain cf
-  this way we are less likely to have a chain that is much better than its beta value, 
-  at least compared to what happens when we start copying low number chains into highly heated positions */ 
+  this way we are less likely to have a chain that is much better than its beta value,
+  at least compared to what happens when we start copying low number chains into highly heated positions */
 void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,int currentid)
 {
   int i, j, li, ci, lastci = -1;
@@ -996,7 +997,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       assert(i==C[ci]->currallbetapos);
     }
 
-    //updatescalars if called for 
+    //updatescalars if called for
     if (hiddenoptions[HIDDENGENEALOGY]==1)
     {
       aa "branchslidescaler",3,1,&(C[ci]->branchslideinfo.updatescalarval));
@@ -1007,9 +1008,9 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
         aa "RYwidthscalar", 3, 1, &(C[ci]->RYwidthinfo[i].updatescalarval));
       if (doNWupdate)
         aa "NWwidthscalar", 3, 1, &(C[ci]->NWwidthinfo[i].updatescalarval));
-    } 
-     
-// tvalues 
+    }
+
+// tvalues
     largetimeflag = 0;
     for (i = 0; i < numsplittimes; i++)
     {
@@ -1022,7 +1023,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
     // hyperpriors
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     {
-      /* mltorhpriors and mrtolpriors are each a dictionary, must first put priors in a list of doubles */ 
+      /* mltorhpriors and mrtolpriors are each a dictionary, must first put priors in a list of doubles */
       double *temppriors =  static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
       aa "mltorhpriors",3,numdistinctpopulationpairs[npops],temppriors);
       struct dictionary_node_kr *temp;
@@ -1034,7 +1035,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       XFREE(temppriors);
       aa "qhpriors",3,numpopsets,C[ci]->qhpriors);
     }
-    //mutation scalars 
+    //mutation scalars
     for (li = 0; li < nloci; li++)
     {
       if (nloci > 1 || L[li].nlinked > 0)
@@ -1109,7 +1110,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
         }
         if (L[li].model == HKY && i >= L[li].numgenes)
         {
-          /* don't think need to save scalefactors, as they get recalculated by makefrac 
+          /* don't think need to save scalefactors, as they get recalculated by makefrac
              aa "C[ci]->G[li].gtree[i].scalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].scalefactor[0]));
              aa "C[ci]->G[li].gtree[i].oldscalefactor[0]",3,L[li].numsites,&(C[ci]->G[li].gtree[i].oldscalefactor[0]));  */
           for (j = 0; j < L[li].numsites; j++)
@@ -1124,17 +1125,17 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       C[ci]->G[li].roottime = C[ci]->G[li].gtree[C[ci]->G[li].gtree[C[ci]->G[li].root].up[0]].time;
 #ifdef TURNONCHECKS
       //gtreeprint(ci,li);
-#endif //TURNONCHECKS 
+#endif //TURNONCHECKS
     }
     // not sure if this section makes sense for latest code 7/20/2016
     if ((checkeofc = (char) fgetc (mcffile)) == EOF)
     {
-      if (ci == lastci)  
+      if (ci == lastci)
         IM_err (IMERR_MCFSPLITTIMEPROB,
                 " can't load trees, probably because of multiple instances of splittime time conflict with t prior");
       if (ci < numchainspp - 1)
       {
-        f_close (mcffile);
+        FCLOSE (mcffile);
         if ((mcffile = fopen (mcffilename, "r")) == NULL)
         {
            IM_err(IMERR_READFILEOPENFAIL,"Error reopening mcffile: %s", mcffilename);
@@ -1155,11 +1156,11 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
     aa "runsteps",0,1,&runsteps);
     aa "numpriormcfruns",0,1,&numpriormcfruns);
     long temptotaltime;
-    aa "totaltime",1,1,&temptotaltime); 
-    totaltime = (time_t) temptotaltime;// copy from a longo aa still works 
+    aa "totaltime",1,1,&temptotaltime);
+    totaltime = (time_t) temptotaltime;// copy from a longo aa still works
   }
 
-  init_p (); // initialize various things 
+  init_p (); // initialize various things
   // now do the various instances of struct chainstate_record_updates_and_values
   if (runoptions[MCFLOADONLYSTATESPACE] == 0 && runoptions[LOADMCSTATE] == 0)  // do not read this part of the file if runoptions[MCFLOADONLYSTATESPACE] == 1 or runoptions[LOADMCSTATE] == 1
   {
@@ -1221,7 +1222,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       aa "netsteps",0,1,&netsteps);
       aa "recordsteps",0,1,&mcmcrecords);  // used to be "recordsteps"
     }
-    else  
+    else
     {
       aa "genealogysamples",0,1,&genealogysamples);
       aa "mcmcrecords",0,1,mcmcrecords);
@@ -1251,7 +1252,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
         aa "poptopologysequence.disvals",6,poptopologysequence.currentlength,tempa);
         for (i=0;i< poptopologysequence.currentlength;i++)
           poptopologysequence.disvals[i] = (double) tempa[i];
-        XFREE(tempa); 
+        XFREE(tempa);
       }
     }
   }
@@ -1260,8 +1261,5 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
   /*for (ci = 0; ci < numchainspp; ci++)
     for (li = 0; li < nloci; li++)
       gtreeprint(ci,li); */
-#endif //TURNONCHECKS 
+#endif //TURNONCHECKS
 }                               // readmcf
-
-
-

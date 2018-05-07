@@ -4,7 +4,9 @@
 #include "ima.hpp"
 
 extern int numtreesarray[];   /* number of possible ordered trees,  for up to 7 populations */
-
+#ifdef XMLOUTPUT
+extern std::stack<TiXmlElement*> xstack;
+#endif
 
 /*********** LOCAL STUFF **********/
 
@@ -131,10 +133,10 @@ calcx (int ei, int pnum, int mode)
         tempval = exp (lowergamma ((int) mc + 3, fm * max) - (mc + 3) * log (fm) - denom);
       }
     }
-    
+
   }
-  /* Jh changed this from 0 to 0.0, some compilers return a false because tempval is a double */ 
-  assert (tempval >= 0.0);         // it should be greater than or equal to 0   (not sure really,  is it ok to be 0 ? 
+  /* Jh changed this from 0 to 0.0, some compilers return a false because tempval is a double */
+  assert (tempval >= 0.0);         // it should be greater than or equal to 0   (not sure really,  is it ok to be 0 ?
   return tempval;
 }                               //calcx
 
@@ -199,16 +201,16 @@ void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
             }
             j = GRIDSIZE-1;
             maxxfind = 0;
-            while (maxxfind==0 && j >= 0)// see if the maximum x value can be reduced from pmmax.  
+            while (maxxfind==0 && j >= 0)// see if the maximum x value can be reduced from pmmax.
             {
               tempx = (j + 0.5) * pmmax / GRIDSIZE;
               if (modeloptions[EXPOMIGRATIONPRIOR])
                 tempy = calc_pop_expomig (thetai, mi,tempx , 0);
               else
                 tempy = calc_popmig (thetai, mi,tempx , 0);
-              if (tempy > 1e-6)  // 1e-6 fairly arbitrary cutoff for finding upper bound 
+              if (tempy > 1e-6)  // 1e-6 fairly arbitrary cutoff for finding upper bound
                 maxxfind = tempx;
-              else 
+              else
                 j--;
             }
             if (j < 0)
@@ -271,7 +273,7 @@ void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
               tempy = calc_popmig (thetai, mi,tempx , 0);
             if (tempy > 1e-9)
               maxxfind = tempx;
-            else 
+            else
               j--;
           }
           if (j < 0)
@@ -297,16 +299,16 @@ void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
 
 void closeopenout (FILE ** p_to_file, char fname[]) // why a pointer to a pointer? so the address can be passed back
 {
-  f_close (* p_to_file);
+  FCLOSE (* p_to_file);
   if ((* p_to_file = fopen (fname, "a+")) == NULL)
   {
     IM_err(IMERR_OUTPUTFILECHECK,"Error opening text file for writing");
   }
 }
 /*takes a pointer to a piece of text (length less than BANNERMAXLENGTH)
-  puts a capitalized version in between two rows of equal signs '=' into the holder array,  bannerall 
-  returns a pointer to the banner to be printed 
-  bannerall[] is static so should be accessible to whatever calls it upon return 
+  puts a capitalized version in between two rows of equal signs '=' into the holder array,  bannerall
+  returns a pointer to the banner to be printed
+  bannerall[] is static so should be accessible to whatever calls it upon return
 */
 char* outputbanner(const char *bannertext)
 {
@@ -355,13 +357,13 @@ checkoutfileclosed (FILE ** outfile, char outfilename[])
   }
   fseek(*outfile,0,SEEK_END);
   fsize = ftell(*outfile);
-  f_close (*outfile);
+  FCLOSE (*outfile);
   if (fsize==0)
     remove(outfilename);
 }                               // checkoutfileclosed
 
 /* prints to outfile it its not NULL, which should only be true if it is the head node - cpu 0
-  also gathers topologycounts to cpu 0 from other cpus */ 
+  also gathers topologycounts to cpu 0 from other cpus */
 void
 printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int burninsteps_old,int runsteps_old, int mcmcrecords_old,int genealogysamples_old,
                 int recordint, int mcmcrecords, int savegenealogyint,double hilike,double hiprob)
@@ -369,8 +371,14 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
   //double mcalc;
   int totaltopol_rec, chain0topol_rec, chain0topolswaps_rec;
   double ml_estimate;//, ml_stdev1, ml_stdev2;
-  if (calcoptions[CALCMARGINALLIKELIHOOD])  // make this call for all processors (i.e. regardless of outfile value) 
+  if (calcoptions[CALCMARGINALLIKELIHOOD])  // make this call for all processors (i.e. regardless of outfile value)
     move_calcmarglike_vals();
+
+    #ifdef XMLOUTPUT
+    TiXmlElement *highestpdg = new TiXmlElement("HighestPDG");
+    TiXmlText *tn = new TiXmlText("Highest P(D|G) Values");
+    highestpdg->LinkEndChild(tn);
+    #endif
   if (outfile != NULL)
   {
  //printf("here 1 %ld",(long) strlen(fpstr));
@@ -425,7 +433,7 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
       {
         thermo_marginlike_calc(mcmcrecords, &ml_estimate);
         FP "  Marginal Likelihood P(D) (log) estimate: %10.3lf\n",ml_estimate);
-        /* 8/22/2016 turned off most marginal likelihood stuff as it was not working well when intervals between beta values were not uniform 
+        /* 8/22/2016 turned off most marginal likelihood stuff as it was not working well when intervals between beta values were not uniform
           need to get back to this to figure out how to calculate the variance of the estimate */
         /*FP "Marginal Likelihood P(D) (log) estimates\n");
         if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
@@ -441,7 +449,7 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
         FP "     steppingstone sampling: %10.3f\n",ml_estimate);
         */
       }
-/*#ifdef DEBUG  5/15/2017 just not useful 
+/*#ifdef DEBUG  5/15/2017 just not useful
       // turn this on for debugging 8/18/2016,though rarely useful. only works when there is just one cpu, have not done mpi for this
       if (numprocesses == 1)
       {
@@ -468,7 +476,7 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
  #ifdef MPI_ENABLED
     int rc;
     MPI_Status status;
-    if (numprocesses > 1) // if multiple processes reduce sum 
+    if (numprocesses > 1) // if multiple processes reduce sum
     {
 	     rc = MPI_Reduce(&totaltopolupdates, &totaltopol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 		    if (rc != MPI_SUCCESS)
@@ -480,20 +488,20 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
 			   if (rc != MPI_SUCCESS)
 				    MPI_Abort(MPI_COMM_WORLD, rc);
     }
-#endif	
+#endif
     z = whichiscoldchain();
-    if (z >=0 && outfile != NULL) 
+    if (z >=0 && outfile != NULL)
       poptreenum_rec = C[z]->poptreenum;
 #ifdef MPI_ENABLED
     else
     {
-      if (z >=0 && outfile == NULL) 
+      if (z >=0 && outfile == NULL)
       {
          rc = MPI_Send(&C[z]->poptreenum, 1, MPI_INT, 0, 7313, MPI_COMM_WORLD);
 	    if (rc != MPI_SUCCESS)
 		    MPI_Abort(MPI_COMM_WORLD, rc);
       }
-      if (z < 0 && outfile != NULL) 
+      if (z < 0 && outfile != NULL)
       {
          rc = MPI_Recv(&poptreenum_rec, 1,MPI_INT, MPI_ANY_SOURCE, 7313, MPI_COMM_WORLD, &status);
 	    if (rc != MPI_SUCCESS)
@@ -501,9 +509,9 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
       }
     }
 #endif
-    if(outfile != NULL) 
+    if(outfile != NULL)
     {
-      if (numchainstotal > 1) 
+      if (numchainstotal > 1)
       {
         //FP "Last Sampled Population Topology #: %d   String: %s\n\n",poptreenum_rec,alltreestrings[poptreenum_rec]);   this just not very useful in output file
         FP "\nPopulation Topology Sampling\n----------------------------\n");
@@ -534,7 +542,7 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
       }
     }
   }
-  /* interval output of detailed chain info - used for debugging 
+  /* interval output of detailed chain info - used for debugging
   int j;
   int ci,li,i,temp;
   FP  "\nchain#\tallbeta\tbetachain#\t#Swaps\tswaprate\tpdg\tprobhgg\tprobg\tsumP\t#mig\ttree#\n");
@@ -560,23 +568,23 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
 #define DEFAULTLENX 150;
 #define DEFAULTLENY  40;
 
-/* 4/27/09  JH modified so that the full x axis is used even if there are < TRENDDIM points in the array */ 
+/* 4/27/09  JH modified so that the full x axis is used even if there are < TRENDDIM points in the array */
 
 void asciitrend (FILE * outfile, struct value_record *v, int trenddoublepoint,int trendspot)
-/* structure of graph 
+/* structure of graph
 0 name
 1 ytop    |
 40 ybot   |
 41         -------
 42        xbot    xtop
 
-trenddoublepoint is the position in the array below which the points have twice the density 
-with respect to the points abouve the trenddoublepoint 
+trenddoublepoint is the position in the array below which the points have twice the density
+with respect to the points abouve the trenddoublepoint
 
-To plot the array so that the plotted positions are proportional to time,  we adjust the plotting positions as a function 
-of the density difference and the position of trenddoublepoint. 
-If a is where trenddoublepoint would be plotted without adjustment and x is the value by which to multiply positions from 0 up to a,  to get 
-their adjusted plotposition  then 
+To plot the array so that the plotted positions are proportional to time,  we adjust the plotting positions as a function
+of the density difference and the position of trenddoublepoint.
+If a is where trenddoublepoint would be plotted without adjustment and x is the value by which to multiply positions from 0 up to a,  to get
+their adjusted plotposition  then
 
 Solve[x a + (x/2) (d - a) == d, x]
 
@@ -586,10 +594,10 @@ then {x -> (2 d)/(a + d)}}
 let f(a,d) = (2 d)/(a + d)
 Then for a point at position c in the array and that is lower than position a,  the plot position is c*f(a, d)
 position a itself is plotted at a * f(a,d)
-For a point at position c in the array that is higher than position a,  the plot position is 
+For a point at position c in the array that is higher than position a,  the plot position is
  a * f(a,d) + (c - a)*f(a, d)/2
-Thus we rescale points up to point trendoublepoint by a factor of x 
-and we rescale points above that by a factor of x/2 
+Thus we rescale points up to point trendoublepoint by a factor of x
+and we rescale points above that by a factor of x/2
 */
 {
   char graph[MAXLENY][MAXLENX];
@@ -651,8 +659,8 @@ and we rescale points above that by a factor of x/2
     graph[i][0] = '\0';
     while ((int) strlen (graph[i]) < xlen - 1)
       strcat (graph[i], " ");
-  } 
-  
+  }
+
   for (i = 1; i < ylen - 1; i++)
     graph[i][10] = '|';
 
@@ -703,12 +711,12 @@ and we rescale points above that by a factor of x/2
 
 /*for logscale,  any integer not 0  makes the plot use a log scale */
 /* does not set the correct scale for t */
-/* position of rows of graph 
+/* position of rows of graph
 0 name
 1               |
 ACYPLOT         |
 ACYPLOT + 1     -------
-ACYPLOT + 2    
+ACYPLOT + 2
 */
 
 void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
@@ -730,7 +738,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
       ymin = a[i].y;
   }
   ymax /= mcmcrecords;
-  ymin = 0;                     // don't shift plot on y axis 
+  ymin = 0;                     // don't shift plot on y axis
   if (logscale)
   {
     xmax = GRIDSIZE - 1;
@@ -748,7 +756,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
     if (xmax < 0)
       xmax = GRIDSIZE - 1;
   }
-// set up plot name line 
+// set up plot name line
   strcat (graph[0], qlabel);
   strcat (graph[0], " curve");
   //sprintf(graph[0],"%s curve %d pts",qlabel,mcmcrecords);
@@ -797,7 +805,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
       xspot = (int) ACXLEFTSPACE + 1 + (int) ((ACXPLOT - 2) * (log (a[i].x) - log (a[0].x)) / (2 * log (a[xmax].x)));
     else
       xspot = (int) ACXLEFTSPACE + 1 + (int) ((ACXPLOT - 2) * (a[i].x - a[0].x) / (a[xmax].x - a[0].x));
-//    assert (xspot < ACXMAX);  some bug here cauess xspot to be greater than ACXMAX ?? 
+//    assert (xspot < ACXMAX);  some bug here cauess xspot to be greater than ACXMAX ??
     assert (yspot < ACYMAX);
     if (xspot < ACXMAX && xspot >= (ACXLEFTSPACE + 1) && yspot < ACYMAX && yspot >= 1)
       graph[yspot][xspot] = '*';
@@ -808,7 +816,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
   fprintf (outfile, "\n");
 }                               /* asciicurve */
 
-// print acceptance rates for each the numrec elements pointed to in the array of pointers rec 
+// print acceptance rates for each the numrec elements pointed to in the array of pointers rec
 // assume that all elements have the same value for num_uptypes
 #undef MAXLENX
 #undef MAXLENY
@@ -820,14 +828,35 @@ void printacceptancerates (FILE * outto, int numrec,
   int i, j;
   char numstr[20];
 
+  #ifdef XMLOUTPUT
+  TiXmlElement *acceptancerates = new TiXmlElement("UpdateRates");
+  TiXmlText *text = new TiXmlText(printstring);
+  acceptancerates->LinkEndChild(text);
+  TiXmlElement *head = new TiXmlElement("Head");
+  TiXmlElement *subhead = new TiXmlElement("Subhead");
+  #endif
+  std::stringstream sh("");
   if (outto != NULL)  fprintf(outto, "\n%s\n", printstring);
   for (i = 0; i < (int) strlen (printstring); i++)
     if (outto != NULL)  fprintf(outto, "-");
   if (outto != NULL)  fprintf(outto, "\n");
 
   if (outto != NULL)  fprintf(outto, " Update Type:");
-  for (i = 0; i < rec[0]->num_uptypes; i++)
-    if (outto != NULL)  fprintf(outto, "\t%s\t", rec[0]->upnames[i]);
+  for (i = 0; i < rec[0]->num_uptypes; i++) {
+    if (outto != NULL) {
+      fprintf(outto, "\t%s\t", rec[0]->upnames[i]);
+      sh << rec[0]->upnames[i] << "  ";
+    }
+  }
+  #ifdef XMLOUTPUT
+  TiXmlText *th = new TiXmlText(sh.str().c_str());
+  head->LinkEndChild(th);
+  TiXmlText *tsh = new TiXmlText("#Tries  #Accp  %");
+  subhead->LinkEndChild(tsh);
+  acceptancerates->LinkEndChild(head);
+  acceptancerates->LinkEndChild(subhead);
+  TiXmlElement *data = new TiXmlElement("Data");
+  #endif
   if (outto != NULL)  fprintf(outto, "\n");
   if (outto != NULL)  fprintf(outto, "            ");
   for (i = 0; i < rec[0]->num_uptypes; i++)
@@ -835,6 +864,8 @@ void printacceptancerates (FILE * outto, int numrec,
   if (outto != NULL)  fprintf(outto, "\n");
   for (j = 0; j < numrec; j++)
   {
+    sh.str("");
+    sh << "_" << rec[j]->str << "  ";
     if (outto != NULL)  fprintf(outto, " %s", rec[j]->str);
     i = (int) strlen (rec[j]->str);
     while (i < 13)
@@ -846,22 +877,36 @@ void printacceptancerates (FILE * outto, int numrec,
     {
       sprintf (&numstr[0], "%.3e", (float) rec[j]->upinf[i].tries);
       if (outto != NULL)  fprintf(outto, "\t%s", shorten_e_num (&numstr[0]));
+      sh << shorten_e_num(&numstr[0]) << "  ";
       sprintf (&numstr[0], "%.3e", (float) rec[j]->upinf[i].accp);
       if (outto != NULL)  fprintf(outto, "\t%s", shorten_e_num (&numstr[0]));
+      sh << shorten_e_num(&numstr[0]) << "  ";
       if (rec[j]->upinf[i].tries >= 0.5)  // tries is a double,  but accumulates as if an int
         {
           if (outto != NULL)  fprintf(outto, "\t%.3f", (float) 100 * rec[j]->upinf[i].accp / rec[j]->upinf[i].tries);
+          sh << ((float) 100*rec[j]->upinf[i].accp / rec[j]->upinf[i].tries) << "  ";
       }
       else
       {
         if (outto != NULL)  fprintf(outto, "\tna");
+        sh << "na  ";
       }
     }
     if (outto != NULL)  fprintf(outto, "\n");
+    #ifdef XMLOUTPUT
+    TiXmlElement *row = new TiXmlElement("Row");
+    TiXmlText *text = new TiXmlText(sh.str().c_str());
+    row->LinkEndChild(text);
+    data->LinkEndChild(row);
+    #endif
   }
+  #ifdef XMLOUTPUT
+  acceptancerates->LinkEndChild(data);
+  xstack.top()->LinkEndChild(acceptancerates);
+  #endif
 }                               /* printacceptancerates() */
 
-                           
+
 /* To print acceptance rates:
 	reclist[] is an array of pointers to struct chainstate_record_updates_and_values
 	set values of reclist[] to those structures for which you want to print acceptance rates
@@ -880,15 +925,21 @@ void callprintacceptancerates (FILE * outto, int currentid)
   double *z1 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
   double *z_rec = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
 
+  #ifdef XMLOUTPUT
+  TiXmlElement *acceptancerates = new TiXmlElement("AcceptanceRates");
+  xstack.top()->LinkEndChild(acceptancerates);
+  xstack.push(acceptancerates);
+  #endif
 
-/* SPLITTING TIME UPDATE RATES 
+
+/* SPLITTING TIME UPDATE RATES
    ---------------------------*/
 
 /* RY update MPI_REDUCE */
 #ifdef MPI_ENABLED
-  if (numprocesses > 1 && doRYupdate) 
+  if (numprocesses > 1 && doRYupdate)
   {
-    for (int x = 0; x < numsplittimes; x++) 
+    for (int x = 0; x < numsplittimes; x++)
     {
 	    y1[x] = T[x].upinf[update_type_RY].tries;
 	    z1[x] = T[x].upinf[update_type_RY].accp;
@@ -899,10 +950,10 @@ void callprintacceptancerates (FILE * outto, int currentid)
 		rc = MPI_Reduce(z1, z_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		if (rc != MPI_SUCCESS)
 	    MPI_Abort(MPI_COMM_WORLD, rc);
-	  if (currentid == HEADNODE) 
+	  if (currentid == HEADNODE)
     {
-	    for (int x = 0; x < numsplittimes; x++) 
-      {	
+	    for (int x = 0; x < numsplittimes; x++)
+      {
 		    T[x].upinf[update_type_RY].tries = y_rec[x];
 		    T[x].upinf[update_type_RY].accp = z_rec[x];
 	    }
@@ -916,9 +967,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
 /* NW update MPI_REDUCE */
 
 #ifdef MPI_ENABLED
-  if (doNWupdate && numprocesses > 1) 
+  if (doNWupdate && numprocesses > 1)
   {
-    for (int x = 0; x < numsplittimes; x++) 
+    for (int x = 0; x < numsplittimes; x++)
     {
       y2[x] = T[x].upinf[update_type_NW].tries;
       z2[x] = T[x].upinf[update_type_NW].accp;
@@ -926,13 +977,13 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(y2, y_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
-	
+
     rc = MPI_Reduce(z2, z_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
-	  if (currentid == HEADNODE) 
+	  if (currentid == HEADNODE)
     {
-      for (int x = 0; x < numsplittimes; x++) 
+      for (int x = 0; x < numsplittimes; x++)
       {
         T[x].upinf[update_type_NW].tries = y_rec[x];
         T[x].upinf[update_type_NW].accp = z_rec[x];
@@ -954,9 +1005,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 
 #ifdef MPI_ENABLED
-  if (currentid == HEADNODE && numprocesses > 1 && doRYupdate) 
+  if (currentid == HEADNODE && numprocesses > 1 && doRYupdate)
   {
-    for (int j = 0; j < numsplittimes; j++) 
+    for (int j = 0; j < numsplittimes; j++)
     {
       T[j].upinf[update_type_RY].tries = y1[j];
       T[j].upinf[update_type_RY].accp = z1[j];
@@ -969,9 +1020,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
 #ifdef MPI_ENABLED
   if (doNWupdate && currentid == HEADNODE && numprocesses > 1)
   {
-    for (int j  = 0; j < numsplittimes; j++) 
+    for (int j  = 0; j < numsplittimes; j++)
     {
-			
+
       T[j].upinf[update_type_NW].tries = y2[j];
       T[j].upinf[update_type_NW].accp = z2[j];
     }
@@ -982,7 +1033,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 /* DONE RY AND NW SPLITTING TIME UPDATE ACCEPTANCE RATE STUFF*/
 
-/* HYPERPRIOR UPDATE RATES 
+/* HYPERPRIOR UPDATE RATES
    -----------------------*/
 
 /* update migration hyperprior stuff, mh */
@@ -993,9 +1044,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
     double *z1 = static_cast<double *> (malloc (nummigrateparams * sizeof (double)));
     double *z_rec = static_cast<double *> (malloc (nummigrateparams * sizeof (double)));
 #ifdef MPI_ENABLED
-    if (numprocesses > 1) 
+    if (numprocesses > 1)
     {
-      for (int x = 0; x < nummigrateparams; x++) 
+      for (int x = 0; x < nummigrateparams; x++)
       {
 	      y1[x] = mh[x].upinf[PRIOR_UPDATE].tries;
 	      z1[x] = mh[x].upinf[PRIOR_UPDATE].accp;
@@ -1006,10 +1057,10 @@ void callprintacceptancerates (FILE * outto, int currentid)
 		    rc = MPI_Reduce(z1, z_rec, nummigrateparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		    if (rc != MPI_SUCCESS)
 	        MPI_Abort(MPI_COMM_WORLD, rc);
-	      if (currentid == HEADNODE) 
+	      if (currentid == HEADNODE)
       {
-	      for (int x = 0; x < nummigrateparams; x++) 
-        {	
+	      for (int x = 0; x < nummigrateparams; x++)
+        {
 		      mh[x].upinf[PRIOR_UPDATE].tries = y_rec[x];
 		      mh[x].upinf[PRIOR_UPDATE].accp = z_rec[x];
 	      }
@@ -1017,7 +1068,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
     {
-      if (numprocesses > 1) 
+      if (numprocesses > 1)
       {
         y1[0] = mhnit->upinf[PRIOR_UPDATE].tries;
 	       z1[0] = mhnit->upinf[PRIOR_UPDATE].accp;
@@ -1025,7 +1076,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		      rc = MPI_Reduce(z1, z_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-	       if (currentid == HEADNODE) 
+	       if (currentid == HEADNODE)
         {
 		        mhnit->upinf[PRIOR_UPDATE].tries = y_rec[0];
 		        mhnit->upinf[PRIOR_UPDATE].accp = z_rec[0];
@@ -1049,9 +1100,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
     XFREE(y_rec);
     XFREE(z_rec);
 #ifdef MPI_ENABLED
-    if (currentid == HEADNODE && numprocesses > 1) 
+    if (currentid == HEADNODE && numprocesses > 1)
     {
-      for (int j = 0; j < nummigrateparams; j++) 
+      for (int j = 0; j < nummigrateparams; j++)
       {
         mh[j].upinf[PRIOR_UPDATE].tries = y1[j];
         mh[j].upinf[PRIOR_UPDATE].accp = z1[j];
@@ -1061,16 +1112,16 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	  XFREE(y1);
 	  XFREE(z1);
   }
-  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])   // now do popsize hyperprior stuff 
+  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])   // now do popsize hyperprior stuff
   {
     double *y1 = static_cast<double *> (malloc (numpopsizeparams * sizeof (double)));
     double *y_rec = static_cast<double *> (malloc (numpopsizeparams * sizeof (double)));
     double *z1 = static_cast<double *> (malloc (numpopsizeparams * sizeof (double)));
     double *z_rec = static_cast<double *> (malloc (numpopsizeparams * sizeof (double)));
 #ifdef MPI_ENABLED
-    if (numprocesses > 1) 
+    if (numprocesses > 1)
     {
-      for (int x = 0; x < numpopsizeparams; x++) 
+      for (int x = 0; x < numpopsizeparams; x++)
       {
 	      y1[x] = qh[x].upinf[PRIOR_UPDATE].tries;
 	      z1[x] = qh[x].upinf[PRIOR_UPDATE].accp;
@@ -1081,10 +1132,10 @@ void callprintacceptancerates (FILE * outto, int currentid)
 		    rc = MPI_Reduce(z1, z_rec, numpopsizeparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		    if (rc != MPI_SUCCESS)
 	        MPI_Abort(MPI_COMM_WORLD, rc);
-	      if (currentid == HEADNODE) 
+	      if (currentid == HEADNODE)
       {
-	      for (int x = 0; x < numpopsizeparams; x++) 
-        {	
+	      for (int x = 0; x < numpopsizeparams; x++)
+        {
 		      qh[x].upinf[PRIOR_UPDATE].tries = y_rec[x];
 		      qh[x].upinf[PRIOR_UPDATE].accp = z_rec[x];
 	      }
@@ -1092,7 +1143,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
     {
-      if (numprocesses > 1) 
+      if (numprocesses > 1)
       {
         y1[0] = qhnit->upinf[PRIOR_UPDATE].tries;
 	       z1[0] = qhnit->upinf[PRIOR_UPDATE].accp;
@@ -1100,7 +1151,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		      rc = MPI_Reduce(z1, z_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-	       if (currentid == HEADNODE) 
+	       if (currentid == HEADNODE)
         {
 		        qhnit->upinf[PRIOR_UPDATE].tries = y_rec[0];
 		        qhnit->upinf[PRIOR_UPDATE].accp = z_rec[0];
@@ -1123,9 +1174,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
     XFREE(y_rec);
     XFREE(z_rec);
 #ifdef MPI_ENABLED
-    if (currentid == HEADNODE && numprocesses > 1) 
+    if (currentid == HEADNODE && numprocesses > 1)
     {
-      for (int j = 0; j < numpopsizeparams; j++) 
+      for (int j = 0; j < numpopsizeparams; j++)
       {
         qh[j].upinf[PRIOR_UPDATE].tries = y1[j];
         qh[j].upinf[PRIOR_UPDATE].accp = z1[j];
@@ -1138,7 +1189,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 /* DONE HYPERPRIOR UPDATE ACCEPTANCE RATE STUFF*/
 
-/* POPULATION TOPOLOGY UPDATE RATES 
+/* POPULATION TOPOLOGY UPDATE RATES
    --------------------------------*/
   double a1,a2,a3, a_rec, b1,b2,b3, b_rec;
   //if (modeloptions[POPTREETOPOLOGYUPDATE] == 1)   // fixed 5/3/2017
@@ -1149,7 +1200,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 #ifdef MPI_ENABLED
 	//AS: 4/13/2016 Changing this part of the function
 //    int x, y, y_rec, z, z_rec;
-    //if (numprocesses > 1)  // 3/29/2017  commented this out,  was causing no results printed when only 1 cpu 
+    //if (numprocesses > 1)  // 3/29/2017  commented this out,  was causing no results printed when only 1 cpu
     {
       a1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries;
       b1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp;
@@ -1160,7 +1211,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(&b1, &b_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
   		MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries = a_rec;
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp = b_rec;
@@ -1173,7 +1224,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(&b2, &b_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   	if (rc != MPI_SUCCESS)
 	  	MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries = a_rec;
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].accp = b_rec;
@@ -1186,7 +1237,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(&a3, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	  if (rc != MPI_SUCCESS)
 		  MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TMRCA].tries = a_rec;
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TMRCA].accp = b_rec;
@@ -1198,7 +1249,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
       printacceptancerates (outto, 1, reclist,
                           "Update Rates (chain 0) -- Branch Slide Updates to Population Trees");
 #ifdef MPI_ENABLED
-    if (numprocesses > 1 && currentid == HEADNODE) 
+    if (numprocesses > 1 && currentid == HEADNODE)
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries = a1;
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries = a2;
@@ -1210,7 +1261,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
 #endif //MPI_ENABLED
   } // hiddengenealogy==1
-   
+
   double *c1 = static_cast<double *> (malloc (nloci * sizeof (double)));
   double *c2 = static_cast<double *> (malloc (nloci * sizeof (double)));
   double *c3 = static_cast<double *> (malloc (nloci * sizeof (double)));
@@ -1222,9 +1273,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 #ifdef MPI_ENABLED
 
-  if (numprocesses > 1) 
+  if (numprocesses > 1)
   {
-    for (int x = 0; x < nloci; x++) 
+    for (int x = 0; x < nloci; x++)
     {
       c1[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].tries;
       d1[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].accp;
@@ -1235,15 +1286,15 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(d1, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
-      for (int x = 0; x < nloci; x++) 
+      for (int x = 0; x < nloci; x++)
       {
         L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].tries = c_rec[x];
         L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].accp = d_rec[x];
       }
     }
-    for (int x = 0; x < nloci; x++) 
+    for (int x = 0; x < nloci; x++)
     {
       c2[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].tries;
       d2[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].accp;
@@ -1254,15 +1305,15 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(d2, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
-      for (int x = 0; x < nloci; x++) 
+      for (int x = 0; x < nloci; x++)
       {
         L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].tries = c_rec[x];
         L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].accp = d_rec[x];
       }
     }
-    for (int x = 0; x < nloci; x++) 
+    for (int x = 0; x < nloci; x++)
     {
       c3[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].tries;
       d3[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].accp;
@@ -1273,9 +1324,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
     rc = MPI_Reduce(d3, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
       MPI_Abort(MPI_COMM_WORLD, rc);
-    if (currentid == HEADNODE) 
+    if (currentid == HEADNODE)
     {
-      for (int x = 0; x < nloci; x++) 
+      for (int x = 0; x < nloci; x++)
       {
       L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].tries = c_rec[x];
       L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].accp = d_rec[x];
@@ -1293,9 +1344,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
   }
 
 #ifdef MPI_ENABLED
-  if (numprocesses > 1 && currentid == HEADNODE) 
+  if (numprocesses > 1 && currentid == HEADNODE)
   {
-    for (li = 0; li < nloci; li++) 
+    for (li = 0; li < nloci; li++)
     {
       L[li].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].tries = c1[li];
       L[li].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].tries = c2[li];
@@ -1317,7 +1368,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 /* DONE TOPOLOGY SLIDING  UPDATE ACCEPTANCE RATE STUFF*/
 
-/* MUTATION SCALAR UPDATE RATES 
+/* MUTATION SCALAR UPDATE RATES
    ----------------------------*/
   if (domutationscalarupdate)
     {
@@ -1326,7 +1377,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     double **f = static_cast<double **> (malloc (nloci * sizeof(double *)));
     double **f_rec = static_cast<double **> (malloc (nloci * sizeof(double *)));
 
-    for (li = 0;  li < nloci; li++) 
+    for (li = 0;  li < nloci; li++)
     {
       e[li] = static_cast<double *> (malloc (L[li].nlinked * sizeof (double)));
       e_rec[li] = static_cast<double *> (malloc (L[li].nlinked * sizeof (double)));
@@ -1337,11 +1388,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
     if (nurates > 1  && (runoptions[PRINTMUTATIONUPDATESTOSCREEN] || outto != stdout))
     {
 #ifdef MPI_ENABLED
-      if (numprocesses > 1) 
+      if (numprocesses > 1)
       {
-        for (li = 0; li < nloci; li++) 
+        for (li = 0; li < nloci; li++)
         {
-          for (j = 0; j < L[li].nlinked; j++) 
+          for (j = 0; j < L[li].nlinked; j++)
           {
             e[li][j] = L[li].u_rec[j].upinf->tries;
             f[li][j] = L[li].u_rec[j].upinf->accp;
@@ -1352,9 +1403,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
           rc = MPI_Reduce(f[li], f_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
           if (rc != MPI_SUCCESS)
           MPI_Abort(MPI_COMM_WORLD, rc);
-          if (currentid == HEADNODE) 
+          if (currentid == HEADNODE)
           {
-            for (j = 0; j < L[li].nlinked; j++) 
+            for (j = 0; j < L[li].nlinked; j++)
             {
 	            L[li].u_rec[j].upinf->tries = e_rec[li][j];
               L[li].u_rec[j].upinf->accp = f_rec[li][j];
@@ -1372,15 +1423,15 @@ void callprintacceptancerates (FILE * outto, int currentid)
           i++;
         }
   // kappa values for HKY model
-        if (currentid == HEADNODE  && domutationscalarupdate) 
+        if (currentid == HEADNODE  && domutationscalarupdate)
           printacceptancerates (outto, i, reclist,"Update Rates (chain 0) -- Mutation Rate Scalars");
       }
 #ifdef MPI_ENABLED
-      if (numprocesses > 1 && currentid == HEADNODE) 
+      if (numprocesses > 1 && currentid == HEADNODE)
       {
-        for (li = 0; li < nloci; li++) 
+        for (li = 0; li < nloci; li++)
         {
-          for (j = 0; j < L[li].nlinked; j++) 
+          for (j = 0; j < L[li].nlinked; j++)
           {
             L[li].u_rec[j].upinf->tries = e[li][j];
             L[li].u_rec[j].upinf->accp = f[li][j];
@@ -1390,13 +1441,13 @@ void callprintacceptancerates (FILE * outto, int currentid)
 #endif  //MPI_ENABLED
 
 #ifdef MPI_ENABLED
-      if (numprocesses > 1) 
+      if (numprocesses > 1)
       {
-        for (li = 0;  li < nloci; li++) 
+        for (li = 0;  li < nloci; li++)
         {
-          for (j = 0; j < L[li].nlinked; j++) 
+          for (j = 0; j < L[li].nlinked; j++)
           {
-            if (L[li].umodel[j] == HKY) 
+            if (L[li].umodel[j] == HKY)
             {
               e[li][j] = L[li].kappa_rec[j].upinf->tries;
               f[li][j] = L[li].kappa_rec[j].upinf->accp;
@@ -1408,11 +1459,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
           rc = MPI_Reduce(f[li], f_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
           if (rc != MPI_SUCCESS)
           MPI_Abort(MPI_COMM_WORLD, rc);
-          if (currentid == HEADNODE) 
+          if (currentid == HEADNODE)
           {
-            for (j = 0; j < L[li].nlinked; j++) 
+            for (j = 0; j < L[li].nlinked; j++)
             {
-              if (L[li].umodel[j] == HKY) 
+              if (L[li].umodel[j] == HKY)
               {
                 L[li].kappa_rec[j].upinf->tries = e_rec[li][j];
                 L[li].kappa_rec[j].upinf->accp = f_rec[li][j];
@@ -1438,13 +1489,13 @@ void callprintacceptancerates (FILE * outto, int currentid)
                               "Update Rates (chain 0) -- HKY Model Kappa parameter");
       }
 #ifdef MPI_ENABLED
-      if (numprocesses > 1 && currentid == HEADNODE) 
+      if (numprocesses > 1 && currentid == HEADNODE)
       {
-        for (li = 0; li < nloci; li++) 
+        for (li = 0; li < nloci; li++)
         {
-          for (j = 0; j < L[li].nlinked; j++) 
+          for (j = 0; j < L[li].nlinked; j++)
           {
-            if (L[li].umodel[j] == HKY) 
+            if (L[li].umodel[j] == HKY)
             {
               L[li].kappa_rec[j].upinf->tries = e[li][j];
               L[li].kappa_rec[j].upinf->accp = f[li][j];
@@ -1454,7 +1505,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
       }
 #endif //MPI_ENABLED
     }
-    for (li = 0; li < nloci; li++) 
+    for (li = 0; li < nloci; li++)
     {
       XFREE(e[li]);
       XFREE(f[li]);
@@ -1465,13 +1516,13 @@ void callprintacceptancerates (FILE * outto, int currentid)
     XFREE(f);
     XFREE(e_rec);
     XFREE(f_rec);
-  }  
+  }
 /* DONE mutation rate scalar and kappa update acceptatance rate stuff */
 
 
-// STR ancestral allele states 
+// STR ancestral allele states
 // A_rec not used as of sometime in 2010, A gets enough updates when updating genealogy
-//8/26/2011  turn this printing section off, as it only ever prints zeros when A updating is not used 
+//8/26/2011  turn this printing section off, as it only ever prints zeros when A updating is not used
     /*
     for (i = 0, li = 0; li < nloci; li++)
       for (j = 0; j < L[li].nlinked; j++)
@@ -1482,17 +1533,20 @@ void callprintacceptancerates (FILE * outto, int currentid)
           i++;
         }
       }
-      
+
     if (i > 0)
     {
       printacceptancerates (outto, i, reclist,
                             "Update Rates (chain 0) -- STR Genealogy Allele States");
     } */
+    #ifdef XMLOUTPUT
+    xstack.pop();
+    #endif
 
   return;
 }
 
-/* this code does not deal with MPI and multiple processors, so the values that are getting output  could be from any chain */ 
+/* this code does not deal with MPI and multiple processors, so the values that are getting output  could be from any chain */
 /* 4/19/2017  edited it so nothing is output if multiple cpus are in use  */
 
 void printcurrentvals (FILE * outto)
@@ -1500,15 +1554,46 @@ void printcurrentvals (FILE * outto)
   int li, i;
   if (numprocesses >  1)
     return;
+  #ifdef XMLOUTPUT
+  TiXmlElement *currentvals = new TiXmlElement("CurrentVals");
+  xstack.top()->LinkEndChild(currentvals);
+  #endif
+  std::stringstream s("");
+  char s_buf[50];
   if (numsplittimes > 0)
   {
+      #ifdef XMLOUTPUT
+      TiXmlElement *splittime = new TiXmlElement("SplittingTime");
+      TiXmlElement *data = new TiXmlElement("Data");
+      TiXmlElement *head = new TiXmlElement("Head");
+      TiXmlText *splittext = new TiXmlText("Current Splitting Time Values");
+      splittime->LinkEndChild(splittext);
+      TiXmlText *headtext = new TiXmlText("Time  Value");
+      head->LinkEndChild(headtext);
+      splittime->LinkEndChild(head);
+      splittime->LinkEndChild(data);
+      currentvals->LinkEndChild(splittime);
+      #endif
     if (outto != NULL)  fprintf(outto, "\nCurrent Splitting Time Values\n");
     if (outto != NULL)  fprintf(outto, "------------------------------\n");
     if (npops > 1)
     {
       if (outto != NULL)  fprintf(outto, "Split times");
       for (i = 0; i < lastperiodnumber; i++)
-        if (outto != NULL)  fprintf(outto, "   t%i: %.3f", i, C[ARBCHAIN]->tvals[i]);
+        if (outto != NULL) {
+            fprintf(outto, "   t%i: %.3f", i, C[ARBCHAIN]->tvals[i]);
+            #ifdef XMLOUTPUT
+            //sprintf(s_buf, "t%i", i);
+            s << "t" << i << "  ";
+            sprintf(s_buf, "%.3f",C[ARBCHAIN]->tvals[i]);
+            s << s_buf;
+            TiXmlText *tr = new TiXmlText(s.str().c_str());
+            TiXmlElement *row = new TiXmlElement("Row");
+            row->LinkEndChild(tr);
+            data->LinkEndChild(row);
+            s.str("");
+            #endif
+        }
       if (outto != NULL)  fprintf(outto, "\n\n");
     }
   }
@@ -1519,29 +1604,56 @@ void printcurrentvals (FILE * outto)
     if (outto != NULL)  fprintf(outto, "Locus#    p(D|G)     u  ");
 
     if (outto != NULL)  fprintf(outto, "\n");
+
+    #ifdef XMLOUTPUT
+    TiXmlElement *scalars = new TiXmlElement("Scalars");
+    TiXmlElement *data = new TiXmlElement("Data");
+    TiXmlElement *head = new TiXmlElement("Head");
+    TiXmlText *splittext = new TiXmlText("Current Locus Likelihoods and Mutation Rate Scalars");
+    scalars->LinkEndChild(splittext);
+    TiXmlText *headtext = new TiXmlText("Locus#  p(D|G)  u");
+    head->LinkEndChild(headtext);
+    scalars->LinkEndChild(head);
+    scalars->LinkEndChild(data);
+    currentvals->LinkEndChild(scalars);
+    #endif
+
+    if (outto != NULL) {
     for (li = 0; li < nloci; li++)
     {
       for (i = 0; i < L[li].nlinked; i++)
       {
-        if (outto != NULL)  fprintf(outto, "%2i", li);
+        fprintf(outto, "%2i", li);
+        s << li << "  ";
         if (L[li].nlinked > 1)
         {
-          if (outto != NULL)  fprintf(outto, "_%-2d", i);
+          fprintf(outto, "_%-2d", i);
+          s << "_" << i << "  ";
         }
         else
         {
-          if (outto != NULL)  fprintf(outto, "   ");
+          fprintf(outto, "   ");
         }
-        if (outto != NULL)  fprintf(outto, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
-        if (outto != NULL)  fprintf(outto, "\n");
+        fprintf(outto, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
+        sprintf(s_buf, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
+        s << s_buf;
+        #ifdef XMLOUTPUT
+        TiXmlText *t2 = new TiXmlText(s.str().c_str());
+        TiXmlElement *row = new TiXmlElement("Row");
+        row->LinkEndChild(t2);
+        data->LinkEndChild(row);
+        #endif
+        s.str("");
+        fprintf(outto, "\n");
       }
+    }
     }
   }
   if (outto == stdout)
     fflush(stdout);
 }                               /* printcurrentvals */
 
-/* used for when there are multiple cpus,  only prints tvalues */ 
+/* used for when there are multiple cpus,  only prints tvalues */
 void printcurrent_tvals (FILE * outto,int  currentid)
 {
   int i;
@@ -1550,20 +1662,26 @@ void printcurrent_tvals (FILE * outto,int  currentid)
 #ifdef MPI_ENABLED
   MPI_Status status;
 #endif
+  #ifdef XMLOUTPUT
+  TiXmlElement *currentvals = new TiXmlElement("CurrentVals");
+  xstack.top()->LinkEndChild(currentvals);
+  std::stringstream s("");
+  char s_buf[50];
+  #endif
   if (numsplittimes > 0)
   {
-	      if (z >= 0 && currentid == HEADNODE) 
+	      if (z >= 0 && currentid == HEADNODE)
        {
          for (i=0;i<numsplittimes;i++)
            t_rec[i] = C[z]->tvals[i];
 	      }
 	#ifdef MPI_ENABLED
-	      if (z < 0 && currentid == HEADNODE) 
+	      if (z < 0 && currentid == HEADNODE)
         {
 		        int rc = MPI_Recv(&t_rec, numsplittimes, MPI_DOUBLE, MPI_ANY_SOURCE, 1397, MPI_COMM_WORLD, &status);
 		        if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
         }
-	      if (z >=0 && currentid != 0) 
+	      if (z >=0 && currentid != 0)
        {
          for (i=0;i<numsplittimes;i++)
            t_rec[i] = C[z]->tvals[i];
@@ -1571,14 +1689,37 @@ void printcurrent_tvals (FILE * outto,int  currentid)
 	 	      if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
 	      }
 	#endif
-  if (currentid == HEADNODE)
+  if (currentid == HEADNODE && outto != NULL)
     {
-      if (outto != NULL)  fprintf(outto, "\nCurrent Splitting Time Values\n");
-      if (outto != NULL)  fprintf(outto, "------------------------------\n");
-      if (outto != NULL)  fprintf(outto, "Split times");
-      for (i = 0; i < lastperiodnumber; i++)
-        if (outto != NULL)  fprintf(outto, "   t%i: %.3f", i, t_rec[i]);
-      if (outto != NULL)  fprintf(outto, "\n\n");
+      #ifdef XMLOUTPUT
+      TiXmlElement *splittime = new TiXmlElement("SplittingTime");
+      TiXmlElement *data = new TiXmlElement("Data");
+      TiXmlElement *head = new TiXmlElement("Head");
+      TiXmlText *splittext = new TiXmlText("Current Splitting Time Values");
+      splittime->LinkEndChild(splittext);
+      TiXmlText *headtext = new TiXmlText("Time  Value");
+      head->LinkEndChild(headtext);
+      splittime->LinkEndChild(head);
+      splittime->LinkEndChild(data);
+      currentvals->LinkEndChild(splittime);
+      #endif
+      fprintf(outto, "\nCurrent Splitting Time Values\n");
+      fprintf(outto, "------------------------------\n");
+      fprintf(outto, "Split times");
+      for (i = 0; i < lastperiodnumber; i++) {
+        fprintf(outto, "   t%i: %.3f", i, t_rec[i]);
+        #ifdef XMLOUTPUT
+        s << "t" << i << "  ";
+        sprintf(s_buf, "%.3f ", t_rec[i]);
+        s << s_buf;
+        TiXmlText *tr = new TiXmlText(s.str().c_str());
+        TiXmlElement *row = new TiXmlElement("Row");
+        row->LinkEndChild(tr);
+        data->LinkEndChild(row);
+        s.str("");
+        #endif
+    }
+      fprintf(outto, "\n\n");
       if (outto == stdout)
         fflush(stdout);
     }
@@ -1607,9 +1748,9 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
     if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
       fprintf(genealogyinfosavefile,"%s",debug_ti_addinfo[j]);
     fprintf (genealogyinfosavefile, "\n");
-  } 
+  }
   *lastgenealogysavedvalue = genealogysamples - 1;
-  f_close (genealogyinfosavefile);
+  FCLOSE (genealogyinfosavefile);
   return;
 }                               /* savegenealogyfile */
 
@@ -1700,7 +1841,7 @@ void print_means_variances_correlations (FILE * outfile)
       }
       else  //p < numpopsizeparams + nummigrateparams
       {
-        if (C[ARBCHAIN]->imig[p - numpopsizeparams].pr.max > MPRIORMIN)  
+        if (C[ARBCHAIN]->imig[p - numpopsizeparams].pr.max > MPRIORMIN)
             FP "\t%s", C[ARBCHAIN]->imig[p - numpopsizeparams].str);
       }
     }
@@ -1765,15 +1906,15 @@ void print_means_variances_correlations (FILE * outfile)
 }                               // print_means_variances_correlations
 
 
-/* for printing population tree posteriors,  sorts and prints 
+/* for printing population tree posteriors,  sorts and prints
   A fairly complex function:
     -puts info about sampled trees in fatssarray[]
     - sorts this on basis of observed frequency
     - identifies all unique internal nodes (based on descendant sampled populations)
     - counts all unique internal nodes
     - uses these counts to calculate the product of the posterior clade probabilities (ppcp)
-    - prints summaries and trees with non-zero probability (sorted) 
-  Calls functions in alltreestrings.cpp 
+    - prints summaries and trees with non-zero probability (sorted)
+  Calls functions in alltreestrings.cpp
 */
 void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *poptopologyproposedlist_rec, char *topologypriorinfostring)
 {
@@ -1785,6 +1926,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   int totaltreecount = 0, numnonzero = 0;
   double temphi = -1.0;
   int hii;
+  int counthipcp;
   int numnotproposed = 0;
   int uniformprior = (strlen(topologypriorinfostring) == 0);
   double temp1 = 1.0;
@@ -1824,10 +1966,10 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     fatssarray[i].freqset1 = set1counts[i]/(double) setl;
     fatssarray[i].freqset2 = set2counts[i]/(double) setl;
   }
-  
+
   qsort(fatssarray,numpoptopologies,sizeof(foralltreestringsort),foralltreestringsort_comp);
   uniquenodes = static_cast<char **> (malloc ((numuniquenodes[(npops - modeloptions[ADDGHOSTPOP])]) * sizeof (char *)));
-  
+
   for (i = 0; i < numuniquenodes[(npops - modeloptions[ADDGHOSTPOP])]; i++)
   {
      uniquenodes[i] = static_cast<char *> (malloc (POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION * sizeof (char)));
@@ -1842,7 +1984,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
       getnodecounts(uniquenodes,fatssarray[i].treestrnoghost,fatssarray[i].count,nodecounts, &nunique);
   }
 
-  
+
 //for (i=0;i<nunique;i++) printf("%s ",uniquenodes[i]);
 #ifdef DEBUG
   int tempsum = 0;
@@ -1850,7 +1992,8 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     tempsum += nodecounts[i];
   assert (tempsum == totaltreecount * (npops - (modeloptions[ADDGHOSTPOP]==1) - 2));
 #endif
-  
+
+  counthipcp=0;
   for (i=0;i<numpoptopologies;i++) //if (fatssarray[i].count > 0)
   {
     if (modeloptions[ADDGHOSTPOP]==0)
@@ -1860,19 +2003,41 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     if (fatssarray[i].ppcp > temphi)
     {
       temphi = fatssarray[i].ppcp;
+      counthipcp = 1;
       hii = i;
     }
+    if (fatssarray[i].ppcp == temphi)
+      counthipcp += 1;
   }
+  #ifdef XMLOUTPUT
+  TiXmlElement *data = new TiXmlElement("Data");
+  TiXmlElement *treetop = new TiXmlElement("TreeTopology");
+  TiXmlElement *head = new TiXmlElement("Head");
+  TiXmlElement *pops = new TiXmlElement("Populations");
+  treetop->LinkEndChild(head);
+  treetop->LinkEndChild(pops);
+  treetop->LinkEndChild(data);
+  xstack.top()->LinkEndChild(treetop);
+  #endif
+  std::stringstream ss("");
   FP "%s",outputbanner("Estimated Posterior Probabilities of Population Tree Topologies"));
   FP "Population Names\n");
   FP "----------------\n");
   for (i = 0; i < npops; i++)
   {
-    if (i==npops-1 && modeloptions[ADDGHOSTPOP]==1)
+    if (i==npops-1 && modeloptions[ADDGHOSTPOP]==1) {
       FP " Population %d : ghost \n", i);
-    else
+      ss << "ghost  ";
+    } else {
       FP " Population %d : %s \n", i, popnames[i]);
+      ss << popnames[i] << "  ";
+    }
   }
+  #ifdef XMLOUTPUT
+  TiXmlText *pt = new TiXmlText(ss.str().c_str());
+  pops->LinkEndChild(pt);
+  #endif
+  ss.str("");
   FP "\n");
   FP "Priors\n");
   FP "------\n");
@@ -1887,7 +2052,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   {
     FP " Uniform prior assumed for population tree topologies\n");
   }
-  FP " Total number of tree topologies recorded: %d\n",totaltreecount); 
+  FP " Total number of tree topologies recorded: %d\n",totaltreecount);
 
   FP " Number of possible unique tree topologies for %d sampled populations: %d\n",(npops - modeloptions[ADDGHOSTPOP]),numpoptopologies);
   FP " Number of unique tree topologies recorded at least once: %d\n",numnonzero);
@@ -1914,35 +2079,57 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     printnewickstring(outfile,fatssarray[0].treestr,NULL,1);
     FP "\n");
   }
-  if (modeloptions[ADDGHOSTPOP]==0)
-    FP " Tree topology with highest estimated product of the posterior clade probabilities (ppcp): %s\n",fatssarray[hii].treestr);
-  else
-  {
-    FP " Tree topology with highest estimated product of the posterior clade probabilities (ppcp): %s\n",fatssarray[hii].treestrnoghost);
-    FP "     -estimated product of the posterior clade probabilities (ppcp): %.7f\n",temphi);
-    FP "     -topology with ghost outgroup included: %s\n",fatssarray[hii].treestr);
-  }
+  FP " Product of the posterior clade probabilities (ppcp), example tree topology with highest value : %s\n",fatssarray[hii].treestr);
+  if (modeloptions[ADDGHOSTPOP]==1)
+    FP "     -example topology without ghost outgroup included: %s\n",fatssarray[hii].treestrnoghost);
+  FP "     -estimated product of the posterior clade probabilities (ppcp): %.7f\n",temphi);
+  FP "     -total number of topologies with this same ppcp value: %d\n",counthipcp);
+
   FP "\nTree Topology Recorded Frequencies - only trees with nonzero counts listed,  sorted high to low\n");
   FP "------------------------------------------------------------------------------------------------\n");
   if (modeloptions[ADDGHOSTPOP]==0)
   {
     FP "Tree_string\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
+    #ifdef XMLOUTPUT
+    TiXmlText *t = new TiXmlText("Tree_string  priorprob  count  freq_ALL  freq_set1  freq_set2  ppcp");
+    head->LinkEndChild(t);
+    #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
      if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
       FP "%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      #ifdef XMLOUTPUT
+      ss << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      TiXmlText *t = new TiXmlText(ss.str().c_str());
+      TiXmlElement *row = new TiXmlElement("Row");
+      row->LinkEndChild(t);
+      data->LinkEndChild(row);
+      ss.str("");
+      #endif
     }
     FP "\n");
   }
   else
   {
     FP "Tree\tTree(w/ghost)\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
+    #ifdef XMLOUTPUT
+    TiXmlText *t = new TiXmlText("Tree  Tree(w/ghost)  priorprob  count  freq_ALL  freq_set1  freq_set2  ppcp");
+    head->LinkEndChild(t);
+    #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
       if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
       FP "%s\t%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      #ifdef XMLOUTPUT
+      ss << fatssarray[i].treestrnoghost << "  " << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      TiXmlText *t = new TiXmlText(ss.str().c_str());
+      TiXmlElement *row = new TiXmlElement("Row");
+      row->LinkEndChild(t);
+      data->LinkEndChild(row);
+      ss.str("");
+      #endif
     }
     FP "\n");
   }
@@ -1965,7 +2152,6 @@ FP"\n"); */
   XFREE(nodecounts);
   XFREE(set1counts);
   XFREE(set2counts);
-  
 }//sort_and_print_alltreestrings
 
                                //callprintacceptancerates
@@ -1978,7 +2164,7 @@ void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot)
 
   if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
     asciitrend (outtofile, poptreeuinfo->v, trenddoublepoint, trendspot);
-  
+
   for (i = 0; i < lastperiodnumber; i++)
     asciitrend (outtofile, T[i].v, trenddoublepoint, trendspot);
   if (hiddenoptions[SKIPMOSTUSCALAROUTPUT]==0)
@@ -1994,9 +2180,9 @@ void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot)
         asciitrend (outtofile, L[li].kappa_rec->v, trenddoublepoint, trendspot);
   }
 
-  
+
   return;
-}                               // callasciitrend 
+}                               // callasciitrend
 
 
 /* set up arrays pointing to information to put in curve plots,  then call asciicurve
@@ -2017,10 +2203,10 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
 
   // find out how many curves
 
-/* use C[ARBCHAIN] 
+/* use C[ARBCHAIN]
   all chains have itheta and imig  and each element of each of these arrays has xy
   we need one to use for printing,  and it does not matter because the curves will be based on the saved genealogies and these came from the cold chain
-*/ 
+*/
   //if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   numcurve = numsplittimes; // all run modes generate splittime curves
   dotcurves = 1;
@@ -2044,7 +2230,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
     numcurve += numpopsizeparams;
     dohypercurves = 1;
   }
-  //if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])// 
+  //if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])//
    // numcurve += numpopsizeparams;
   if (runmode == Gmode3 || runmode == LOADGmode4 || runmode == HGmode6)
   {
@@ -2065,7 +2251,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
     }
   }
 // allocate
-  curvexy = static_cast<plotpoint **> 
+  curvexy = static_cast<plotpoint **>
                 (malloc (numcurve * sizeof (struct plotpoint *)));
   curvestr = static_cast<char **> (malloc (numcurve * sizeof (char *)));
   nrecstep = static_cast<int *> (malloc (numcurve * sizeof (int)));
@@ -2106,12 +2292,12 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
         j++;
       }
   }
-  if (do2Nmcurves)  
-    /* added 1/11/2018,  bit of a kludge.  histograms have already been printed,  including those for 2Nm,  but 
+  if (do2Nmcurves)
+    /* added 1/11/2018,  bit of a kludge.  histograms have already been printed,  including those for 2Nm,  but
       we want to print the curves for 2Nm. But we have not saved the values in the histograms.  Even though those values
-      were generated and saved for q and m  by fillvec(). Anyway,  here we set up some new temporary 
+      were generated and saved for q and m  by fillvec(). Anyway,  here we set up some new temporary
       arrays and calculate the values for 2Nm again with a call to the new function fill_2Nm_vals()
-    */ 
+    */
   {
     tempxyarrays = static_cast<plotpoint **> (malloc (nummigcurve * sizeof (struct plotpoint*)));
     tempparamstr = static_cast<char **> (malloc(nummigcurve *sizeof(char*)));
@@ -2182,9 +2368,9 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
   XFREE (curvestr);
   XFREE (curve_do_logplot);
   XFREE (nrecstep);
-  if (do2Nmcurves) /* added 1/11/2018,  free the temporary arrays used for 2Nm values */ 
+  if (do2Nmcurves) /* added 1/11/2018,  free the temporary arrays used for 2Nm values */
   {
-    for (i = 0; i < nummigrateparams; i++) 
+    for (i = 0; i < nummigrateparams; i++)
     {
       XFREE(tempxyarrays[i]);
       XFREE(tempparamstr[i]);
@@ -2192,7 +2378,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
     XFREE(tempxyarrays);
     XFREE(tempparamstr);
   }
-}                               //callasciicurve 
+}                               //callasciicurve
 
 void printsteps (FILE * outto, double like, double probg,int burndone, int burninsteps)
 {
@@ -2226,4 +2412,3 @@ void printsteps (FILE * outto, double like, double probg,int burndone, int burni
   }
   return;
 }  //printsteps
-

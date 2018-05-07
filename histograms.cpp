@@ -18,7 +18,7 @@ static double *smthmaxvals;
 static double *qpriorsmthmaxvals,*mpriorsmthmaxvals;
 static int smthmax_firstu;  /* 7/27/2012  JH  added this to fix a bug in the calculation of the geometric mean of mutation scalars for a subset of the loci */
 static int numstepsrecorded;
-static char histfstr[40];  
+static char histfstr[40];
 static struct plotpoint **popmigxy;
 void writepriorfile(char priorfilename[],double *popsizepriorvals, double *mpriorvals);
 
@@ -28,7 +28,7 @@ static void fillvec (void);     //fills up the marginal distribution estimates
 static double multi_t_prior_func (double x, double y, double tmax, int ti,
                                   int numt);
 //static void writehistogram (FILE * outfile, int numhistprint);
-static void writehistogram (FILE * outfile, int numhistprint, int dosmooth);
+static void writehistogram (FILE * outfile, int numhistprint, int dosmooth, const char * histtitle);
 static int getdemogscale (double scaleumeaninput);
 static void prepare_splittime_and_mutation_rate_histograms (int
                                                             *numhistprint);
@@ -47,6 +47,12 @@ static void prepare_migration_histograms (int locusrow, int nummigdirs);
 void copysmthmaxvals(void);
 double get_cdf_percentile_value(struct plotpoint *xy,int n, double p);
 void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char priorfilename[]);
+
+#ifdef XMLOUTPUT
+extern std::stack<TiXmlElement*> xstack;
+extern TiXmlDocument global_doc;
+#endif
+extern char *outfilename;
 
 char *
 histformatdouble (double pval)
@@ -115,7 +121,7 @@ fillvec (void)
       {
         C[ARBCHAIN]->imig[i].xy[j].y = margincalc ((double) C[ARBCHAIN]->imig[i].xy[j].x, 0.0, p, 0);
       }
-      if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) // reset priors back to what they were 
+      if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) // reset priors back to what they were
       {
         if (modeloptions[EXPOMIGRATIONPRIOR]==0)
         {
@@ -138,7 +144,7 @@ multi_t_prior_func (double x, double y, double tmax, int ti, int numt)
   priorprob =
     exp (logfact[numt] - logfact[ti] - logfact[numt - ti - 1] +
          (numt - ti - 1) * log (tmax - x) + ti * log (x) - numt * log (tmax));
-  
+
   if (priorprob < 0)
     IM_err(IMERR_MULTITPRIOR,"beta distribution calculation for prior doesn't make sense %lf",priorprob);
 
@@ -156,26 +162,26 @@ Main loop:
 			also while identifying HiPt, calculate the sum of x, sum of y and sum of x*y
 		HiSmth - x bin with highest y val on a smoothed curve
 			also, if mode == 0 identify the peak and save this in uscaleml[] to be used for when mode==1
-		Mean  calculated using x sum and y sum 
-		95Lo  calculate lower 95% conf limit 		
-		95Hi  calculate higher 95% conf limit 
+		Mean  calculated using x sum and y sum
+		95Lo  calculate lower 95% conf limit
+		95Hi  calculate higher 95% conf limit
 
 		Build a sorted list of smoothed probablities use to calculate HPD90Lo and HPD90Hi
 		HPD90Lo
 		HPD90Hi
-		
+
 	Print Histograms
 		print row of parameter strings  and 'P'
 		print row of max values  'HiPt'
 
-		print GRIDSIZE rows of x and y values 
+		print GRIDSIZE rows of x and y values
 			for y values,  multiply them by denscale[]
 		print before and after values, and sum of likelihoods
-Free all the pointers that were set up at the beginning 
+Free all the pointers that were set up at the beginning
 */
 
 void
-writehistogram (FILE * outfile, int numhistprint, int dosmooth)
+writehistogram (FILE * outfile, int numhistprint, int dosmooth, const char * histtitle)
 {
   double *xysum;
   double *ysum;
@@ -196,32 +202,52 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
   double vminhold;
 
 
-  xysum = static_cast<double *> 
+  xysum = static_cast<double *>
           (calloc ((size_t) numhistprint, sizeof (double)));
-  xsum = static_cast<double *> 
+  xsum = static_cast<double *>
           (calloc ((size_t) numhistprint, sizeof (double)));
-  ysum = static_cast<double *> 
+  ysum = static_cast<double *>
           (calloc ((size_t) numhistprint, sizeof (double)));
-  hpdlo = static_cast<double *> 
+  hpdlo = static_cast<double *>
           (calloc ((size_t) numhistprint, sizeof (double)));
-  hpdhi = static_cast<double *> 
+  hpdhi = static_cast<double *>
           (calloc ((size_t) numhistprint, sizeof (double)));
-  hpdchar1 = static_cast<char *> 
+  hpdchar1 = static_cast<char *>
              (calloc ((size_t) numhistprint + 1, sizeof (char)));
-  hpdchar2 = static_cast<char *> 
+  hpdchar2 = static_cast<char *>
              (calloc ((size_t) numhistprint + 1, sizeof (char)));
   /* CR: 110512.1
    * Change malloc to calloc so that memory would be initialilzed.
    * before being used.
-   */ 
-  smthprobvals = static_cast<double *> 
+   */
+  smthprobvals = static_cast<double *>
                  (calloc ((size_t) numhistprint, sizeof (double)));
+
+
+#ifdef XMLOUTPUT
+  TiXmlElement *histogram = new TiXmlElement("Histogram");
+  histogram->SetAttribute("title",histtitle);
+  TiXmlElement *data = new TiXmlElement("Data");
+  TiXmlElement *vars = new TiXmlElement("Variables");
+  histogram->LinkEndChild(vars);
+  histogram->LinkEndChild(data);
+  xstack.top()->LinkEndChild(histogram);
+#endif
+  std::stringstream s("");
+
 
   FP " Summaries\n\tValue  ");
   for (j = 0; j < numhistprint; j++)
   {
     FP "\t %s", hp[j].str);
+    s << hp[j].str << "  ";
   }
+#ifdef XMLOUTPUT
+  TiXmlText *vt = new TiXmlText(s.str().c_str());
+  vars->LinkEndChild(vt);
+#endif
+  s.str("");
+
   FP "\n\tMinbin ");
   for (j = 0; j < numhistprint; j++)
   {
@@ -230,6 +256,7 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
     {
       i++;
     }
+
     FP "\t%s", histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x));
   }
 
@@ -326,7 +353,7 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
     }
     FP "\t%s", histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x));
   }
-  /* print out Highest Posterior Density intervals  - first, smooth the curve 
+  /* print out Highest Posterior Density intervals  - first, smooth the curve
   and make a copy of the curve in hlist */
   smoothcellnum = 30;
   for (j = 0; j < numhistprint; j++)
@@ -355,11 +382,11 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
       hlist[i].p = smoothsum;
     }
     vminhold = hlist[0].v;
-/* short hlist by probability from low to high  
+/* short hlist by probability from low to high
   move up the list from the bottom and accumulate a sum
-  until the sum = hpdcutoff of the total. 
-  while moving up the list, find the values associated with the 
-  probability that pushes the sum over hpdcutoff 
+  until the sum = hpdcutoff of the total.
+  while moving up the list, find the values associated with the
+  probability that pushes the sum over hpdcutoff
 */
     shellhist (&(hlist[0]), GRIDSIZE);
     sum = 0;
@@ -383,7 +410,7 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
       sum += hlist[i].p;
     }
 // set the lower bound to zero if the found lower bound is at the minimum possible value of the hpd histogram
-// this will break if we start using priors with nonzero lower bounds 
+// this will break if we start using priors with nonzero lower bounds
     if (hpdmin <= vminhold)
       hpdlo[j] = 0.0;
     else
@@ -433,16 +460,29 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
     FP "\t%s", histformatdouble (hp[j].yscaleadjust * hp[j].xy[imax].y));
   }
   FP "\n\n");
+
   for (i = 0; i < GRIDSIZE; i++)
   {
+    s.str("");
     FP "\t%4d", i);
     for (j = 0; j < numhistprint; j++)
     {
-      FP "\t%s", histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x));
-      FP "\t%s", histformatdouble (hp[j].yscaleadjust * hp[j].xy[i].y));
+      char * hfd1 = histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x);
+      FP "\t%s", hfd1);
+      s << hfd1 << "  ";
+      char * hfd2 = histformatdouble (hp[j].yscaleadjust * hp[j].xy[i].y);
+      FP "\t%s", hfd2);
+      s << hfd2 << "  ";
     }
     FP "\n");
+    #ifdef XMLOUTPUT
+    TiXmlElement *row = new TiXmlElement("Row");
+    TiXmlText *rt = new TiXmlText(s.str().c_str());
+    row->LinkEndChild(rt);
+    data->LinkEndChild(row);
+    #endif
   }
+
   FP " SumP\t");
   for (j = 0; j < numhistprint; j++)
     FP "\t\t%s", histformatdouble (ysum[j]));
@@ -464,6 +504,7 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
   XFREE (hpdchar1);
   XFREE (hpdchar2);
   XFREE (smthprobvals);
+
   return;
 }                               /* writehistogram */
 
@@ -495,7 +536,7 @@ int getdemogscale (double scaleumeaninput)
   else
   {
     scaleumean = 0;
-    timeumean = 0; 
+    timeumean = 0;
     for (li = 0, ui = smthmax_firstu , cui = 0; li < nloci; li++) /* 7/27/2012  JH  replaced ui = 0 with ui = smthmax_firstu. This to fix a bug in the calculation of the geometric mean of mutation scalars for a subset of the loci */
       for (i = 0; i < L[li].nlinked; i++, ui++)
       {
@@ -519,7 +560,7 @@ int getdemogscale (double scaleumeaninput)
     }
   }
   return cui;
-}                               //getdemogscale 
+}                               //getdemogscale
 
 void prepare_splittime_and_mutation_rate_histograms (int *numhistprint)
 {
@@ -565,10 +606,10 @@ void prepare_splittime_and_mutation_rate_histograms (int *numhistprint)
   }
 }                               // prepare_splittime_and_mutation_rate_histograms(int *numhistprint)
 
-/* use C[ARBCHAIN] 
+/* use C[ARBCHAIN]
   all chains have itheta and imig  and each element of each of these arrays has xy
   we need one to use for printing,  and it does not matter because the curves will be based on saved genealogies
-*/ 
+*/
 void prepare_parameter_histograms (int *numhistprint)
 {
   int i;
@@ -699,7 +740,7 @@ void print_tprior_divide_histograms (FILE * outfile, int *numhistprint)
     hp[*numhistprint].before = T[i].v->beforemin;
     hp[*numhistprint].after = T[i].v->aftermax;
   }
-  writehistogram (outfile, *numhistprint,1);
+  writehistogram (outfile, *numhistprint,1,"NA");
   orig2d_free2D ((void **) t_prior_divide, numsplittimes);
 }                               //void prepare_tprior_divide_histograms(int *numhistprint);
 
@@ -779,7 +820,7 @@ void print_populationmigrationrate_histograms (FILE * outfile,
                 tempy = calc_popmig (thetai, mi,tempx , prob_or_like);
               if (tempy > 1e-9)
                 maxxfind = tempx;
-              else 
+              else
                 j--;
             }
             if (j < 0)
@@ -846,7 +887,7 @@ void print_populationmigrationrate_histograms (FILE * outfile,
               tempy = calc_popmig (thetai, mi,tempx , prob_or_like);
             if (tempy > 1e-9)
               maxxfind = tempx;
-            else 
+            else
               j--;
           }
           if (j < 0)
@@ -868,7 +909,7 @@ void print_populationmigrationrate_histograms (FILE * outfile,
       }
     }
   }
-  writehistogram (outfile, hpi,0);
+  writehistogram (outfile, hpi,0,"NA");
   orig2d_free2D ((void **) popmigxy, *numhistprint);
 }                               //void print_populationmigrationrate_histograms
 
@@ -906,7 +947,7 @@ void free_print_histogram (void)
     XFREE(qpriorsmthmaxvals);
     XFREE(mpriorsmthmaxvals);
   }
-}                               // free_print_histogram 
+}                               // free_print_histogram
 
 void init_print_histogram (int maxnumhist)
 {
@@ -918,20 +959,20 @@ void init_print_histogram (int maxnumhist)
     mpriorsmthmaxvals  = static_cast<double *> (malloc (nummigrateparams * sizeof (double)));
   }
 
-}                               // init_print_histogram 
+}                               // init_print_histogram
 
 /***** GLOBAL FUNCTIONS **********/
 
 /* to print one or more histograms:
 -----------------------------------
 
-histograms are printing using 
-static struct histprintstructure *hp;  
-The details of stuct histprintstructure are given at the top of this file. 
+histograms are printing using
+static struct histprintstructure *hp;
+The details of stuct histprintstructure are given at the top of this file.
 
 There are two main steps to printing a table with multiple histograms:
-1)write a function to prepare *hp ( pointer to struct histprintstructure) 
-hp already exists,  but where it points to needs to be set. 
+1)write a function to prepare *hp ( pointer to struct histprintstructure)
+hp already exists,  but where it points to needs to be set.
 This function should also set the value of numhistprint, the number of histograms to print
 	e.g. prepare_myhistogram(&humhistprint)
 2) make a call to writehistogram(), which should print whatever *hp is pointing at
@@ -940,8 +981,8 @@ For example:
 write a function  prepare_myhistogram(&humhistprint)
 Add the following function calls to printhistograms():
   prepare_myhistogram(&humhistprint)
-  writehistogram (outfile, numhistprint); 
-It is also helpful to precede these by some FP statements that explain the histograms. 
+  writehistogram (outfile, numhistprint);
+It is also helpful to precede these by some FP statements that explain the histograms.
 
 */
 
@@ -951,8 +992,18 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
                       double generationtime, int usegenerationtimedefault, double scaleumeaninput,char priorfilename[])
 {
   int numhistprint = 0, uratecount; // 5/17/2017 uratecount usage unclear ??
-  int li, predictmcmchist = 0, predictparamhist = 0, numhist; 
+  int li, predictmcmchist = 0, predictparamhist = 0, numhist;
   int numhistsets, histsetcount;
+
+  #ifdef XMLOUTPUT
+  //TiXmlDocument doc;
+  //TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  //doc.LinkEndChild(decl);
+  TiXmlElement *allhistograms = new TiXmlElement("AllHistograms");
+  //doc.LinkEndChild(allhistograms);
+  xstack.top()->LinkEndChild(allhistograms);
+  xstack.push(allhistograms);
+  #endif
 
   // number passed to init_print_histograms  just needs to be large enough to hold as many histograms as might be printed
 
@@ -965,7 +1016,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
   init_print_histogram (numhist);
   numstepsrecorded = mcmcrecords;
   /* jh 1/2/2018  this was the wrong place for this,  needs to be done when smthmaxvals have the mutation scalars , after first call to writehistogram()
-  //calculate the average mutation rate scalar 
+  //calculate the average mutation rate scalar
   if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
   {
     uratecount = getdemogscale (scaleumeaninput);
@@ -1007,7 +1058,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
         numhistsets += (outputoptions[NOPOPMIGPARAMHIST]==0 && nummigrateparams > 0);
         numhistsets += (outputoptions[PRINTTMRCA]);
         numhistsets += (outputoptions[THISTDIVIDEBYPRIOR] && numsplittimes > 1);
-        numhistsets += (PRINTDEMOGHIST && !((runoptions[LOADRUN] && (scaleumeaninput <= 0)) || counturateperyear > 0)); 
+        numhistsets += (PRINTDEMOGHIST && !((runoptions[LOADRUN] && (scaleumeaninput <= 0)) || counturateperyear > 0));
         break;
       }
     default: break;
@@ -1024,9 +1075,9 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     FP "    curve height is an estimate of marginal posterior probability\n");
     if (runoptions[LOADRUN])
       FP "  IMa LOAD TREES MODE  - splittime values loaded from *.ti file, mutation rate scalar histograms are not available \n");
-    writehistogram (outfile, numhistprint,1);
+    writehistogram (outfile, numhistprint,1,"Marginal Distribution Values/Parameters in MCMC");
 
-    //  calculate the average mutation rate scalar, need to do this here because scalars have just been estimated by writehistogram() 
+    //  calculate the average mutation rate scalar, need to do this here because scalars have just been estimated by writehistogram()
     if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
     {
       uratecount = getdemogscale (scaleumeaninput);
@@ -1035,8 +1086,8 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     numhistprint = 0;
     histsetcount++;
   }
-  
-  if (runmode == Gmode3 || runmode == LOADGmode4|| runmode == HGmode6) // only print first histogram set for params in mcmc 
+
+  if (runmode == Gmode3 || runmode == LOADGmode4|| runmode == HGmode6) // only print first histogram set for params in mcmc
   {
     prepare_parameter_histograms (&numhistprint);
     if (numhistprint)
@@ -1044,7 +1095,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "\n\nHISTOGRAM GROUP %d: MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF POPULATION SIZE AND MIGRATION PARAMETERS\n", histsetcount);
       FP "--------------------------------------------------------------------------------------------------------\n");
       FP "       curve height is an estimate of marginal posterior probability\n");
-      writehistogram (outfile, numhistprint,0);
+      writehistogram (outfile, numhistprint,0,"Population Size and Migration Parameters");
     }
     numhistprint = 0;
 
@@ -1071,7 +1122,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
             FP"\tCalculations use DEFAULT generation time:  1 year\n");
           else
             FP"\tCalculations use generation time (in years) input at runtime: %.2lf\n",generationtime);
-          FP "\tCalculations use mutation rates (per year) from data file\n");  
+          FP "\tCalculations use mutation rates (per year) from data file\n");
           FP "\t  - note, curve height has not been adjusted with the scale change. Integration does not equal 1 \n");
           FP "\t  - # of loci with mutation rates in input file : %d \n",uratecount);
           FP "\tRescaled Population Size Parameter Units: individuals \n");
@@ -1084,10 +1135,10 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
           {
             if (scaleumeaninput > 0)
               FP "\tGeometric mean of ML estimates of relevant mutation rate scalars given on commandline at runtime: %le\n", scaleumeaninput);
-            else 
+            else
               FP "\tGeometric mean of ML estimates of relevant mutation rate scalars calculated from scalar histograms: %le\n", scaleumean);
           }
-          writehistogram (outfile, numhistprint,1);
+          writehistogram (outfile, numhistprint,1,"Demographic Units");
         }
       }
     }
@@ -1096,7 +1147,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       scaleumean = 1;
       timeumean = 1;
     }
- 
+
 
 
     if (outputoptions[NOPOPMIGPARAMHIST]==0 && nummigrateparams > 0)
@@ -1114,7 +1165,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
         FP "      each term is the product of a population parameter (e.g. q0) and a migration rate (e.g.m0>1) \n");
         FP "      migration rates are in the coalescent (backwards in times), so that a population migration rate of \n");
         FP "        q1m0>1  is the population rate (forward in time) at which population 1 receives migrants from population 0\n");
-        print_populationmigrationrate_histograms (outfile, &numhistprint, 0);       // writehistogram() called from within this because of memory allocation within 
+        print_populationmigrationrate_histograms (outfile, &numhistprint, 0);       // writehistogram() called from within this because of memory allocation within
       }
       /*  not sure if it is useful to get likelihoods  for 2NM values,  or what they even mean,  drop this  4/24/09
       FP "\n\nPOPULATION MIGRATION (2NM) RELATIVE LIKELIHOOD HISTOGRAMS\n");
@@ -1124,8 +1175,8 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "      each term is the product of a population parameter (e.g. q0) and a migration rate (e.g.m0>1) \n");
       FP "      migration rates are in the coalescent (backwards in times), so that a population migration rate of \n");
       FP "        q1m0>1  is the population rate (forward in time) at which population 1 receives migrants from population 0\n");
-    
-      print_populationmigrationrate_histograms (outfile, &numhistprint, 1);       // writehistogram() called from within this because of memory allocation within 
+
+      print_populationmigrationrate_histograms (outfile, &numhistprint, 1);       // writehistogram() called from within this because of memory allocation within
       */
     }
     if (outputoptions[PRINTTMRCA])
@@ -1137,7 +1188,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
         histsetcount++;
         FP "\n\nHISTOGRAM GROUP %d: MARGINAL DISTRIBUTIONS OF TMRCA VALUES\n", histsetcount);
         FP "--------------------------------------------------------\n");
-        writehistogram (outfile, numhistprint,1);
+        writehistogram (outfile, numhistprint,1,"TMRCA Values");
       }
     }
     if (outputoptions[THISTDIVIDEBYPRIOR] && numsplittimes > 1)
@@ -1147,7 +1198,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "----------------------------------------------------------------------------------------------------------------\n");
       FP "     curve height is an estimate of the relative marginal likelihood\n");
       numhistprint = 0;
-      print_tprior_divide_histograms (outfile, &numhistprint);    // writehistogram() called from within this because of memory allocation within 
+      print_tprior_divide_histograms (outfile, &numhistprint);    // writehistogram() called from within this because of memory allocation within
     }
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
@@ -1158,7 +1209,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "\n\nHISTOGRAM GROUP %d: PRIOR HISTOGRAMS\n", histsetcount);
       FP "--------------------------------------------------------------------------------------------------------\n");
       FP "       curve height is an estimate of marginal posterior probability\n");
-      writehistogram (outfile, numhistprint,1);
+      writehistogram (outfile, numhistprint,1,"Priors");
       copysmthmaxvals();
     }
     numhistprint = 0;
@@ -1169,9 +1220,12 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     print_prior_posterior_suggestions(outfile,mcmcrecords,priorfilename);
   }
   free_print_histogram ();
+  #ifdef XMLOUTPUT
+  xstack.pop();
+  #endif
 }                               // printhistograms
 
-/* plots of counts and times of migration events are handled a little differently than 
+/* plots of counts and times of migration events are handled a little differently than
   other histograms.  They still are done by a call to writehistogram(), but the printing
   is done to a different file,  so that's why this function was created */
 void printmigrationhistograms (FILE * outfile, long int mcmcrecords)
@@ -1181,7 +1235,7 @@ void printmigrationhistograms (FILE * outfile, long int mcmcrecords)
   numstepsrecorded = mcmcrecords;
 
   FP "%s",outputbanner("IMa3 MIGRATION COUNT DISTRIBUTIONS:  BY LOCUS AND MIGRATION PARAMETER"));
-  
+
   FP "    All migration events are recorded in the coalescent direction (i.e. backwards in time)\n");
   FP "    If there are multiple loci, the first set of histograms is for sums across loci \n");
 
@@ -1205,14 +1259,14 @@ void printmigrationhistograms (FILE * outfile, long int mcmcrecords)
     }
     FP "===================\n");
     /* 8/26/2011 */
-    writehistogram (outfile, nummigdirs,1);
+    writehistogram (outfile, nummigdirs,1,"Migration Count Distributions");
     //writehistogram (outfile, 2 * nummigdirs,1);
   }
   free_print_histogram ();
 }                               // printmigrationhistograms
 
 
-/* if modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]  need to save the values in smthmaxvals */ 
+/* if modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]  need to save the values in smthmaxvals */
 void copysmthmaxvals(void)
 {
   int i;
@@ -1229,7 +1283,7 @@ double get_cdf_percentile_value(struct plotpoint *xy,int n, double p)
   double total = 0.0,psum = 0.0;
   double yfrac,x;
 
-  p *= n; //rescale to the total number of observations,  rather than have to divide all y values by n 
+  p *= n; //rescale to the total number of observations,  rather than have to divide all y values by n
   for (i=0;i<GRIDSIZE;i++)
   {
     assert ((xy+i)->y >= 0.0);
@@ -1253,7 +1307,7 @@ double get_cdf_percentile_value(struct plotpoint *xy,int n, double p)
     }
     psum += (xy+i)->y;
   }
-  return x; 
+  return x;
 } //get_cdf_percentile_value
 
 /*
@@ -1268,13 +1322,13 @@ uniform priors:
     if max < 0.8 of posterior distribution
       use 0.8 of posterior distribution
     else
-      use max 
+      use max
 
 exponential priors:
   if max < 0.1 of posterior distribution
-    use 0.1 of posterior 
+    use 0.1 of posterior
   else
-    use max 
+    use max
 
 */
 
@@ -1286,8 +1340,8 @@ void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char
   double w, p,u,psug;
   double *mpriors;
   double *qpriors;
-   qpriors = static_cast<double *> (malloc (numpopsizeparams * sizeof (double )));   
-  mpriors = static_cast<double *> (malloc (nummigrateparams * sizeof (double )));   
+   qpriors = static_cast<double *> (malloc (numpopsizeparams * sizeof (double )));
+  mpriors = static_cast<double *> (malloc (nummigrateparams * sizeof (double )));
 
   FP "\n\nSuggested Population Size Parameter Priors:\n");
   FP   "-------------------------------------------\n");
@@ -1336,7 +1390,7 @@ void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char
     FP  "   else suggested prior = p*\n");
     //FP  " param\tu\tp*\tw\tsuggestion\n");
     FP  " Param\ttu\t50%%\t60%%\t70%%\t80%%\t90%%\tp*\tw\tsuggestions\n");
-    
+
     for (i = 0; i < nummigrateparams; i++)
     {
       w = get_cdf_percentile_value(mh[i].v->xy, mcmcrecords, 0.8);
@@ -1397,8 +1451,8 @@ void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char
 
 #define MAXPRIORTEXTLINE 500
 
-/* 
-  new format for priorfile for IMa3 
+/*
+  new format for priorfile for IMa3
   comments - any line beginning with '#' is a comment and is ignored
   keywords (case does not matter):  "tree" "theta" "migration" "time"
   a line with a keyword on it has only that keyword on it
@@ -1408,7 +1462,7 @@ void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char
 
 void writepriorfile(char priorfilename[],double *popsizepriorvals, double *mpriorvals)
 {
-  FILE *priorfile; 
+  FILE *priorfile;
   //char  *chpt;
   int i,j,k;
   char *s;
@@ -1504,7 +1558,7 @@ void writepriorfile(char priorfilename[],double *popsizepriorvals, double *mprio
     }
     fprintf(priorfile,"%s\n",s);
   }
-  f_close(priorfile);
+  FCLOSE(priorfile);
 } //writepriorfile   old code
   /*
   pp = popsizepriorvals;
@@ -1560,7 +1614,7 @@ void writepriorfile(char priorfilename[],double *popsizepriorvals, double *mprio
           IM_err(IMERR_PRIORFILEVALS,"priorfile does not have line with tree before lines for priors \n");
         mp = 1;
         max_m_from_priorfile = -1.0;
-        for (i=0;i<numtreepops;i++)									
+        for (i=0;i<numtreepops;i++)
 	        {
             while (fgets(priortextline,MAXPRIORTEXTLINE,priorfile)!= NULL && priortextline[0]=='#') {};
 	        chpt = &priortextline[0];

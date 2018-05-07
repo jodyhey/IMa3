@@ -1,7 +1,7 @@
 /*IMa3 2018 Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Yujin Chung and Arun Sethuraman */
 
-// 3/31/2016 version of this file.   Had a series of versions with various bugs. this one is best so far 
-// rnamed this to just update_hg.cpp  (i.e. without the date in the name 
+// 3/31/2016 version of this file.   Had a series of versions with various bugs. this one is best so far
+// rnamed this to just update_hg.cpp  (i.e. without the date in the name
 
 #undef GLOBVARS
 #include "ima.hpp"
@@ -13,7 +13,7 @@ extern struct genealogy_weights holdgweight_updategenealogy;
 extern struct genealogy_weights holdallgweight_updategenealogy;
 extern struct probcalc holdallpcalc_updategenealogy;
 
-struct edge *copyedgehg; // holds copies of genealogy edges during update in case update is rejected 
+struct edge *copyedgehg; // holds copies of genealogy edges during update in case update is rejected
 static double holdsisdlikeA[MAXLINKED];
 
 /*********** local to this file  ***************/
@@ -29,7 +29,7 @@ struct hgcalcstruct{
   int nummighg;  // number of hidden migrations in the segment.
   int ndpops; // number of descendant pops to the current population the edge is in;
   double l;  // time span of interval
-  double mrate;  // instantaneous migration rate 
+  double mrate;  // instantaneous migration rate
   double logprobendpop;  // probability of a particular target population if interval ends in a regular migration event
 };
 
@@ -44,7 +44,7 @@ static void edgemask_debugprint(int ci, struct edge *e, double upt);
 static void IMA_initmemory_edgemiginfohg (struct edgemiginfo *em);
 static void storegenealogystatshg (int ci, int li, int mode);
 void  init_gtreecommonhg (void);         // initialize copyedgehg
-void free_gtreecommonhg (void);   
+void free_gtreecommonhg (void);
 static void fillmiginfohg (int ci, int li, struct edge *gtree, int edge, int sisedge);
 static void storeoldedgeshg (int ci, int li, int edge, int sisedge, int downedge);
 static void restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsisedge);
@@ -146,7 +146,7 @@ storeoldedgeshg (int ci, int li, int edge, int sisedge, int downedge)
       copyedgehg[1].A[ai] = gtree[sisedge].A[ai];
       copyedgehg[1].dlikeA[ai] = gtree[sisedge].dlikeA[ai];
       copyedgehg[2].A[ai] = gtree[downedge].A[ai];
-      if (gtree[downedge].down != -1)   // added this 5/27/08 
+      if (gtree[downedge].down != -1)   // added this 5/27/08
       {
         copyedgehg[2].dlikeA[ai] = gtree[downedge].dlikeA[ai];
         holddownA[ai] = gtree[gtree[downedge].down].A[ai];      // changed this 5/27/08
@@ -213,7 +213,7 @@ restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsis
     else
     {
       gtree[newsisedge].mig[0].mt = -1;
-      gtree[newsisedge].mighg[0].mt = -1; 
+      gtree[newsisedge].mighg[0].mt = -1;
       gtree[newsisedge].cmm = gtree[newsisedge].cmmhg = 0;
       if (L[li].model == STEPWISE || L[li].model == JOINT_IS_SW)
         for (ai = (L[li].model == JOINT_IS_SW); ai < L[li].nlinked; ai++)
@@ -321,7 +321,7 @@ init_gtreecommonhg (void)         // initialize copyedgehg
     for (i = 0; i < 3; i++)
     {
       copyedgehg[i].A = static_cast<int *> (calloc (MAXLINKED, sizeof (int)));
-      copyedgehg[i].dlikeA = static_cast<double *> 
+      copyedgehg[i].dlikeA = static_cast<double *>
                             (calloc (MAXLINKED, sizeof (double)));
     }
 }                               /* init_gtreecommonhg */
@@ -343,30 +343,30 @@ void free_gtreecommonhg (void)
 }                               //free_gtreecommonhg
 
 
-/* copy info into oldedgemig and oldsismig,  used for calculating probability of updating the genealogy 
-these are instances of edgemiginfo.  They apply to the hidden genealogy, but the code was copied from work on the genealogy, and so there is 
+/* copy info into oldedgemig and oldsismig,  used for calculating probability of updating the genealogy
+these are instances of edgemiginfo.  They apply to the hidden genealogy, but the code was copied from work on the genealogy, and so there is
 nothing here that refers explicitly to the hidden genealogy.
-oldsismig is only used when sisedge != -1,  which happens when oldedgemig connects to the root.  
-*/ 
+oldsismig is only used when sisedge != -1,  which happens when oldedgemig connects to the root.
+*/
 void
 fillmiginfohg (int ci, int li, struct edge *gtree, int edge, int sisedge)
 {
   int i, k;
   double uptime;
   struct edgemiginfo *ep[2];  // short array that holds two pointers
-  int a[2]; 
+  int a[2];
 
   ep[0] = &oldedgemig;
-  ep[1] = &oldsismig; 
+  ep[1] = &oldsismig;
   a[0] = edge;
   a[1] = sisedge;
 
   for (k=0;k< 2;k++)
   {
     ep[k]->edgeid = a[k];
-    if (a[k] >= 0) // sisedge (aj[1]) can be -1 
+    if (a[k] >= 0) // sisedge (aj[1]) can be -1
     {
-      IMA_reset_edgemiginfo (ep[k]);   // no hg version of this 
+      IMA_reset_edgemiginfo (ep[k]);   // no hg version of this
       ep[k]->edgeid = a[k];
       ep[k]->li = li;
       if (a[k] < L[li].numgenes)
@@ -407,7 +407,7 @@ fillmiginfohg (int ci, int li, struct edge *gtree, int edge, int sisedge)
 }                               /* fillmiginfohg */
 
 /* simulate the migration path along the moved edge
-unlike simmpath(),  no use of time periods in this code  
+unlike simmpath(),  no use of time periods in this code
 numm is the number of migration events to add
 if it must end up in a particular population,  then constrainpop is that population */
 int
@@ -415,23 +415,23 @@ simmpathhg (int ci, struct edgemiginfo *edgem, int numm, double timein, double u
 {
   int i, lastpop,lastm;
                     /* CR 110715.1 */
-  int dupCheck;     /* flag turns off dup migration time check of mig events */ 
-  int migIndex;     /* index used to look for duplicate migration times */  
+  int dupCheck;     /* flag turns off dup migration time check of mig events */
+  int migIndex;     /* index used to look for duplicate migration times */
   assert (numm > 0);
   lastm = numm-1; // position in mig array of the last migration event to be added
   do
-  { 
+  {
     for (i = 0; i <= lastm; i++)
         edgem->mig[i].mt = upt + uniform () * timein;
     edgem->mig[i].mt = -1;
-    dupCheck=0;     
+    dupCheck=0;
     if (numm > 1)
     {
       hpsortmig (&edgem->mig[0] - 1, numm);
-        
+
       /* CR 110715.1
        * look for duplicate migration times in sorted event list.
-       * This solves a charateristic of the Mersennes Twister 
+       * This solves a charateristic of the Mersennes Twister
        * random number generator in which identical random numbers may be
        * returned from the random number sequence in a very small number
        * of calls.  With some seeds it was noted as small as within 4 calls.
@@ -439,7 +439,7 @@ simmpathhg (int ci, struct edgemiginfo *edgem, int numm, double timein, double u
       for (migIndex = 0; migIndex < lastm; ++migIndex)
       {
         if  (edgem->mig[migIndex].mt != edgem->mig[migIndex + 1].mt)
-        {   
+        {
            continue;
         }
         else
@@ -450,7 +450,7 @@ simmpathhg (int ci, struct edgemiginfo *edgem, int numm, double timein, double u
       }
     }
     else
-    {   
+    {
       dupCheck=0;
     }
   } while (dupCheck == 1); /* when no dup times found, exit loop   */
@@ -458,7 +458,7 @@ simmpathhg (int ci, struct edgemiginfo *edgem, int numm, double timein, double u
   lastpop = *pop;
   for (i = 0; i <= lastm; i++)
   {
-    if (constrainpop >= 0 && i >= lastm-1) 
+    if (constrainpop >= 0 && i >= lastm-1)
     {
       if (i==lastm-1)
         edgem->mig[i].mp =  picktopop2 (lastpop, C[ci]->plist[0], npops,constrainpop); // pick a population other than constrainpop
@@ -469,15 +469,15 @@ simmpathhg (int ci, struct edgemiginfo *edgem, int numm, double timein, double u
       edgem->mig[i].mp = picktopop (lastpop, C[ci]->plist[0], npops);
     lastpop = edgem->mig[i].mp;
   }
-  *pop = lastpop; 
+  *pop = lastpop;
   return lastm;
 } // simmpathhg
 
-/* 
-  simulates migration times for single edges,  updates temppop (population id of the edge at the time under consideration) as needed 
+/*
+  simulates migration times for single edges,  updates temppop (population id of the edge at the time under consideration) as needed
 */
 int
-mwork_single_edgehg (int ci, struct edgemiginfo *edgem,struct edgemiginfo *oldedgem,double mhg)  
+mwork_single_edgehg (int ci, struct edgemiginfo *edgem,struct edgemiginfo *oldedgem,double mhg)
 {
   int mpall,lastm;
   double r;
@@ -509,7 +509,7 @@ mwork_single_edgehg (int ci, struct edgemiginfo *edgem,struct edgemiginfo *olded
     {
       mpall = poisson (r, 3,edgem->cmm);
     }
-    else                    // cannot be zero migration events 
+    else                    // cannot be zero migration events
     {
       mpall = poisson (r, 2,edgem->cmm);
     }
@@ -534,7 +534,7 @@ int mwork_two_edgeshg(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sis
   int lastm[2];
   int ii;
   double r;
-  struct edgemiginfo *mm;//, *oldmm; not used 
+  struct edgemiginfo *mm;//, *oldmm; not used
 
   assert (edgem->e == sisem->e);
   assert(edgem->e >= edgem->b);
@@ -544,7 +544,7 @@ int mwork_two_edgeshg(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sis
 /* do constrained migration to each of two portions of both edges that are in lastmigperiod */
   if (edgem->temppop == sisem->temppop)
   {
-    if (uniform() < MIGCLOSEFRAC) 
+    if (uniform() < MIGCLOSEFRAC)
     {
       edgem->fpop = sisem->fpop = edgem->temppop;
     }
@@ -557,16 +557,16 @@ int mwork_two_edgeshg(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sis
   {
     if (npops == 2)
     {
-      if (uniform() < 0.5) 
+      if (uniform() < 0.5)
         edgem->fpop = sisem->fpop = edgem->temppop;
       else
         edgem->fpop = sisem->fpop = sisem->temppop;
     }
     else
     {
-      if (uniform() < MIGCLOSEFRAC) 
+      if (uniform() < MIGCLOSEFRAC)
       {
-        if (uniform() < 0.5) 
+        if (uniform() < 0.5)
           edgem->fpop = sisem->fpop = edgem->temppop;
         else
           edgem->fpop = sisem->fpop = sisem->temppop;
@@ -580,7 +580,7 @@ int mwork_two_edgeshg(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sis
   for (ii=0;ii<2;ii++)
   {
     mm = (ii==0) ? edgem : sisem;
-    //oldmm = (ii==0) ? oldedgem : oldsisem; not used 
+    //oldmm = (ii==0) ? oldedgem : oldsisem; not used
     r = mhg*mm->mtall;
     if (npops == 2)
     {
@@ -613,7 +613,7 @@ int mwork_two_edgeshg(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sis
           return -1;
         mm->cmm = mm->mpall;
       }
-      else                    // cannot be zero migration events 
+      else                    // cannot be zero migration events
       {
         mm->mpall = poisson (r, 2,mm->cmm);
         if (mm->mpall < 0)
@@ -637,7 +637,7 @@ int  getmhg (int ci,struct edgemiginfo *edgem,struct edgemiginfo *sisem, struct 
   if ( sisem->edgeid == -1  /* sisem->mtall <= 0*/)  // no sister edge, or sister edge not in a period where migration can occur
   {
     assert(sisem->mtall == 0);
-    edgem->mpall = mwork_single_edgehg (ci, edgem,oldsisem,mhg); 
+    edgem->mpall = mwork_single_edgehg (ci, edgem,oldsisem,mhg);
     if (edgem->mpall < 0)
       return -1;
   }
@@ -654,11 +654,11 @@ int  getmhg (int ci,struct edgemiginfo *edgem,struct edgemiginfo *sisem, struct 
     return 0;
 }  //getmhg
 
-/* copy gtree info from genealogy into newedgemig and newsismig. 
-and then simulate migration events on those. 
+/* copy gtree info from genealogy into newedgemig and newsismig.
+and then simulate migration events on those.
 have to fill up newdgemig and newsismig.  These are instances of edgemiginfo,  and as such are not unique to hidden genealogy work
 use pop,fpop and mig[] parts of these to hold info about the hidden genealogy
-*/ 
+*/
 static double addmigrationhg (int ci,int  li)
 {
   int newsis, edge;
@@ -670,24 +670,24 @@ static double addmigrationhg (int ci,int  li)
   double U, windowsize, oldmhg, newmhg,maxval,troldmhg,trnewmhg;
 
   /* code for updating the mhg value  */
-  if (hiddenoptions[UPDATEMRATEFORHGUPDATE] && uniform() < 0.2) // do a migration prior update about 20% of the time 
+  if (hiddenoptions[UPDATEMRATEFORHGUPDATE] && uniform() < 0.2) // do a migration prior update about 20% of the time
   {
     if (modeloptions[EXPOMIGRATIONPRIOR])
     {
-    
+
      // C[ci]->G[li].mhg = expo(mprior);
       oldmhg =  C[ci]->G[li].mhg;
       troldmhg =  1.0 - exp(-C[ci]->G[li].mhg/mprior);  // transformed old mhg
       assert (0.0 < troldmhg  && troldmhg < 1.0);
-    
-      // make a value transformed to uniform[0,1] tra = 1- Exp[-a /m]   
-      // tra now goes from 0 to 1 
+
+      // make a value transformed to uniform[0,1] tra = 1- Exp[-a /m]
+      // tra now goes from 0 to 1
       // get a new tra in a window on an interval of [0,1] with reflecting boundaries
       // back transform newa =  -Log[1- newtra] * m
-    
+
       U = uniform();
       //maxval =  1.0;
-      windowsize = DMIN(0.1,0.1/mprior);  // the bigger the mean of the exponential distribution the smaller the window size 
+      windowsize = DMIN(0.1,0.1/mprior);  // the bigger the mean of the exponential distribution the smaller the window size
 
 
       if (U > 0.5)
@@ -702,8 +702,8 @@ static double addmigrationhg (int ci,int  li)
           if (trnewmhg < 0.0)
               trnewmhg = - trnewmhg;
           }
-      C[ci]->G[li].mhg = - log(1 - trnewmhg) * mprior;  // back transform 
-      assert(C[ci]->G[li].mhg  > 0.0); 
+      C[ci]->G[li].mhg = - log(1 - trnewmhg) * mprior;  // back transform
+      assert(C[ci]->G[li].mhg  > 0.0);
 
      // holdmhg = C[ci]->G[li].mhg;
      // C[ci]->G[li].mhg = expo(mprior);
@@ -715,7 +715,7 @@ static double addmigrationhg (int ci,int  li)
       oldmhg = C[ci]->G[li].mhg;
       U = uniform();
       maxval =  mprior;
-      windowsize = 0.1; // fixed small window size 
+      windowsize = 0.1; // fixed small window size
 
       if (U > 0.5)
         {
@@ -731,13 +731,13 @@ static double addmigrationhg (int ci,int  li)
         }
       C[ci]->G[li].mhg = newmhg;
       mhgproposeratio  = 0.0;
-    }  
+    }
   }
   else
   {
     mhgproposeratio  = 0.0;
     oldmhg = C[ci]->G[li].mhg;
-  } 
+  }
 
   IMA_reset_edgemiginfo (&newedgemig); // non-hg version of this
   IMA_reset_edgemiginfo (&newsismig);  // non-hg version of this
@@ -756,7 +756,7 @@ static double addmigrationhg (int ci,int  li)
   newedgemig.fpop =gtree[gtree[edge].down].pophg;
   if (gtree[edge].down == C[ci]->G[li].root)    /* simulate migration on the sister branch as well */
   {
-    newedgemig.fpop = -1;       //pop unknown, as edge must be determined by migration 
+    newedgemig.fpop = -1;       //pop unknown, as edge must be determined by migration
     if (gtree[gtree[edge].down].up[0] == edge)
       newsis = gtree[gtree[edge].down].up[1];
     else
@@ -772,19 +772,19 @@ static double addmigrationhg (int ci,int  li)
     newsismig.cmm = 0;
     newsismig.mpall = 0;
     newsismig.pop = newsismig.temppop = gtree[newsis].pophg;
-    newsismig.fpop = -1;    // this is not known until migration events are simulated 
+    newsismig.fpop = -1;    // this is not known until migration events are simulated
     newsismig.mtall = newsismig.dnt - newsismig.upt;
   }
   else
   {
     newsismig.edgeid = -1;
-    newsismig.mtall = 0; 
+    newsismig.mtall = 0;
     newsismig.b = newsismig.e = -1;// no second edge to deal with
   }
 
   assert((newsismig.mtall > 0 && newsismig.edgeid >= 0) || newsismig.mtall == 0);
-  nm = getmhg (ci, &newedgemig, &newsismig, &oldedgemig, &oldsismig,C[ci]->G[li].mhg);  // simulate the migration events 
-  if (nm < 0) 
+  nm = getmhg (ci, &newedgemig, &newsismig, &oldedgemig, &oldsismig,C[ci]->G[li].mhg);  // simulate the migration events
+  if (nm < 0)
   {
     //badmigrationupdate += 1;
     return forcereject;
@@ -826,7 +826,7 @@ double getmprobedge(struct edgemiginfo *e, double mhg)
       tempp = e->mpall * log(mhg) - mylogcosh(lr);  // why was this tempp +=  ??
     }
   }
-  else                      // 3 or more pops in the last period 
+  else                      // 3 or more pops in the last period
   {
     popc = (double) (npops - 1);
     switch (e->mpall)
@@ -834,23 +834,23 @@ double getmprobedge(struct edgemiginfo *e, double mhg)
     case 0:
             tempp = -log(exp(lr)-lr);
             break;
-    case 1: 
+    case 1:
             tempp = log(mhg) - log(exp(lr)-1.0);
             break;
     default:
           {
             if (e->mpall==2)
-              lastm_2_pop = e->pop;  
-            else 
-              lastm_2_pop = e->mig[e->mpall-3].mp;  
+              lastm_2_pop = e->pop;
+            else
+              lastm_2_pop = e->mig[e->mpall-3].mp;
             if (lastm_2_pop == e->fpop)
               pathlog = (e->mpall-1) * (-log(popc)) ;
             else
               pathlog = (e->mpall-2) * (-log(popc))  - log(popc - 1.0);
             if (e->pop == e->fpop)
-              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-lr); 
+              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-lr);
             else
-              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-1); 
+              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-1);
           }
     }
   }
@@ -858,11 +858,11 @@ double getmprobedge(struct edgemiginfo *e, double mhg)
 }  //getmprobedge
 
 
-/* calculate propobility of proposing edgem and sisem 
+/* calculate propobility of proposing edgem and sisem
    based simply on simulation probabilities
    note that struct edgemiginfo does not have explicit hg terms
    (the same structure is also used in update_gtree.cpp)
-   so pop, fpop, mig in these structures all refer to hidden genealogies in this file 
+   so pop, fpop, mig in these structures all refer to hidden genealogies in this file
 */
 double
 getmprobhg(int ci, struct edgemiginfo *edgem,
@@ -875,12 +875,12 @@ getmprobhg(int ci, struct edgemiginfo *edgem,
 
   tempp = 0;
   //lastmigrationperiod = IMIN(edgem->e, lastperiodnumber); not uised
-  if (sisem->mtall <= 0)       // only deal with edgem 
+  if (sisem->mtall <= 0)       // only deal with edgem
   {
     r = mhg;
     tempp = getmprobedge(edgem,r);
   }
-  else  // both edges 
+  else  // both edges
   {
     assert(edgem->mtall > 0 && sisem->mtall > 0);
     assert(edgem->e ==sisem->e);
@@ -921,7 +921,7 @@ void edgemask(int ci, struct edge *e, double upt)
   int fp;
   cpophg = e->pophg;
   assert (0<=cpophg && cpophg < numtreepops);
-  fp = findperiod(ci,upt); 
+  fp = findperiod(ci,upt);
   assert (0<=fp && fp < npops);
   e->pop = C[ci]->ancplist[cpophg][fp]; // the ancestral pop of cpophg in period fp, i.e. pop that includes the pophg in the fp
   cpop = e->pop;
@@ -940,14 +940,14 @@ void edgemask(int ci, struct edge *e, double upt)
     topop = C[ci]->ancplist[topophg][fp];
     if (topop != cpop) // not a hidden migration
     {
-      assert (0<=  fp  && fp < npops-1); // can't be an oldest ancestral population so can't be in last period 
+      assert (0<=  fp  && fp < npops-1); // can't be an oldest ancestral population so can't be in last period
       e->mig[ami].mp = topop;
       assert (e->mighg[mi].mt >= 0.0);
       e->mig[ami].mt = e->mighg[mi].mt;
       cpop = topop;
       assert (e->mig[ami].mt < C[ci]->tvals[fp]);
       ami += 1;
-      
+
     }
     mi += 1;
     cpophg = topophg;
@@ -957,7 +957,7 @@ void edgemask(int ci, struct edge *e, double upt)
   e->cmm = ami;
   fp =  findperiod(ci,e->time) ;
   assert (0<= fp && fp < npops);
-  //e->fpop = C[ci]->ancplist[e->fpophg][fp]; // this seems likely to be a bug because e->fpophg has not been set yet,  probably minor 
+  //e->fpop = C[ci]->ancplist[e->fpophg][fp]; // this seems likely to be a bug because e->fpophg has not been set yet,  probably minor
   e->fpop = C[ci]->ancplist[cpophg][fp];
   e->fpophg = cpophg;
 }  /* edgemask */
@@ -978,7 +978,7 @@ void edgemask_debugprint(int ci, struct edge *e, double upt)
  EFP "step %d chain %d  edgenum %d  upt %.4lf\n",step,ci,e->ei,upt);
   cpophg = e->pophg;
   assert (0<=cpophg && cpophg < numtreepops);
-  fp = findperiod(ci,upt); 
+  fp = findperiod(ci,upt);
   assert (0<=fp && fp < npops);
   e->pop = C[ci]->ancplist[cpophg][fp]; // the ancestral pop of cpophg in period fp, i.e. pop that includes the pophg in the fp
   cpop = e->pop;
@@ -999,7 +999,7 @@ EFP "cpophg %d fp %d cpop %d \n",cpophg,fp,cpop);
   EFP " mi  %d  mighg[mi].mt %.4lf period  %d topophg %d cpop %d topop %d\n",mi,e->mighg[mi].mt,fp,topophg,cpop,topop);
     if (topop != cpop) // not a hidden migration
     {
-      assert (0<=  fp  && fp < npops-1); // can't be an oldest ancestral population so can't be in last period 
+      assert (0<=  fp  && fp < npops-1); // can't be an oldest ancestral population so can't be in last period
       e->mig[ami].mp = topop;
       assert (e->mighg[mi].mt >= 0.0);
       e->mig[ami].mt = e->mighg[mi].mt;
@@ -1007,7 +1007,7 @@ EFP "cpophg %d fp %d cpop %d \n",cpophg,fp,cpop);
       assert (e->mig[ami].mt < C[ci]->tvals[fp]);
   EFP "not hidden  ami %d  e->mig[ami].mt %.4lf  e->mig[ami].mp %d \n",ami, e->mig[ami].mt,e->mig[ami].mp);
       ami += 1;
-      
+
     }
     mi += 1;
     cpophg = topophg;
@@ -1017,11 +1017,11 @@ EFP "cpophg %d fp %d cpop %d \n",cpophg,fp,cpop);
   e->cmm = ami;
   fp =  findperiod(ci,e->time) ;
   assert (0<= fp && fp < npops);
-  //e->fpop = C[ci]->ancplist[e->fpophg][fp]; // this seems likely to be a bug because e->fpophg has not been set yet,  probably minor 
+  //e->fpop = C[ci]->ancplist[e->fpophg][fp]; // this seems likely to be a bug because e->fpophg has not been set yet,  probably minor
   e->fpop = C[ci]->ancplist[cpophg][fp];
   e->fpophg = cpophg;
 EFP" period %d fpop %d fpophg %d\n",fp,e->fpop,e->fpophg);
-f_close (ef);
+FCLOSE (ef);
 }  /* edgemask_debugprint */
 #endif //TURNONCHECKS
 
@@ -1031,7 +1031,7 @@ void makegenealogy_from_hiddengenealogy(int ci,int li)
   int ei;
   double upt;
   struct genealogy *G;
-  struct edge *gtree; 
+  struct edge *gtree;
 
   G = &C[ci]->G[li];
   gtree = G->gtree;
@@ -1066,7 +1066,7 @@ void calcnumancestralpops(int ci, int counts[])
   }
 }
 
-/* go through the mighg array, count hidden migrations on an edge that are between two time points (not inclusive) */ 
+/* go through the mighg array, count hidden migrations on an edge that are between two time points (not inclusive) */
 int countnummighg(int ci,int li,int ei,double t, double endt,int *lastpop, int *thirdlastpop)
 {
   int c,mi;
@@ -1093,8 +1093,8 @@ int countnummighg(int ci,int li,int ei,double t, double endt,int *lastpop, int *
   return c;
 }
 
-/* probability of hidden migration events in an interval of an edge 
-  If interval ends in a regular migration,  then this calculation includes the 
+/* probability of hidden migration events in an interval of an edge
+  If interval ends in a regular migration,  then this calculation includes the
   probability of the hidden population state */
 double hgedgecalcprob(struct hgcalcstruct hgc)
 {
@@ -1106,7 +1106,7 @@ double hgedgecalcprob(struct hgcalcstruct hgc)
   }
   assert(isnotnan(plog));
   assert(isnotinf_DBL(plog));
-  return plog; 
+  return plog;
 }  /* hgedgecalcprob */
 
 double hgcalccoalprob(int nm[], int cpop[], int thirdlastpop[], double l[], int fpop, double mrate,int ndpops)
@@ -1133,7 +1133,7 @@ double hgcalccoalprob(int nm[], int cpop[], int thirdlastpop[], double l[], int 
       if (cpop[0] == fpop || cpop[1] == fpop)
         p = 0.5*MIGCLOSEFRAC;
       else
-        p = (1.0 - MIGCLOSEFRAC)/(ndpops-2); // prob of particular final pop being different from both sampled pops 
+        p = (1.0 - MIGCLOSEFRAC)/(ndpops-2); // prob of particular final pop being different from both sampled pops
     }
   }
   plog = log(p);
@@ -1192,14 +1192,14 @@ double hgcalccoalprob(int nm[], int cpop[], int thirdlastpop[], double l[], int 
 /*
 prob_hg_given_g calculate the probability of the hidden genealogy given the genealogy
 Nothing is being set, just calculating the probability of what we find when observing
-what the hidden genealogy has,  condition on on what the genealogy has. 
+what the hidden genealogy has,  condition on on what the genealogy has.
 */
 double prob_hg_given_g(int ci,int li)
 {
   int i,ui,ei,gmi,hgmi,currhgpop,currgpop;
   double uptg,tmig,stime,ctime;
   struct genealogy *G;
-  struct edge *gtree; 
+  struct edge *gtree;
   double logpsum,mrate;
   struct hgcalcstruct hgc;
   int descounts[MAXTREEPOPS];
@@ -1219,9 +1219,9 @@ double prob_hg_given_g(int ci,int li)
   if (calcoptions[DONTCALCGENEALOGYPRIOR]==1)
     return 0.0;
 
-  /*  
-  to print to a file a table of numbers used to calculate probhg 
-  usually use this when checkprobs()  finds a problem with prob_hg_given_g() 
+  /*
+  to print to a file a table of numbers used to calculate probhg
+  usually use this when checkprobs()  finds a problem with prob_hg_given_g()
   Must set these vars to the step, chain and locus that showed the problem
   int steptoprint = 887;//-1;
   int chaintoprint =4;// -1;
@@ -1246,7 +1246,7 @@ double prob_hg_given_g(int ci,int li)
     log_mighgprior = -(mrate/mprior) - log(mprior);
   else
     log_mighgprior = 0.0;  // technically log (1.0/(C[ci]->imig[li].pr.mean )) but this always cancels
-  calcnumancestralpops(ci,descounts); // fill descounts  descounts[i] is the number of descendant populations that population i has 
+  calcnumancestralpops(ci,descounts); // fill descounts  descounts[i] is the number of descendant populations that population i has
 
   for (i=L[li].numgenes;i< L[li].numlines;i++) // over internal nodes
   {
@@ -1261,12 +1261,12 @@ double prob_hg_given_g(int ci,int li)
       ctime = gtree[ei].time; // time when edge coalesces
       currhgpop = gtree[ei].pophg; // hidden pop state at top of edge
       currgpop = gtree[ei].pop;  // pop state at top of edge
-      gmi = 0; // indexes regular migration events 
-      reachedcoalescent[ui] = 0; // array for each edge. 
-      cmmhgcheck[ui] = 0;  // used to check on counts of hidden migrations 
+      gmi = 0; // indexes regular migration events
+      reachedcoalescent[ui] = 0; // array for each edge.
+      cmmhgcheck[ui] = 0;  // used to check on counts of hidden migrations
       do // move down the edge, identify all intervals between events in G that could have events in GH
       {
-        hgc = hgczero;  // initialize to an empty structure  // this sets logprobendpop to 0.0 
+        hgc = hgczero;  // initialize to an empty structure  // this sets logprobendpop to 0.0
         tmig = (gtree[ei].mig[gmi].mt > -0.5) ? gtree[ei].mig[gmi].mt : TIMEMAX;
         stime = C[ci]->poptree[currgpop].time;  // next split time
         hgc.ndpops = descounts[currgpop]; // # descendant populations of current population
@@ -1302,7 +1302,7 @@ double prob_hg_given_g(int ci,int li)
           hgmi = 0; // find the migration in mighg that is the same event as tmig in order to set currhgpop for the next interval
           while (gtree[ei].mighg[hgmi].mt != tmig && gtree[ei].mighg[hgmi].mt > -0.5)
             hgmi++;
-          assert(gtree[ei].mighg[hgmi].mt > -0.5); // would only be < 0 if it was not found 
+          assert(gtree[ei].mighg[hgmi].mt > -0.5); // would only be < 0 if it was not found
           assert(gtree[ei].mighg[hgmi].mt == tmig);
           currhgpop = gtree[ei].mighg[hgmi].mp;
           assert(currhgpop < npops);
@@ -1323,7 +1323,7 @@ double prob_hg_given_g(int ci,int li)
             assert( popbeforesecondtolasthg >= 0);
             thirdlastpop[ui] = popbeforesecondtolasthg;
           }
-          else 
+          else
           {
             if (cnummighg[ui]==2)
               thirdlastpop[ui] = currhgpop;
@@ -1338,9 +1338,9 @@ double prob_hg_given_g(int ci,int li)
         assert (nexteventtype != 0);
         if ( reachedcoalescent[ui] == 0)
         {
-           // BAD BUG  3/27/2017  found by Yujin.  
+           // BAD BUG  3/27/2017  found by Yujin.
             //hgc.logprobendpop can be nonzero even when ndpops is < 2 because migration from non-ancestor to ancestor  has multiple possibilities
-            //  Even though there can be no hidden migrations in this case,  there is still a nonzero probability for the interval. 
+            //  Even though there can be no hidden migrations in this case,  there is still a nonzero probability for the interval.
             // edited hgedgecalcprob() to handle case when ndpops < 2
           cmmhgcheck[ui] += hgc.nummighg;
           temp = hgedgecalcprob(hgc);
@@ -1376,20 +1376,20 @@ double prob_hg_given_g(int ci,int li)
   /*if (debug_probhg_fprint)
   {
     fprintf(debugprintfile,"final logpsum %.6lf\n",logpsum);
-    f_close (debugprintfile);    
+    FCLOSE (debugprintfile);    
   } */
-  assert( isnotinf_DBL(logpsum)); 
+  assert( isnotinf_DBL(logpsum));
   assert(isnotnan(logpsum));
   return (logpsum  + log_mighgprior);
 }   /*prob_hg_given_g*/
 
-/* 
+/*
   save all info about Gh and G
   make a change to Gh
-  mask this change onto G 
+  mask this change onto G
   MH term includes:
-    likelihood for locus 
-    Prog_Gh_given_G 
+    likelihood for locus
+    Prog_Gh_given_G
     Prog_G
     Proposal prob ratio for Gh
 
@@ -1399,8 +1399,8 @@ main steps in updateHG():
   storehgstats()
   do sliding update
   rebuild hidden genealogy with update
- *maskgenealogy()     [make the new genealogy, given the new hg] 
-  treeweight(ci,li) 
+ *maskgenealogy()     [make the new genealogy, given the new hg]
+  treeweight(ci,li)
   sum_subtract_treeinfo()    [updates the summary stats for the joint genealogies]
   calculate the likelihood on the genealogy depending on mutation model
   copy_probcalc()
@@ -1415,7 +1415,7 @@ main steps in updateHG():
     update G->pdg
   else [reject update]:
     restoreedges()
- *maskgenealogy()     [restore the old genealogy, given the old hg] 
+ *maskgenealogy()     [restore the old genealogy, given the old hg]
     storehgstats()  [copy stats back]
     copy_probcalc()
     copy_treeinfo() [locus li, chain ci]
@@ -1448,7 +1448,7 @@ checkgenealogyweights(ci);
 //  printgenealogyweights(ci,li);
 checkprobs(ci,li);
 #endif //TURNONCHECKS
-  
+
   //C[ci]->G[li].mhg =  mprior * MPRIORFRACFORHG; //  this is  done in initialize
 
 // initialize and make copies structures that hold quantities for calculating prob of genealogy
@@ -1479,15 +1479,15 @@ checkprobs(ci,li);
   storeoldedgeshg (ci, li, edge, oldsis, freededge);
 
   /* slide edge, pick a distance and slide it  */
-/* PROBLEM it is possible for this to generate too big a slide distance if the sample size is large and there are a lot of very short edges 
-  this causes the recursion in slider to crash*/ 
+/* PROBLEM it is possible for this to generate too big a slide distance if the sample size is large and there are a lot of very short edges
+  this causes the recursion in slider to crash*/
   slidestdv = DMIN (SLIDESTDVMAX, G->roottime/3 );
 //slidestdv = slidetemp[slidei]* T[numsplittimes-1].pr.max;
-  holdslidedist = slidedist = normdev (0.0, slidestdv); 
+  holdslidedist = slidedist = normdev (0.0, slidestdv);
 /* join the sister and the down branches at the point where edge used to connect, this frees up the down branch */
-  joinstatus = joinsisdown (ci, li, oldsis, tmrcachange);  // no hg version yet 
+  joinstatus = joinsisdown (ci, li, oldsis, tmrcachange);  // no hg version yet
   if (joinstatus < 0)
-    return -1;   // awkward way to get out of here. this happens if too large a value of cmm or cmmhg happens because of the join 
+    return -1;   // awkward way to get out of here. this happens if too large a value of cmm or cmmhg happens because of the join
 /* do the slide and identify the new sister branch and where new connection point for the edge is */
   newsis = oldsis;
   slider (ci, li, edge, &newsis, &(gtree[edge].time), &slidedist);  // same as used by regular genealogy update in update_gtree.cpp
@@ -1495,11 +1495,11 @@ checkprobs(ci,li);
 /* now separate the new sister branch into a shorter sis branch and a down branch  */
   splitsisdown (ci, li, edge, freededge, newsis);  // same as used by regular genealogy update in update_gtree.cpp
 //if (0)  use with slidetemp and slidei
-  if (rootmove)  // have to calculate slideweight as slidestdv may change 
+  if (rootmove)  // have to calculate slideweight as slidestdv may change
   {
     slideweight = -log (normprob (0.0, slidestdv, holdslidedist));
-    slidestdv = DMIN (SLIDESTDVMAX, G->roottime / 3); 
-    slideweight += log (normprob (0.0, slidestdv, holdslidedist)); 
+    slidestdv = DMIN (SLIDESTDVMAX, G->roottime / 3);
+    slideweight += log (normprob (0.0, slidestdv, holdslidedist));
   }
   else
   {
@@ -1514,7 +1514,7 @@ checkprobs(ci,li);
       or
       treeweight() fails - there are some rare cases where the sequence of events handled in treeweight just does not make a valid tree,  hard to debug
   */
-  if (migweight > forcereject)  // adding migration went ok 
+  if (migweight > forcereject)  // adding migration went ok
   {
   /*  copy the migration info in newedgemig and newsismig  to the genealogy */
   /* determine all the weights needed for calculating the probability of the genealogy */
@@ -1524,7 +1524,7 @@ checkprobs(ci,li);
 //  gtreeprint(ci,li);
 #endif //TURNONCHECKS
     setzero_genealogy_weights (&G->gweight);
-    int treeweightcallcode = 2;  // a debugging code,  if treeweight has an error results are written to an output file with this code 
+    int treeweightcallcode = 2;  // a debugging code,  if treeweight has an error results are written to an output file with this code
     int tw = treeweight (ci, li,treeweightcallcode);  //calculate and set C[ci]->G[li].gweight
     if (tw < 0) // some failure in treeweight()
     {
@@ -1541,7 +1541,7 @@ checkprobs(ci,li);
   }
   if (autoreject == 0)
   {
-    sum_subtract_treeinfo (&C[ci]->allgweight, &G->gweight,&holdgweight_updategenealogy);// after update, add the new weights to allgweight and subtract the old ones 
+    sum_subtract_treeinfo (&C[ci]->allgweight, &G->gweight,&holdgweight_updategenealogy);// after update, add the new weights to allgweight and subtract the old ones
     newpdg = 0;  /* will hold the new value for p(data|genealogy) at locus li.  The current one is in G->pdg  */
     switch (L[li].model)
     {
@@ -1562,7 +1562,7 @@ checkprobs(ci,li);
           newpdg += newpdg_a[ai];
           Atermsum += Aterm[ai];
         }
-  //            checklikelihoodSW(ci, li,G->u[ai].mcinf.val);  
+  //            checklikelihoodSW(ci, li,G->u[ai].mcinf.val);
         break;
       }
     case JOINT_IS_SW:
@@ -1576,7 +1576,7 @@ checkprobs(ci,li);
         newpdg += newpdg_a[ai];
         Atermsum += Aterm[ai];
       }
-      //checklikelihoodSW(ci, li,Q[ci]->us[li]);  
+      //checklikelihoodSW(ci, li,Q[ci]->us[li]);
       break;
     }
 
@@ -1600,7 +1600,7 @@ checkprobs(ci,li);
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
     likelihoodratio =  (newpdg - G->pdg);
     proposalratio = migweight + slideweight + Atermsum;
-    if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+    if (calcoptions[CALCMARGINALLIKELIHOOD])
     	{
       metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
     }
@@ -1640,14 +1640,14 @@ checkprobs(ci,li);
   /* reject the update */
   if (accp == 0)
   {
-    // put the edges back 
-    restoreedgeshg (ci, li, edge, oldsis, freededge, newsis); 
+    // put the edges back
+    restoreedgeshg (ci, li, edge, oldsis, freededge, newsis);
     // copy summary stats back
     storegenealogystatshg (ci, li, 1);
     // reset HKY terms
     if (L[li].model == HKY)
       restorescalefactors (ci, li);
-    // copy back all the weights and results associated with calculating the probability of the genealogy 
+    // copy back all the weights and results associated with calculating the probability of the genealogy
     copy_probcalc (&C[ci]->allpcalc, &holdallpcalc_updategenealogy);
     copy_treeinfo (&C[ci]->allgweight, &holdallgweight_updategenealogy);
     copy_treeinfo (&G->gweight, &holdgweight_updategenealogy);
@@ -1669,4 +1669,3 @@ checkprobs(ci,li);
 #endif //TURNONCHECKS
   return accp;
 }   /* update_hidden_genealogy */
-

@@ -13,7 +13,7 @@ extern void addoutgroup(char s[]);  // declared in alltreestings.cpp
 static int infilelines,infiletoplines;
 double pi[MAXLOCI][4];          // used here and in initialize.c
 
-const char *defaultpoptreestrings[11] = 
+const char *defaultpoptreestrings[11] =
     {"",
     "0",
     "(0,1):2",
@@ -63,7 +63,7 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
   {
     zerocpop[i] = static_cast<char *> (malloc (numbases * (sizeof (char))));
     altcpop[i] = static_cast<char *> (malloc (numbases * (sizeof (char))));
-    initsegpop[i] = static_cast<int *> 
+    initsegpop[i] = static_cast<int *>
                     (calloc ((size_t) numbases, (sizeof (int))));
   }
   b = 0;
@@ -77,8 +77,8 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
       pop++;
       b = e + 1;
       if (pop == npops)
-      {  // not clear how we get here,   
-        //assert (assignmentoptions[POPULATIONASSIGNMENT] == 1);  left as comment,  how do we gety her? 
+      {  // not clear how we get here,
+        //assert (assignmentoptions[POPULATIONASSIGNMENT] == 1);  left as comment,  how do we gety her?
         e = b + L[li].numgenesunknown - 1;
       }
       else
@@ -87,14 +87,14 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
       }
       firstpopline = 1;
     }
-    /* assumes that the first sequence of 10 characters that does not 
+    /* assumes that the first sequence of 10 characters that does not
      * contain a carriage return is the species name */
     for (v = 0; v < GENENAMELENGTH; v++)
     {
       if ((char) fgetc (infile) == '\n')
         v = 0;
     }
-    if (MODEL == JOINT_IS_SW)   // just read through theses 
+    if (MODEL == JOINT_IS_SW)   // just read through theses
     {
       for (j = 0; j < L[li].nAlinked; j++)
         scanfval = fscanf (infile, "%d", &A);
@@ -265,11 +265,11 @@ readseqHKY (FILE * infile, int li, int currentid)
   {
     for (i = 0; i < L[li].numgenes; i++)
     {
-      /* assumes that the first sequence of 10 characters that does not 
+      /* assumes that the first sequence of 10 characters that does not
        * contain a carriage return is the species name */
       for (v = 0; v < GENENAMELENGTH; v++)
       {
-// is this trapping of eol really necessary ??? 
+// is this trapping of eol really necessary ???
         if ((c = (char) fgetc (infile)) == '\n')
           v = -1;
         if (isprint (c) != 0)
@@ -356,9 +356,9 @@ readseqIS (FILE * infile, int li, int MODEL, int **numsitesIS, int currentid)
   char c, *refseq;
 
   L[li].umodel[0] = INFINITESITES;
-  initseg = static_cast<int *> 
+  initseg = static_cast<int *>
                 (calloc ((size_t) L[li].numbases, (sizeof (int))));
-  L[li].badsite = static_cast<int *> 
+  L[li].badsite = static_cast<int *>
                 (calloc ((size_t) L[li].numbases, (sizeof (int))));
   if (L[li].numbases > 0)
   {
@@ -383,7 +383,7 @@ readseqIS (FILE * infile, int li, int MODEL, int **numsitesIS, int currentid)
   refseq = static_cast<char *> (malloc (L[li].numbases * (sizeof (char))));
   L[li].seq = static_cast<int **> (malloc (L[li].numgenes * (sizeof (int *))));
   for (i = 0; i < L[li].numgenes; i++)
-    L[li].seq[i] = static_cast<int *> 
+    L[li].seq[i] = static_cast<int *>
                     (malloc ((L[li].numsites) * (sizeof (int))));
 
   assert (L[li].numbases > 0);
@@ -509,7 +509,7 @@ readseqSW (FILE * infile, int li, int currentid)
   char gName[11];
   int v;
 
-  L[li].numsites = 0;   /* cr 110907.1 init numsites to 0  */    
+  L[li].numsites = 0;   /* cr 110907.1 init numsites to 0  */
   /* This for-loop may be placed here out of the main for-loop below */
   L[li].A = static_cast<int **> (malloc (L[li].nlinked * sizeof (int *)));
   for (ai = 0; ai < L[li].nlinked; ai++)
@@ -670,7 +670,7 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
     else
     {
       /* These two lines have been absent. */
-      L[li].nAlinked = 1; 
+      L[li].nAlinked = 1;
       L[li].nlinked = 1;
       SP "\tSW");
     }
@@ -707,20 +707,20 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
   cc = nextnonspaceafterspace (cc);
   ui = 0;
 
-  
+
   /* get inheritance scalar info, mutation rate info */
-  if (cc != NULL) 
+  if (cc != NULL)
   {
     scanfval = sscanf (cc, "%lf", &(L[li].hval));
     if (L[li].hval <= 0.0)
       IM_err(IMERR_LOCUSERROR,"Error in inheritance scalar: %.5f  Cannot be <= 0",L[li].hval);
     SP "\t%5.3lf", L[li].hval);
     cc = nextnonspaceafterspace (cc);
-    
+
     i = 0;
     while (cc != NULL && i < L[li].nlinked)     //get mutation rate info from data line
     {
-    
+
       i++;
       scanfval = sscanf (cc, "%lf", &L[li].uperyear_vals[ui]);
       if (L[li].uperyear_vals[ui] <= 0.0)
@@ -768,13 +768,13 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
 
   nurates += L[li].nlinked;
 
-  
+
   L[li].numlines = 2 * L[li].numgenes - 1;
-  
+
   /* CR: 110114.1
    * JH added this to trap an input file error  1/14/2011
    */
-  if (L[li].numlines <= 1) 
+  if (L[li].numlines <= 1)
   {
     IM_err (IMERR_INPUTFILEINVALID,
         "Each locus must have at least two gene copies. Locus %d (%s) has %d."
@@ -786,12 +786,12 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
     L[li].pairs[i] = -1;
   }
   if (*fpstri >= FPSTRIMAXLENGTH)
-      IM_err (IMERR_INPUTFILEINVALID, 
+      IM_err (IMERR_INPUTFILEINVALID,
                 "fpstri %d  exceeds max length", *fpstri);
   return;
 }                               //parse_locus_info
 
-void 
+void
 skip_datafile_toplines (FILE * infile)
 {
   char textline[DATAFILEMAXLINELENGTH + 1];
@@ -856,14 +856,14 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
   scanfval = fscanf (infile, "%d\n", &npops);
   if (npops < 1)
   {
-    IM_err (IMERR_INPUTFILEINVALID, 
-            "number of population (%d) must be positive", 
+    IM_err (IMERR_INPUTFILEINVALID,
+            "number of population (%d) must be positive",
             npops);
   }
   else if (npops > MAXPOPS)
   {
-    IM_err (IMERR_INPUTFILEINVALID, 
-            "number of population (%d) is greater than MAXPOPS [%d]", 
+    IM_err (IMERR_INPUTFILEINVALID,
+            "number of population (%d) is greater than MAXPOPS [%d]",
             npops, MAXPOPS);
   }
 
@@ -883,13 +883,13 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
   SP "\n");
   scanfval = fscanf (infile, "%s\n", startpoptreestring);
 
-  /*last 
+  /*last
     input files may or may not have a tree string in them on the line before he # of loci
     if there is a string, then that is read into startpoptreestring
     if not,  then the default string for that many populations is assigned
 
     if modeloptions[POPTREETOPOLOGYUPDATE]==1 and the tree was in the input file
-      then the tree string will be printed as given,  but will be ignored for the analysis 
+      then the tree string will be printed as given,  but will be ignored for the analysis
    */
   // check to see if there is actually a pop string there,  or if it is a digit (in which case it is the # of loci and not a pop tree string).
   if (isdigit(startpoptreestring[0]) &&  !(startpoptreestring[0] == '0' && npops == 1))  // if npops==1,  the poptreestring is '0'
@@ -913,7 +913,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
       SP "Population Tree in Input File:\n------------------------------\n  %s\n", startpoptreestring);
       strcpy(temppoptreestring,startpoptreestring);
       //rewrite(startpoptreestring);//  this will put the string in standard order
-      rewrite(temppoptreestring);  // changed to rewriting the temporary string 
+      rewrite(temppoptreestring);  // changed to rewriting the temporary string
       if (strcmp(temppoptreestring,startpoptreestring) != 0)
         SP "    Input File Tree rewritten with standard ordering: %s\n",temppoptreestring);
       if (modeloptions[ADDGHOSTPOP])
@@ -949,11 +949,11 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
     IM_err (IMERR_INFILEFAIL_NLOCI, "The number of loci (%d) is larger than %d\n", nloci, MAXLOCI);
   }
   infilelines += 3;
-  f_close (infile);
+  FCLOSE (infile);
 
   if (npops == 1   /* CR120124.1 single population treated here */)
   {
-    lastperiodnumber = 0;//1;   // 5/18/2016  why was this 1?   left over from assignment stuff? 
+    lastperiodnumber = 0;//1;   // 5/18/2016  why was this 1?   left over from assignment stuff?
     numsplittimes = 0;
   }
   else
@@ -963,10 +963,10 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
   }
   infiletoplines = infilelines;
   if (*fpstri >= FPSTRIMAXLENGTH)
-      IM_err (IMERR_INPUTFILEINVALID, 
+      IM_err (IMERR_INPUTFILEINVALID,
                 "fpstri %d  exceeds max length", *fpstri);
   return;
-  
+
 }                               //read_datafile_top_lines
 
 void
@@ -982,9 +982,9 @@ readdata (char infilename[], int *fpstri,
   /* next line is population tree string,  can be skipped if only 2 populations */
   /* number of loci */
   /* then for each locus: */
-  /* name, number of sequences in pop1, number of sequences in pop2, etc etc  length of sequences, mutationrate info 
+  /* name, number of sequences in pop1, number of sequences in pop2, etc etc  length of sequences, mutationrate info
    * number of sequence unknown
-   H for HKY model 
+   H for HKY model
    I for  infinite sites
    S  for stepwise model
    J  for joint infinite sites and stepwise
@@ -1016,7 +1016,7 @@ readdata (char infilename[], int *fpstri,
   for (i = 0; i < npops; i++)
     SP "\tPop%d#", i);
   SP "\tModel\tInheritanceScalar\tMutationRatePerYear\n");
-  ulogprod = 0.0; 
+  ulogprod = 0.0;
   for (li = 0; li < nloci; li++)
   {
     if (fgets (textline, DATAFILEMAXLINELENGTH, infile)==NULL)
@@ -1061,9 +1061,9 @@ readdata (char infilename[], int *fpstri,
       calcoptions[MUTATIONPRIORRANGE] = 0;
     }
   }
-  f_close (infile);
+  FCLOSE (infile);
   if (*fpstri >= FPSTRIMAXLENGTH)
-      IM_err (IMERR_INPUTFILEINVALID, 
+      IM_err (IMERR_INPUTFILEINVALID,
                 "fpstri %d  exceeds max length", *fpstri);
   if (currentid==HEADNODE)
     fflush(stdout);
@@ -1072,7 +1072,7 @@ readdata (char infilename[], int *fpstri,
 
 
 /* get the # of populations out of the datafile */
-int 
+int
 imaInfileNpops (const char *fn)
 {
   int v;
@@ -1101,4 +1101,3 @@ imaInfileNpops (const char *fn)
 
   return v;
 }
-

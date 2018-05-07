@@ -9,7 +9,7 @@ void chaininfo_print(int currentid,int recordint)
 used for debugging swapping
 
 */
- 
+
 
 #undef GLOBVARS
 #include "ima.hpp"
@@ -18,12 +18,12 @@ used for debugging swapping
 
 /*********** LOCAL STUFF **********/
 
-#define LOCALMAXCHAINS  1000  
+#define LOCALMAXCHAINS  1000
 struct chaindebugstruct{
   double betaval;
   int poptreenum;
 //  int processornum;
-//  int chainnum; 
+//  int chainnum;
 } cdarray[LOCALMAXCHAINS];
 
 static void cdarraysort ();
@@ -34,7 +34,7 @@ static void output_chaininfo_betaval (int currentid);
 
 /******* LOCAL FUNCTIONS ***********/
 
-void 
+void
 cdarraysort ()
 {
   unsigned long i, ir, j, l;
@@ -96,8 +96,8 @@ void getchaininfo_debug(int currentid)
 void output_chaininfo_poptreenum (int currentid)
 {
   /* send and receive cdarray values
-  sort the cdarray 
-  print the cdarray */ 
+  sort the cdarray
+  print the cdarray */
   int rc;
   int ci,cit,np;
   FILE *chaininfo_poptreenum_file;
@@ -107,16 +107,16 @@ void output_chaininfo_poptreenum (int currentid)
 #endif
 
 #ifdef MPI_ENABLED
-  if (currentid != 0) 
+  if (currentid != 0)
   {
     for (ci=0;ci<numchainspp;ci++)
     {
       cit = currentid*numchainspp + ci;
       rc = MPI_Send(&cdarray[cit].betaval, 1, MPI_DOUBLE, 0, cit*1237, MPI_COMM_WORLD);
-	    if (rc != MPI_SUCCESS) 
+	    if (rc != MPI_SUCCESS)
         MPI_Abort(MPI_COMM_WORLD, rc);
       rc = MPI_Send(&cdarray[cit].poptreenum, 1, MPI_INT, 0, cit*7891, MPI_COMM_WORLD);
-	    if (rc != MPI_SUCCESS) 
+	    if (rc != MPI_SUCCESS)
         MPI_Abort(MPI_COMM_WORLD, rc);
     }
   }
@@ -146,10 +146,10 @@ void output_chaininfo_poptreenum (int currentid)
     for (ci=numchainstotal-1;ci>=0;ci--)
       fprintf(chaininfo_poptreenum_file,"%d\t",cdarray[ci].poptreenum);
     fprintf(chaininfo_poptreenum_file,"\n");
-    f_close(chaininfo_poptreenum_file);
+    FCLOSE(chaininfo_poptreenum_file);
   }
 #ifdef MPI_ENABLED
-	MPI_Barrier(MPI_COMM_WORLD);// is this needed here? 
+	MPI_Barrier(MPI_COMM_WORLD);// is this needed here?
 #endif
 
   return;
@@ -159,8 +159,8 @@ void output_chaininfo_poptreenum (int currentid)
 void output_chaininfo_betaval (int currentid)
 {
   /* send and receive cdarray values
-  sort the cdarray 
-  print the cdarray */ 
+  sort the cdarray
+  print the cdarray */
   int rc;
   int ci;
   FILE *chaininfo_betaval_file;
@@ -179,7 +179,7 @@ void output_chaininfo_betaval (int currentid)
     //if (currentid != 0)
     //{
       rc = MPI_Gather (beta,numchainspp,MPI_DOUBLE,brp,numchainspp,MPI_DOUBLE,0, MPI_COMM_WORLD);
-      if (rc != MPI_SUCCESS) 
+      if (rc != MPI_SUCCESS)
         MPI_Abort(MPI_COMM_WORLD, rc);
     /*}
     else
@@ -203,7 +203,7 @@ void output_chaininfo_betaval (int currentid)
         fprintf(chaininfo_betaval_file,"%.5f\t",beta[ci]);
     }
     fprintf(chaininfo_betaval_file,"\n");
-    f_close(chaininfo_betaval_file);
+    FCLOSE(chaininfo_betaval_file);
   }
   return;
  } /* output_chaininfo_betaval */
@@ -215,15 +215,15 @@ void output_chaininfo_betaval (int currentid)
 writes to two files
 
 "debug_chaininfo_poptreenum.out"
-for every time the program records,  it prints a line to that file 
+for every time the program records,  it prints a line to that file
 the line contains the current poptree number that is held by each chain,  order by high beta value to low
 
 
 "debug_chaininfo_betaval.out"
 for every time the program records, writes a line to this file
-each line has the beta value for each chain, in order. useful to see how the beta values move around 
+each line has the beta value for each chain, in order. useful to see how the beta values move around
 
-useful for debugging swapping, particularly with multiple processors 
+useful for debugging swapping, particularly with multiple processors
 */
 
 void chaininfo_print(int currentid,int recordint)
