@@ -17,7 +17,7 @@ static char command_line[COMMANDLINESTRINGLENGTHMAX];
 static char defaultpriorfilename[14]= "imapriors.txt"; 
 static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text              
 static char genealogyinfosavefilename[FNSIZE]; 
-static char heatingterm_str[50], modeloptions_str[50], calcoptions_str[50], outputoptions_str[50],runoptions_str[50], priors_str[50];                    
+static char heatingterm_str[50], modeloptions_str[50], calcoptions_str[50], outputoptions_str[50],runoptions_str[50], priors_str[50], hiddenoptions_str[50];                    
 static char infile_name[FNSIZE]; 
 static char mcfreadfilename[FNSIZE]; 
 static char mcfwritefilename[FNSIZE]; 
@@ -224,7 +224,7 @@ scan_commandline (int argc, char *argv[], int currentid)
    * is never used by the code:  Cp, Ep, Wp, Yp.  These variable flags
    * are being left in for completeness
    */
-  int Bp, Cp, Dp, Fp, Gp, Hfp, Hnp,/* Hkp, */ Hap, Hbp, Ip, Jp, Lp, Mp, Op, Pp,
+  int Bp, Cp, Dp, Fp, Gp, Hmp, Hnp,Hap, Hbp, Ip, Jp, Lp, Mp, Op, Pp,
     Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
   double tempf;
 
@@ -255,13 +255,13 @@ scan_commandline (int argc, char *argv[], int currentid)
       
   numchainstotal  = DEFAULTNUMCHAINS;      /* default value */
   numchainspp =  DEFAULTNUMCHAINS;      /* default value */
-  genealogiestosave = -1;
+  genealogiestosave = UNDEFINEDINT;
   Bp = 0;                       /* duration of burnin */
   Cp = 0;                       /* calculation options  - flag not used */
   Dp = 0;                       /* number of steps in between genealogy saves */
   Fp = 0;                       /* name of mcf file */
   Gp = 0;                       /* name of prior file */
-  Hfp = 0;                      /* heating model */
+  Hmp = 0;                      /* heating model */
   Hnp = 0;                      /* # of chains */
   //Hkp = 0;                      /* # of swap attempts */  // jh no longer used as of 6/16/2016  now using setswaptries()
   Hap = 0;                      /* heat term1 */
@@ -325,18 +325,16 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    1 Include ranges on mutation rates as priors on mutation rate scalars\n");
       printf ("    2 Joint posterior density calculations, for LLR tests of nested models, use with -r0 -w\n");
       printf ("    3 Get prior distribution terms from file (requires filename given with -g )\n");
-      /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-      /* as of 8/23/2011 this is still in progress,  do not show this help output in release versions 
-      printf ("    4 Calculate the marginal likelihood, must specify -hn (odd number > 50 chains),  -hf, -ha, and -hb are ignored\n"); */
+      printf ("    4 Calculate the marginal likelihood,  requires 100 or more chains and use of -hm e or -hm s\n");
       printf ("-d  Number of steps between sampling genealogies (default 100)\n");
       printf ("-f  Name of file with saved Markov chain state generated in previous run (use with -r3)\n");
       printf ("-g  Name of file for parameter priors, default: '%s'\n",defaultpriorfilename);
       printf ("-h  Heating terms (MCMC mode only): \n");
-      //printf ("  -hf Heating model: l linear ; g geometric\n");  // 6/15/2017 stopped showing this in menu, geometric is default,  
+      printf ("  -hm Heating model: e even; s sigmoid;  g geometric\n");  
       printf ("  -hn Number of chains \n");
       //printf ("  -hk Number of chain swap attempts per step (default = number of chains)\n"); //  jh no longer used as of 6/16/2016  now using setswaptries()
-      printf ("  -ha First heating parameter (less than, but near 1.  The more chains, the closer to 1)\n");
-      printf ("  -hb Second heating parameter  (the smallest Beta value) \n");
+      printf ("  -ha First heating parameter for curve shape (less than but near 1, required for -hm s and -hm g)\n");
+      printf ("  -hb Second heating parameter  (the smallest Beta value, required for -hm g) \n");
       printf ("-i  Input file name (no spaces) \n");
       printf ("-j  Model options: \n");
       printf ("    0  Population Topology Updating and Estimation (for 3 or more populations)\n");
@@ -432,11 +430,13 @@ it is ok to have spaces between a flag and its values
     strcpy (outputoptions_str,"");
     strcpy (runoptions_str,"");
     strcpy (priors_str,"");
+    strcpy (hiddenoptions_str,"");
     for (i=0;i<HIDDENOPTIONNUMBER;i++) hiddenoptions[i] = 0;
     for (i=0;i<MODELOPTIONSNUMBER;i++) modeloptions[i]= 0;
     for (i=0;i<CALOPTIONSNUMBER;i++)calcoptions[i]=0;
     for (i=0;i<OUTPUTOPTIONSNUMBER;i++) outputoptions[i]=0;
-    for (i=0;i<PRINTBURNTREND + 1;i++) runoptions[i]=0;
+    //for (i=0;i<PRINTBURNTREND + 1;i++) runoptions[i]=0;  why did this stop at PRINTBURNTREND ?? JH  4/23/2018
+    for (i=0;i<RUNOPTIONSNUMBER;i++) runoptions[i]=0;
     
     for (i = 1; i < argc; i++)
     {
@@ -445,14 +445,7 @@ it is ok to have spaces between a flag and its values
     }
     for (i = 1; i < argc; i++)
     {
-      //printf("cid %d %s\n",currentid,argv[i]);
       strcpy (pstr, argv[i]);
-/*      if (toupper(pstr[1]) != 'X')
-      {
-        strcat (command_line, " ");
-        strcat (command_line, pstr);
-      } */
-
       if (strlen (pstr) < 2)
         IM_err (IMERR_COMMANDLINEFORMAT, " one of the command line strings is too short: %s ",pstr);
       if (pstr[0] != '-')
@@ -461,8 +454,11 @@ it is ok to have spaces between a flag and its values
       ch1 = ' ';
       if (ch == 'J')
       {
-        strcat (modeloptions_str, " ");
-        strcat (modeloptions_str, pstr);
+        if (toupper (pstr[2]) != 'H')
+        {
+          strcat (modeloptions_str, " ");
+          strcat (modeloptions_str, pstr);
+        }
         ch1 = toupper (pstr[2]);
       }
       if (ch == 'C')
@@ -588,18 +584,21 @@ it is ok to have spaces between a flag and its values
           swaptries = atoi (&pstr[0]);   // this is Bcast down further down in this function
           Hkp = 1;
           break; */
-        case 'F':
-          Hfp = 1;
+        case 'M':
+          Hmp = 1;
           switch ((char) toupper (pstr[0]))
           {
           case 'G':
-            heatmode = HGEOMETRIC;  // default
+            heatmode = HGEOMETRIC;  
             break;
           case 'S':
             heatmode = HFULL;  //JH added to deal with hidden genealogies and topology updating // not really in use as of 6/2017
             break;
+          case 'E':
+            heatmode = HEVEN;  
+            break;
           default:
-            heatmode = HLINEAR;
+            heatmode = HEVEN;  // JH changed default to even 6/27/2018
             break;
           }
           break;
@@ -618,6 +617,7 @@ it is ok to have spaces between a flag and its values
         Jp = 0;
         if (!(toupper(ch1) == 'H'))
         {
+
           j = (int) (strlen (pstr) - 1);
           while (j >= 0)
           {
@@ -640,6 +640,8 @@ it is ok to have spaces between a flag and its values
         }
         else // -jh  hiddenoptions[]
         {
+          strcat (hiddenoptions_str, " ");
+          strcat (hiddenoptions_str, pstr+1);
           if (isdigit(pstr[1])  && pstr[1] == '1') // hiddenoptions[WRITEMIGRATIONNAME]
           {
             char tempc = pstr[2];
@@ -669,6 +671,8 @@ it is ok to have spaces between a flag and its values
                   hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;                  
                 if (toupper(pstr[j])=='C') // treat 'C' as READOLDMCFFILE  //jh1_17_2018
                   hiddenoptions[READOLDMCFFILE] = 1; 
+                if (toupper(pstr[j])=='D') // treat 'D' as PRIORRATIOHEATINGON //jh 4/27/2018
+                  hiddenoptions[PRIORRATIOHEATINGON] = 1; 
               }
               pstr[j] = '\0';
               j--;
@@ -683,8 +687,8 @@ it is ok to have spaces between a flag and its values
         {
           chainduration = (int) (3600 * tempf);
           cdurationmode = TIMEINF;
-          genealogiestosave = -1;
-          phylogeniestorecord = -1;  // only used if modeloptions[POPTREETOPOLOGYUPDATE] == 1
+          genealogiestosave = UNDEFINEDINT;
+          phylogeniestorecord = UNDEFINEDINT;  // only used if modeloptions[POPTREETOPOLOGYUPDATE] == 1
         }
         else
         {
@@ -854,68 +858,33 @@ it is ok to have spaces between a flag and its values
   {
     IM_err (IMERR_MISSINGCOMMANDINFO, " -r0 invoked without -v information, i.e. no base name for files containing genealogys was given on the command line");
   }
-  /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-  /*if (calcoptions[CALCMARGINALLIKELIHOOD])   this section not really relevant as not clear if marginallikelihood calculations are working
-  {
-    if (!Hnp)  // no multiple chains set on command line
-      IM_err (IMERR_MISSINGCOMMANDINFO, " marginal likelihood calculations invoked (-c4) but multiple chains (-hn) not specified on command line\n");
-    if (runoptions[LOADRUN])
-    {
-      IM_err (IMERR_COMMANDLINEINCOMPAT, " Conflicting command line arguments, cannot estimate marginal likelihood in Load mode (-r0)");
-    }  
-    if (!Hfp)  // no heat mode set on command line
-      heatmode = HFULL; 
-    else
-    {
-      if (heatmode != HFULL)
-        IM_err (IMERR_MISSINGCOMMANDINFO, " marginal likelihood calculations invoked (-c4) but heating model used (-hf) not appropriate. Use -hfs or even heating (default)\n");
-    }
-  } */
   if (numchainspp > 1)
   {
-    if ( calcoptions[CALCMARGINALLIKELIHOOD] && heatmode != HFULL)
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating mode.  -hf s required when calculating marginal likelihood ");
-    if ( (heatmode == HGEOMETRIC && (numchainspp * numprocesses) < 4) || (heatmode == HFULL && (numchainspp * numprocesses) < 10)  )
+    if (!Hmp) 
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, " heating mode (-hm) required when using multiple chains");
+    if ((numchainspp * numprocesses) < MINNUMCHAINS) 
     {
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model");
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
     }
-    else if (!Hfp && calcoptions[CALCMARGINALLIKELIHOOD]==0)  // no heat mode set on command line
+    if ( calcoptions[CALCMARGINALLIKELIHOOD] && !(heatmode == HFULL || heatmode == HEVEN))
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating mode.  -hm s  or -hm e required when calculating marginal likelihood ");
+    if ( calcoptions[CALCMARGINALLIKELIHOOD] && hiddenoptions[PRIORRATIOHEATINGON]==1)
+      IM_err (IMERR_MISCELLANEOUS, " conflict between calcoptions[CALCMARGINALLIKELIHOOD] and hiddenoptions[PRIORRATIOHEATINGON]");
+    
+    if ((numchainspp * numprocesses) < MINNUMCHAINS) 
     {
-      heatmode = HGEOMETRIC;  //setting default to HGEOMETRIC 6/15/2017
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
     }
-    else  // heat mode given on command line
+    if (heatmode == HGEOMETRIC)
     {
-      if (heatmode > HLINEAR)
-      {
-        if (heatmode == HGEOMETRIC)
-        {
-          if (!Hap) {
-            hval1 = 0.95;  // default value
-	        }
-          if (!Hbp) {
-            hval2 = 0.8;
-	          }
-          // if (hval1 > 1.0)  //6/11/2010 JH  stopped this,  it turns out numbers slightly higher than 1 can be useful when the are 
-            // a large number of chains
-            // IM_err (IMERR_COMMANDLINEHEATINGTERMS, "ha commandline term is out of range, should be <= 1");
-          if (hval1 > 1.1) //6/11/2010  JH  added this to avoid values much larger than 1
-            IM_err (IMERR_COMMANDLINEHEATINGTERMS, "for geometric heating it is not useful to have the ha term be greater than 1.1");
-          if (hval1 < 0.9)
-            IM_err (IMERR_COMMANDLINEHEATINGTERMS, "for geometric heating it is not useful to have the ha term be less than 0.9");
-          if (hval2 >= 1.0|| hval2 <= 0.0)
-            IM_err (IMERR_COMMANDLINEHEATINGTERMS, "hb commandline term is out of range, should be < 1 and > 0)");
-        }
-        if (heatmode == HFULL)   //JH added to deal with hidden genealogies and topology updating
-        {
-          if (!Hap  ||  hval1 > 1.0 || hval1 <= 0.0)
-              IM_err (IMERR_COMMANDLINEHEATINGTERMS, "for full heating model, -ha term not specified or out of range");
-          if (Hbp == 1)
-            IM_err (IMERR_COMMANDLINEHEATINGTERMS, "for full heating model, -hb should not be specified");
-        }
-      }
-      else if (!Hap)
-        hval1 = 0.05;           /* default value */
-	    }
+      if (!Hbp || (hval2 >= 1.0|| hval2 <= 0.0) )
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating mode,  hb term missing or value out of rang, should be < 1 and > 0)");
+    }
+    else
+    {
+      if (heatmode == HFULL  && (!Hap || (hval1 >= 1.0|| hval1 <= 0.95) ))
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for sygmoid heating mode,  ha term missing or value out of rang, should be <=1 and >= 0.95)");
+    }
   }
   /* setting  mcmc step intervals:
     regardless of sampling phylgoenies or not
@@ -929,7 +898,7 @@ it is ok to have spaces between a flag and its values
       mcmc checking is set to the default RECORDINTERVALDEFAULT 10
     if sampling phylogenies: 
       genealogies are not sampled
-        savegenealogyint = -1 
+        savegenealogyint = UNDEFINEDINT 
   */
   recordint = RECORDINTERVALDEFAULT;   // this is fixed and is not a command line option
   if (modeloptions[POPTREETOPOLOGYUPDATE]==0)
@@ -941,7 +910,7 @@ it is ok to have spaces between a flag and its values
   }
   else
   {
-    savegenealogyint = -1;   // do not save genealogies
+    savegenealogyint = UNDEFINEDINT;   // do not save genealogies
   }
 
   if (!Up) {
@@ -1039,10 +1008,6 @@ it is ok to have spaces between a flag and its values
   {
     IM_err (IMERR_COMMANDLINEINCOMPAT,"Population prior terms (-x) used without invoking topology updating (-j0)\n");
   }
-  /*if (hiddenoptions[HIDDENGENEALOGY] && calcoptions[CALCMARGINALLIKELIHOOD])
-  {
-    IM_err(IMERR_COMMANDLINEINCOMPAT," Population updating (or any use of hidden genealogies) is not compatible with marginal likelihood calculation (-c4)");
-  }*/
   if (hiddenoptions[WRITEMIGRATIONNAME])
   {
     migrationnamefile = fopen (migrationnamefilename, "w");
@@ -1076,7 +1041,7 @@ it is ok to have spaces between a flag and its values
   if (runoptions[LOADRUN] == 1)
   {
     cdurationmode = TIMESTEPS;
-    if (genealogiestosave < 0)
+    if (genealogiestosave == UNDEFINEDINT)
       genealogiestosave = (int) DEFAULTNUMGENEALOGIES;
   }
   else if (cdurationmode == TIMESTEPS)
@@ -1084,7 +1049,7 @@ it is ok to have spaces between a flag and its values
     if (modeloptions[POPTREETOPOLOGYUPDATE] == 0)
     {
       genealogiestosave = numthingstosave;
-      phylogeniestorecord = -1;
+      phylogeniestorecord = UNDEFINEDINT;
       chainduration = genealogiestosave * savegenealogyint;
     }
     else
@@ -1098,7 +1063,7 @@ it is ok to have spaces between a flag and its values
       else
       {
         phylogeniestorecord = numthingstosave;
-        genealogiestosave = -1;
+        genealogiestosave = UNDEFINEDINT;
         chainduration = phylogeniestorecord * recordint;
       }
     }
@@ -1109,20 +1074,26 @@ it is ok to have spaces between a flag and its values
     strcpy(priorfilename,defaultpriorfilename);
   }
 
- if (!Gp && (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]))
- {
-     sprintf(priorfilename,"%s.%s",outfilename,defaultpriorfilename);
- }
+  if (!Gp && (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]))
+  {
+      sprintf(priorfilename,"%s.%s",outfilename,defaultpriorfilename);
+  }
 
-if (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1)
-  calcoptions[LOADPRIORSFROMFILE] = 0;  
- return;
+  if (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1)
+    calcoptions[LOADPRIORSFROMFILE] = 0;  
+
+  if (phylogeniestorecord == UNDEFINEDINT)
+    phylogeniestorecord = 0;
+  if (genealogiestosave == UNDEFINEDINT)
+    genealogiestosave = 0;
+  return;
 }                               // scan_commandline 
 
 /*  this prints basic info to a string, fpstr, that later gets printed to the output file */
 void
 begin_outputfile_info_string (void)
 {
+  int i,hi;
   const char *buildtimestring = "IMa3 program compiled on " __DATE__ ", " __TIME__ ".";
   fpstri = static_cast<int *> (malloc (sizeof (int)));
   *fpstri = 0;
@@ -1188,6 +1159,15 @@ begin_outputfile_info_string (void)
   SP "  Model options on command line : %s \n",modeloptions_str);
   SP "  Run options on command line : %s \n",runoptions_str);
   SP "  Output options on command line : %s \n",outputoptions_str);
+  for (i = 0, hi = 0;i< HIDDENOPTIONNUMBER;i++) 
+  {
+    if (i != HIDDENGENEALOGY && hiddenoptions[i] == 1)
+      hi = 1;
+  }
+  if (hi == 1)
+    SP "  Hidden options on command line : %s \n",hiddenoptions_str);
+
+
   SP "\n");
   if (strlen(topologypriorinfostring) > 0)
     SP "  Population tree topology sister group priors on command line: %s \n",topologypriorinfostring);
@@ -1514,14 +1494,23 @@ void start (int argc, char *argv[], int currentid)
       doNWupdate = 1;
 #endif
   setup (infilename, fpstri, fpstr,priorfilename, topologypriorinfostring,currentid); // setup() is in initialize.cpp and does all the big structures like L, C, T 
+
+//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 1\n");
+
   add_previous_run_info_to_output(fpstri, fpstr);
+
+if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 2\n");
   if (runoptions[LOADMCSTATE]) // set name of mcf file to read 
   {
 	  if (strcmp(&mcfreadfilename[strlen(mcfreadfilename)-4],".mcf")==0)
       sprintf(mcfreadfilename, "%s.%d", mcfreadfilename, currentid); 
     else
       sprintf(mcfreadfilename, "%s.mcf.%d", mcfreadfilename, currentid);  
+//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 3\n");
+    checkautoc (1,0,0,currentid);  // added to fix a bug 4/30/2018
+//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 4\n");
     readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
+//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 5\n");
     mcf_was_read = 1;
   }
   else
@@ -1666,6 +1655,7 @@ void start (int argc, char *argv[], int currentid)
     makes sense because the genealogies start out as pretty arbitrary with respect to the model 
     also played around a lot with extra hg updates during the run,  but this does not seem to help
   */
+#ifndef DEBUG //  some times waiting for the miniburn when debugging is a pain 
   if ( (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1) && runoptions[LOADRUN]==0 && (runoptions[LOADMCSTATE] == 0 || runoptions[SAVELOADSAMEMCFFILE]==1))
     if (runoptions[SAVELOADSAMEMCFFILE]==0 || (runoptions[SAVELOADSAMEMCFFILE]==1 && mcffound == 0))
     {
@@ -1695,6 +1685,7 @@ void start (int argc, char *argv[], int currentid)
         //  printf("mini-burn done\n");
       }
     }
+#endif
 }                               /* start */
 
 /* 4/13/2017   JH redid qupdate with a different scheme for managing the intervals between updates */
@@ -1733,8 +1724,7 @@ void qupdate (int currentid)
   static struct updatecounter migpriornit_uc,qprior_uc,qpriornit_uc;
   int mpa;
   int mpanitattempt,mpanitaccept;
-  int poptopolchange,poptmrcachange; 
-  int trypoptopolchange,trypoptmrcachange;
+  int poptopolchange, poptmrcachange, trypoptopolchange, trypoptmrcachange;
   if (step==0)
   {
     gene_uc.count = 0;
@@ -1761,10 +1751,24 @@ void qupdate (int currentid)
     qpriornit_uc.interval = QPRIORNOTINTREEUPDATEINTERVAL;
 }
 
+
 #ifdef TURNONCHECKS
   checkgenealogy(0,0,0);
 #endif //TURNONCHECKS
   int z = whichiscoldchain();  // if cold chain not on this cpu, then z=-1 
+
+  //if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 1\n");
+  /*for (ci = 0; ci < numchainspp; ci++)
+    for (li = 0;li<nloci;li++)
+      for (int jj = 0;jj< AUTOCTERMS; jj++)
+        for (int jjj = 0; jjj < AUTOCNEXTARRAYLENGTH; jjj++)
+        {
+          if ( isnan_(L[li].g_rec->v->ac[jj].vals[jjj])) // || (fabs(L[li].g_rec->v->ac[jj].vals[jjj] ) < 1e-300 &&  L[li].g_rec->v->ac[jj].vals[jjj] != 0.0))
+          {
+            printf("step %d id %d z %d ci %d li %d jj %d jjj %d L[li].g_rec->v->ac[jj].vals[jjj] %lf \n",step,currentid,z,ci,li,jj,jjj,L[li].g_rec->v->ac[jj].vals[jjj]);
+            exit(-1);
+          }
+        }*/
 
   /* update genealogies */
   if (gene_uc.interval >= gene_uc.count) 
@@ -1805,6 +1809,7 @@ checkgenealogyweights(ci);
               #endif
                   
             }
+            
           }
         
 #ifdef TURNONCHECKS
@@ -1846,7 +1851,7 @@ checkgenealogyweights(ci);
   {
     if (poptopol_uc.count >= poptopol_uc.interval )
     {
-      for (ci = 0; ci < numchainspp; ci++)
+      for (ci = 0; ci < numchainspp; ci++) 
       {
         changed = change_poptree (ci,&trypoptopolchange,&poptopolchange,&trypoptmrcachange,&poptmrcachange, 1);
         #ifdef TURNONCHECKS
@@ -1875,7 +1880,7 @@ checkgenealogyweights(ci);
   {
     if (popslide_uc.count >= popslide_uc.interval )
     {
-      for (ci = 0; ci < numchainspp; ci++)
+      for (ci = 0; ci < numchainspp; ci++) 
       {
         changed = change_poptree (ci,&trypoptopolchange,&poptopolchange,&trypoptmrcachange,&poptmrcachange, 0);
         #ifdef TURNONCHECKS
@@ -1905,7 +1910,7 @@ checkgenealogyweights(ci);
   {
     if (popRY_uc.count >= popRY_uc.interval)
     {
-      for (ci = 0; ci < numchainspp; ci++)
+      for (ci = 0; ci < numchainspp; ci++) 
       {
         periodpick = randposint (numsplittimes);
         if (hiddenoptions[HIDDENGENEALOGY]==1) 
@@ -1934,7 +1939,7 @@ checkgenealogyweights(ci);
   {
     if (popNW_uc.count ==popNW_uc.interval)
     {
-      for (ci = 0; ci < numchainspp; ci++)
+      for (ci = 0; ci < numchainspp; ci++) 
       {
         periodpick = randposint (numsplittimes);
         changed = changet_NW (ci, periodpick);
@@ -1961,7 +1966,7 @@ checkgenealogyweights(ci);
   {
     if (nurates > 1)
     {
-      for (ci = 0; ci < numchainspp; ci++)
+      for (ci = 0; ci < numchainspp; ci++) 
       {
         for (j = 0; j < (nurates - (nurates == 2)); j++)
         {
@@ -2009,7 +2014,7 @@ checkgenealogyweights(ci);
     {
       if (migprior_uc.count >= migprior_uc.interval)
       {
-        for (ci = 0; ci < numchainspp; ci++)
+        for (ci = 0; ci < numchainspp; ci++) 
         {
           for (j = 0; j < nummigrateparams; j++) 
           {
@@ -2034,7 +2039,7 @@ checkgenealogyweights(ci);
       //now do popsize terms
       if (qprior_uc.count >= qprior_uc.interval)
       {
-        for (ci = 0; ci < numchainspp; ci++)
+        for (ci = 0; ci < numchainspp; ci++) 
         {
           for (j = 0; j < numpopsizeparams; j++) 
           {
@@ -2061,7 +2066,7 @@ checkgenealogyweights(ci);
     {
       if (migpriornit_uc.count >= migpriornit_uc.interval)  // migration priors not in the current tree
       {
-        for (ci = 0; ci < numchainspp; ci++)
+        for (ci = 0; ci < numchainspp; ci++) 
         {
           if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
           {
@@ -2086,7 +2091,7 @@ checkgenealogyweights(ci);
       {
         if (qpriornit_uc.count >= qpriornit_uc.interval)
         {
-          for (ci = 0; ci < numchainspp; ci++)
+          for (ci = 0; ci < numchainspp; ci++) 
           {
             update_popsize_prior_not_intree(ci, &mpanitattempt,&mpanitaccept);
             #ifdef TURNONCHECKS
@@ -2147,6 +2152,7 @@ checkgenealogyweights(ci);
     pcheck(ci,0);// just in case I missed something 
   }
 #endif
+  //C[ci]->allpcalc.pdg
   return;
 }                               /* qupdate */
 #undef GENEALOGYUPDATEINTERVAL   
@@ -2244,7 +2250,8 @@ void reset_after_burn (int currentid)
   if (runoptions[DONTSAVEGENEALOGIES]==0)
   {
 	   if (currentid == HEADNODE) 
-    if (runoptions[MCFLOADONLYSTATESPACE] && mcf_was_read) // write a .ti file,  possibly overwriting one of the same name (which is ok)
+      // add header to .ti file unless runoptions[SAVELOADSAMEMCFFILE]==1 and mcf_was_read == 1
+    if (!(runoptions[SAVELOADSAMEMCFFILE] && mcf_was_read)) // write a .ti file,  possibly overwriting one of the same name (which is ok)
     {
       if ((genealogyinfosavefile = fopen (genealogyinfosavefilename, "w")) == NULL)
       {
@@ -2478,6 +2485,9 @@ int run (int currentid)
                   savegenealogyfile (genealogyinfosavefilename, genealogyinfosavefile, &lastgenealogysaved, gsampinflength);
                 }
 		            }
+              //printf("cpu %d step %d\n",currentid,step);
+              //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+                //IM_err(IMERR_MISCELLANEOUS1,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  0a step %d",step);
               printoutput (currentid,0);
 #ifdef MPI_ENABLED
 		            if (numprocesses > 1) 
@@ -2544,7 +2554,8 @@ int run (int currentid)
       }
       if (tempburndone)
       {  
-        if (noburn_mcfload == 0)
+        //if (noburn_mcfload == 0) changed this to use mcf_was_read  see if this fixes problem of not writing burntrend using -r57 when no mcf file present  JH 4/23/2018
+        if (mcf_was_read == 0)
           writeburntrendfile (currentid);
 /*#ifdef MPI_ENABLED
 		      if (numprocesses > 1) 
@@ -3036,7 +3047,8 @@ void record_migrations (int z)
 void checkhighs (int z,int currentid, int reset) 
 {
   int rc = 0; //AS: return code for MPI C bindings
-  double lowprob = -1e100;
+  //double lowprob = -1e100;
+  double lowprob = - JUSTSOMEBIGDOUBLE;
   if (z>= 0)
   {
     currlike = C[z]->allpcalc.pdg;
@@ -3434,7 +3446,7 @@ void record (int currentid)
 int
 whichiscoldchain (void)
 {
-	int which = -1;
+	int which = UNDEFINEDINT;
 	for (int i = 0; i < numchainspp; i++) {
 		if (beta[i] == 1.0) {
 			which = i;
@@ -3895,8 +3907,9 @@ printf("printed acceptance rates\n");
 #ifdef STDTEST
 printf("printed autoc table\n");
 #endif
-
+/*===============================================================================*/
 /*   printoutput()  share topology counts across chains, print topology posterior*/  
+/*===============================================================================*/
     if (runmode == POPTREEHYPERPRIORmode0 || runmode == POPTREEmode1)
     {
 /*#ifdef INDEVELOPMENT
@@ -3954,6 +3967,8 @@ printf("printed autoc table\n");
 #endif  //TURNONCHECKS
     }
   }
+
+/*   printoutput()  various things for runmodes 3,4 & 6*/  
   if (currentid == HEADNODE &&(runmode == Gmode3 || runmode == LOADGmode4 || runmode == HGmode6))
   {
     if (npops >=3  && npops <= 5 && !runoptions[LOADRUN] && outputoptions[PRINTJOINTTEST])
@@ -4134,7 +4149,7 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 {
   static int updatestri = 0;
   int ti;
-  int zid  = -1;
+  int zid  = UNDEFINEDINT;
 #ifdef MPI_ENABLED
   MPI_Status status;
 #endif
@@ -4469,7 +4484,7 @@ void commit_mpi_updatescalar(void)
 int main (int argc, char *argv[])
 {
   int rc;
-  int currentid; // this gets used a lot,  so could be global. but keep passing it around as needed to make things more clear as to when it is needed
+  int currentid = 0; // valgrind suggests needs to be initialized more ??  this gets used a lot,  so could be global. but keep passing it around as needed to make things more clear as to when it is needed
 #ifdef MPI_ENABLED
   rc = MPI_Init(&argc, &argv);
   if (rc != MPI_SUCCESS) 	MPI_Abort(MPI_COMM_WORLD, rc);
@@ -4491,6 +4506,8 @@ int main (int argc, char *argv[])
 #endif
 
   start (argc, argv, currentid);
+  //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+    //IM_err(IMERR_MISCELLANEOUS2,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  0");
   if (runoptions[LOADRUN])
   {
 	   if (currentid == HEADNODE) 
@@ -4515,19 +4532,35 @@ int main (int argc, char *argv[])
 
     while (run (currentid))  // main mcmc loop 
     {
+      //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+        //IM_err(IMERR_MISCELLANEOUS3,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  1 step %d",step);
       qupdate (currentid);
+      //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+        //IM_err(IMERR_MISCELLANEOUS4,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  2 step %d",step);
       if ((step / (int) printint) * (int) printint == step && step > 0)
+      {
         intervaloutput (stdout, currentid);
+        //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+          //IM_err(IMERR_MISCELLANEOUS5,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  3 step %d",step);
+      }
       if (step >= CHECKAUTOCWAIT)  // moved from qupdate()
+      {
         checkautoc (0, burndone, burninsteps, currentid);
+        ////if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
+          ////IM_err(IMERR_MISCELLANEOUS6,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  4 step %d",step);
+      }
       if (burndone)
       {
         check_to_record (currentid);
+
       }
       else
       {
         if (runoptions[PRINTBURNTREND] && modeloptions[POPTREETOPOLOGYUPDATE])
+        {
           recordburntopology();
+
+        }
       }
 #ifdef TURNONCHECKS
 //    if (burndone)
@@ -4552,6 +4585,7 @@ printf("saved genealogies\n");
 #endif
     }
     printoutput (currentid,1);
+
     if (hiddenoptions[WRITEMIGRATIONNAME])
     {
       FCLOSE(migrationnamefile);

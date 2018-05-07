@@ -32,7 +32,7 @@ void checkmigmatch(int ci)
   for (li=0;li<nloci;li++)
   {
     gtree = C[ci]->G[li].gtree;
-    for (i = 0; i < L[li].numlines; i++) if (C[ci]->G[li].gtree[i].down != -1)
+    for (i = 0; i < L[li].numlines; i++) if (C[ci]->G[li].gtree[i].down != UNDEFINEDINT)
     {
       for (j=0;j<numhg[li][i];j++)
       {
@@ -352,7 +352,7 @@ changet_RYhg (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rub
     copy_treeinfo (&holdgweight_t_RY_hg[li], &G->gweight);
     for (i = 0; i < L[li].numlines; i++)
     {
-      if (gtree[i].down != -1)
+      if (gtree[i].down != UNDEFINEDINT)
       {
         if (gtree[i].time <= oldt && gtree[i].time > t_u) 
 
@@ -517,7 +517,7 @@ changet_RYhg (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rub
   //proposalratio = (ecd + emd) * log (t_d_hterm) + (ecu + emu) * log (t_u_hterm);
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
-  if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
     {
     metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
   }
@@ -581,7 +581,7 @@ checkpoptree(ci,0);
       copy_treeinfo (&G->gweight, &holdgweight_t_RY_hg[li]);
       for (i = 0; i < L[li].numlines; i++)
       {
-        if (gtree[i].down != -1)
+        if (gtree[i].down != UNDEFINEDINT)
         {
           if (gtree[i].time <= newt && gtree[i].time > t_u) 
           {

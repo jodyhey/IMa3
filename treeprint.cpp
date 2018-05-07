@@ -176,7 +176,7 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
       i = node - L[li].numgenes;
       up1 = gtree[node].up[0];
       up2 = gtree[node].up[1];
-      if (gtree[node].down != -1)
+      if (gtree[node].down != UNDEFINEDINT)
         if (i != gtree[gtree[node].down].up[0]
             && i != gtree[gtree[node].down].up[1])
           tvcptr[node].flag = 2;
@@ -190,7 +190,7 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
            && gtree[up2].mut == 1)
           || (gtree[up1].mut == 1 && gtree[up2].mut == 0))
       {
-        if (gtree[node].down == -1)     /* root - not clear where mutation is , put it on left */
+        if (gtree[node].down == UNDEFINEDINT)     /* root - not clear where mutation is , put it on left */
         {
           tvcptr[up1].mut++;
         }
@@ -354,8 +354,8 @@ gtreeprint_printlongnumbers (int ci, int li/*, int step , int callsource */ )
       checkpt[p] = 0;
       p++;
     }
-    //  assert(tvcptr[i].down == -1 || gtree[tvcptr[i].down].pop == tvcptr[i].finpop);
-    if (tvcptr[i].down != -1)
+    //  assert(tvcptr[i].down == UNDEFINEDINT || gtree[tvcptr[i].down].pop == tvcptr[i].finpop);
+    if (tvcptr[i].down != UNDEFINEDINT)
       fprintf (treeprintfile,
              "\t%3d\t%3d\t%3d\t%3d\t%7.14f\t%7.14f\t%7.14f\t%3d\t%3d",
              tvcptr[i].nodenum, tvcptr[i].up1, tvcptr[i].up2,
@@ -535,7 +535,7 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
       i = node - L[li].numgenes;
       up1 = gtree[node].up[0];
       up2 = gtree[node].up[1];
-      if (gtree[node].down != -1)
+      if (gtree[node].down != UNDEFINEDINT)
         if (i != gtree[gtree[node].down].up[0]
             && i != gtree[gtree[node].down].up[1])
           tvcptr[node].flag = 2;
@@ -549,7 +549,7 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
            && gtree[up2].mut == 1)
           || (gtree[up1].mut == 1 && gtree[up2].mut == 0))
       {
-        if (gtree[node].down == -1)     /* root - not clear where mutation is , put it on left */
+        if (gtree[node].down == UNDEFINEDINT)     /* root - not clear where mutation is , put it on left */
         {
           tvcptr[up1].mut++;
         }
@@ -713,8 +713,8 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
       checkpt[p] = 0;
       p++;
     }
-    //  assert(tvcptr[i].down == -1 || gtree[tvcptr[i].down].pop == tvcptr[i].finpop);
-    if (tvcptr[i].down != -1)
+    //  assert(tvcptr[i].down == UNDEFINEDINT || gtree[tvcptr[i].down].pop == tvcptr[i].finpop);
+    if (tvcptr[i].down != UNDEFINEDINT)
       fprintf (treeprintfile,
              "\t%3d\t%3d\t%3d\t%3d\t%7.5f\t%7.5f\t%7.5f\t%3d\t%3d",
              tvcptr[i].nodenum, tvcptr[i].up1, tvcptr[i].up2,
@@ -850,7 +850,7 @@ poptreeprint (int ci)
   fprintf (treeprintfile, "Node#\tup1\tup2\tdown\tdtime\tutime\ttimei\n");
   for (i = 0; i < 2 * npops - 1; i++)
   {
-    if (tvptr[i].down != -1)
+    if (tvptr[i].down != UNDEFINEDINT)
       fprintf (treeprintfile, "%3d\t%3d\t%3d\t%3d\t%7.5f\t%7.4f\t%7.4f\n",
              tvptr[i].nodenum, tvptr[i].up1, tvptr[i].up2,
              tvptr[i].down, tvptr[i].dtime, tvptr[i].utime, tvptr[i].timei);
@@ -904,7 +904,7 @@ poptreeprint_frompointer (int ci, struct popedge *poptree/*, int step*/)
   fprintf (treeprintfile, "Node#\tup1\tup2\tdown\tdtime\tutime\ttimei\n");
   for (i = 0; i < 2 * npops - 1; i++)
   {
-    if (tvptr[i].down != -1)
+    if (tvptr[i].down != UNDEFINEDINT)
       fprintf (treeprintfile, "%3d\t%3d\t%3d\t%3d\t%7.4f\t%7.4f\t%7.4f\n",
              tvptr[i].nodenum, tvptr[i].up1, tvptr[i].up2,
              tvptr[i].down, tvptr[i].dtime, tvptr[i].utime, tvptr[i].timei);
@@ -955,7 +955,7 @@ void checkgenealogy(int ci, int li, int mode )
     if (hiddenoptions[HIDDENGENEALOGY]==1)
       assert (gtree[i].fpophg < npops);
 
-    if (gtree[i].down != -1)
+    if (gtree[i].down != UNDEFINEDINT)
     {
       assert(gtree[i].down >= L[li].numgenes);
       assert(i == gtree[gtree[i].down].up[0] || i==gtree[gtree[i].down].up[1]);
@@ -1031,7 +1031,7 @@ void checkgenealogy(int ci, int li, int mode )
         j += 1;
       }
       mignumhg +=j;
-      if (gtree[i].down != -1)
+      if (gtree[i].down != UNDEFINEDINT)
         assert(gtree[gtree[i].down].pophg == gtree[i].fpophg);
     }
   }
@@ -1090,7 +1090,7 @@ void checkpoptree(int ci,int mode) // mode: 0 do all checks, 1 skip period check
       assert(C[ci]->poptree[i].time == TIMEMAX || (C[ci]->poptree[i].time <= T[period].pr.max && C[ci]->poptree[i].time > T[period].pr.min));
     }
 
-    if (C[ci]->poptree[i].down != -1)
+    if (C[ci]->poptree[i].down != UNDEFINEDINT)
     {
       if (mode < 2)
         assert (i < C[ci]->poptree[i].down);
@@ -1461,7 +1461,7 @@ void checkdetailedbalance(double newlikelihood, double oldlikelihood, double new
 	double aforward,abackward;
 	double temp;
 	double dbforward, dbbackward;
-	if (calcoptions[CALCMARGINALLIKELIHOOD])
+	if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
 	{
 		temp = beta * (newlikelihood - oldlikelihood) + (newprior - oldprior) + (propose_old_given_new - propose_new_given_old);
 		aforward = (temp >= 0.0) ? 0.0 : temp; 
@@ -1475,7 +1475,7 @@ void checkdetailedbalance(double newlikelihood, double oldlikelihood, double new
 		temp = beta * (-(newlikelihood - oldlikelihood + newprior - oldprior)) - (propose_old_given_new - propose_new_given_old);
 		abackward = (temp >= 0.0) ? 0.0 : temp; 
 	}
-  if (calcoptions[CALCMARGINALLIKELIHOOD])
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
   {
 	  dbforward = beta * oldlikelihood + oldprior + propose_new_given_old + aforward;
 	  dbbackward = beta * newlikelihood + newprior + propose_old_given_new + abackward;
@@ -1494,7 +1494,7 @@ void checkdetailedbalance_chainswap(double likelihood_i, double likelihood_k, do
 	double aforward,abackward;
 	double temp;
 	double dbforward, dbbackward;
-	if (calcoptions[CALCMARGINALLIKELIHOOD])
+	if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
 	{
 		temp = (beta_i - beta_k) * (likelihood_k - likelihood_i);
 		aforward =  (temp >= 0.0) ? 0.0 : temp; 
@@ -1508,7 +1508,7 @@ void checkdetailedbalance_chainswap(double likelihood_i, double likelihood_k, do
 
 
 	}
-  if (calcoptions[CALCMARGINALLIKELIHOOD])
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
   {
 	  dbforward = beta_i * likelihood_i + prior_i + beta_k * likelihood_k + prior_k +  aforward;
 	  dbbackward = beta_i * likelihood_k + prior_k + beta_k * likelihood_i + prior_i + abackward;

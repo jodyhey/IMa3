@@ -107,7 +107,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, ip = static_cast<int *> (a); i < iu; i++)
     {
       if (isnan_(*(ip + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%d ", *(ip + i));
     }
     break;
@@ -115,7 +115,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, lip = static_cast<long *> (a); i < iu; i++)
     {
       if (isnan_(*(lip + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%ld ", *(lip + i));
     }
     break;
@@ -123,7 +123,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, fp = static_cast<float *> (a); i < iu; i++)
     {
       if (isnan_(*(fp + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018
       if (isninf_FLT(*(fp + i)))
         fprintf (mcffile, "%.12g ", -FLT_MAX);
       else if (ispinf_FLT(*(fp + i)))
@@ -136,7 +136,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, dp = static_cast<double *> (a); i < iu; i++)
     {
       if (isnan_(*(dp + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018
       if (isninf_DBL(*(dp + i)))
         fprintf (mcffile, "%.18lg ", -DBL_MAX);
       else if (ispinf_DBL(*(dp + i)))
@@ -155,7 +155,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, ulp = static_cast<unsigned long *> (a); i < iu; i++)
     {
       if (isnan_(*(ulp + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%lu ", *(ulp + i));
     }
     break;
@@ -163,7 +163,7 @@ awrite (FILE * mcffile, const char *name, int atype, int iu, void *a)
     for (i = 0, usp = static_cast<unsigned short *> (a); i < iu; i++)
     {
       if (isnan_(*(usp + i)))
-        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s"); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
+        IM_err(IMERR_MCFWRITEFAIL,"attemp to write non-numerical value to mcf file: %s",name); // added 1/18/2018, probably can't get nan int, but not sure best way to handle this situation
       fprintf (mcffile, "%hu ", *(usp + i));
     }
     break;
@@ -593,7 +593,7 @@ void readima2mcf (char ima2mcffilename[])
       {
         aa "up[2]", 0, 2, &(C[ci]->G[li].gtree[i].up[0]));
         aa "down", 0, 1, &(C[ci]->G[li].gtree[i].down));
-        if (C[ci]->G[li].gtree[i].down == -1)
+        if (C[ci]->G[li].gtree[i].down == UNDEFINEDINT)
         {
           C[ci]->G[li].root = i;
         }
@@ -657,7 +657,7 @@ void readima2mcf (char ima2mcffilename[])
       /* must set fpop,  which is not written by ima2 */
       for (i = 0; i < L[li].numlines; i++)
       {
-        if (C[ci]->G[li].gtree[i].down != -1)
+        if (C[ci]->G[li].gtree[i].down != UNDEFINEDINT)
           C[ci]->G[li].gtree[i].fpop = C[ci]->G[li].gtree[C[ci]->G[li].gtree[i].down].pop;
         else
           C[ci]->G[li].gtree[i].fpop = -1;
@@ -706,6 +706,8 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
   struct chainstate_record_updates_and_values tempstruct1;
   struct update_rate_calc tempstruct2;
   strnl tempname;
+
+
 
   if ((mcffile = fopen (mcffilename, "w")) == NULL)
   {
@@ -1057,7 +1059,7 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
       {
         aa "up[2]", 0, 2, &(C[ci]->G[li].gtree[i].up[0]));
         aa "down", 0, 1, &(C[ci]->G[li].gtree[i].down));
-        if (C[ci]->G[li].gtree[i].down == -1)
+        if (C[ci]->G[li].gtree[i].down == UNDEFINEDINT)
         {
           C[ci]->G[li].root = i;
         }

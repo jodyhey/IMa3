@@ -4,10 +4,19 @@
 #include "ima.hpp"
 
 /****** global - used mostly here but setup in initialize.c *********/
+// should probably make these dynamic 
 int urri[2 * MAXLOCI][2 * MAXLOCI];     // double it - some loci might have multiple rates
 double urrlow[2 * MAXLOCI][2 * MAXLOCI], urrhi[2 * MAXLOCI][2 * MAXLOCI];
 
 /*********** LOCAL STUFF **********/
+
+/* pick a d value that reduces the distance between uj and uk by half 
+  tried using this on chain with beta = 0.0 
+  but did not resolve problem associated with calculation marginal likelihood 
+double newd(double uj, double uk)
+{
+  return (uj - uk + sqrt(uj*uj + 14.0 * uj *uk + uk*uk))/(4.0 * uj);
+} */
 
 /*** GLOBAL FUNCTIONS ***/
 
@@ -83,6 +92,15 @@ changeu (int ci, int j, int *k)
     assert (j == 0);
     *k = 1;
   }
+
+  //if (beta[ci] == 0.0)
+    //return 0;
+/*  if (calcoptions[CALCMARGINALLIKELIHOOD]  && ci == numchainspp - 1) 
+  {
+    C[ci]->G[lj].uvals[aj] =  C[ci]->G[lk].uvals[ak] = 1.0;
+    return 0;
+  }  */
+
 
   lj = ul[j].l;
   aj = ul[j].u;
@@ -204,9 +222,14 @@ changeu (int ci, int j, int *k)
 
     d = exp ((newr - r) / 2);
   }
+  /*if (calcoptions[CALCMARGINALLIKELIHOOD]  && ci == numchainspp - 1) 
+  {
+    d = newd(C[ci]->G[lj].uvals[aj], C[ci]->G[lk].uvals[ak] );
+  } */
+
   C[ci]->G[lj].uvals[aj] *= d;
   C[ci]->G[lk].uvals[ak] /= d;
-
+  
   /*JH 5/25/2011,  9/28/2011 */
   /*  this block of code causes rejection of cases when the scalar is outside the range of tempUMAX 
     played around with this 5/25/2011 and 9/28/2011 to see effect on marginal likelihood estimates 
@@ -270,7 +293,6 @@ changeu (int ci, int j, int *k)
       newpdg[i] = likelihoodSW (ci, li, ai, C[ci]->G[li].uvals[ai], 1.0);
       break;
     }
-  //  std::cout << "newpdg[i] " << newpdg[i] << "C[ci]->G[li].pdg_a[ai] " << C[ci]->G[li].pdg_a[ai] << "\n";
     newlikelihood += newpdg[i];
     oldlikelihood += C[ci]->G[li].pdg_a[ai];
     likelihoodratio += newpdg[i] - C[ci]->G[li].pdg_a[ai];

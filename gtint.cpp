@@ -108,7 +108,8 @@ double  qtrap(double  (*func)(double ), double  a, double  b)
    /* void nrerror(char error_text[]); */
    int j;
    double  s,olds;
-   olds = -1.0e100;
+   //olds = -1.0e100;
+   olds = - JUSTSOMEBIGDOUBLE;
    for (j=1;j<=JMAX;j++) {
       s=trapzd(func,a,b,j);
       if (j > 5) //Avoid spurious early convergence.

@@ -295,7 +295,7 @@ void fill_2Nm_vals (struct plotpoint **popmigxy, char  **popmigstr)
 
 /********** GLOBAL functions ********/
 
-void closeopenout (FILE ** p_to_file, char fname[]) // why a pointer to a pointer? so the address can be passed back
+void closeopenout (FILE ** p_to_file, char fname[]) // why a pointer to a pointer? so the new address of the file is accessible outside this function
 {
   FCLOSE (* p_to_file);
   if ((* p_to_file = fopen (fname, "a+")) == NULL)
@@ -303,6 +303,8 @@ void closeopenout (FILE ** p_to_file, char fname[]) // why a pointer to a pointe
     IM_err(IMERR_OUTPUTFILECHECK,"Error opening text file for writing");
   }
 }
+
+
 /*takes a pointer to a piece of text (length less than BANNERMAXLENGTH)
   puts a capitalized version in between two rows of equal signs '=' into the holder array,  bannerall 
   returns a pointer to the banner to be printed 
@@ -508,11 +510,11 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
         //FP "Last Sampled Population Topology #: %d   String: %s\n\n",poptreenum_rec,alltreestrings[poptreenum_rec]);   this just not very useful in output file
         FP "\nPopulation Topology Sampling\n----------------------------\n");
         if (mcmcrecords > 0)
-          FP "  Number of sampled topologies: %d\n",mcmcrecords);
+          FP "  Number of topology samples taken: %d\n",mcmcrecords);
         if (mcmcrecords_old > 0)
         {
           FP "  Number of topologies sampled in previous runs: %d\n",mcmcrecords_old);
-          FP "  Total number of sampled topologies: %d\n",mcmcrecords+mcmcrecords_old);
+          FP "  Total number of topology samples taken: %d\n",mcmcrecords+mcmcrecords_old);
         }
         if (numprocesses > 1)
         {
@@ -1598,10 +1600,6 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
   for (j = *lastgenealogysavedvalue; j < genealogysamples; j++)
   {
     // save everything as a float  - round integers later, when they get used
-    //std::cout << "What is going on here???";
-//	for (i = 0; i < gsampinflength; i++) {
-//		std::cout << gsampinf[0][i] << "\n";
-//	}
     for (i = 0; i < gsampinflength; i++)
       fprintf (genealogyinfosavefile, "%.6f\t", (float) gsampinf[j][i]);
     if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
@@ -1769,7 +1767,7 @@ void print_means_variances_correlations (FILE * outfile)
   A fairly complex function:
     -puts info about sampled trees in fatssarray[]
     - sorts this on basis of observed frequency
-    - identifies all unique internal nodes (based on descendant sampled populations)
+    - identifies all unique internal nodes (i.e. clades,  each an ordered list of descendant sampled populations)
     - counts all unique internal nodes
     - uses these counts to calculate the product of the posterior clade probabilities (ppcp)
     - prints summaries and trees with non-zero probability (sorted) 
@@ -1778,8 +1776,9 @@ void print_means_variances_correlations (FILE * outfile)
 void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *poptopologyproposedlist_rec, char *topologypriorinfostring)
 {
   foralltreestringsort *fatssarray;
-  char **uniquenodes;
-  int *nodecounts;
+  fornodeppsort *nodearray;
+  char **uniquenodes;  // list of strings of all the nodes (clades) that have been sampled
+  int *nodecounts;     // # of times each node has been sampled, corresponds to uniquenodes
   int nunique = 0;
   int i,j;
   int totaltreecount = 0, numnonzero = 0;
@@ -1790,6 +1789,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   int uniformprior = (strlen(topologypriorinfostring) == 0);
   double temp1 = 1.0;
   int *set1counts,*set2counts, setl;
+  int numpprint;
 
   for (i = 0; i < numpoptopologies; i++)
   {
@@ -1814,7 +1814,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   }
 
 
-  for (i = 0; i < numpoptopologies; i++)
+  for (i = 0; i < numpoptopologies; i++) // build fatssarray[] and then sort it by poptopologycounts
   {
     strcpy(fatssarray[i].treestr,alltreestrings[i]);
     if (modeloptions[ADDGHOSTPOP]==1)
@@ -1825,10 +1825,10 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     fatssarray[i].freqset1 = set1counts[i]/(double) setl;
     fatssarray[i].freqset2 = set2counts[i]/(double) setl;
   }
-  
   qsort(fatssarray,numpoptopologies,sizeof(foralltreestringsort),foralltreestringsort_comp);
+
+  /* identify nodes and get counts for each node,   used for posterior clade probabilities  */
   uniquenodes = static_cast<char **> (malloc ((numuniquenodes[(npops - modeloptions[ADDGHOSTPOP])]) * sizeof (char *)));
-  
   for (i = 0; i < numuniquenodes[(npops - modeloptions[ADDGHOSTPOP])]; i++)
   {
      uniquenodes[i] = static_cast<char *> (malloc (POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION * sizeof (char)));
@@ -1843,17 +1843,15 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
       getnodecounts(uniquenodes,fatssarray[i].treestrnoghost,fatssarray[i].count,nodecounts, &nunique);
   }
 
-  
-//for (i=0;i<nunique;i++) printf("%s ",uniquenodes[i]);
-#ifdef DEBUG
+#ifdef DEBUG  // check that total node count equals the product of the # of nodes per tree and the total tree count 
   int tempsum = 0;
   for (i=0;i<nunique;i++)
     tempsum += nodecounts[i];
   assert (tempsum == totaltreecount * (npops - (modeloptions[ADDGHOSTPOP]==1) - 2));
 #endif
-  
+  /* calculate for all trees the product of posterior clade probabilities  */
   counthipcp=0;
-  for (i=0;i<numpoptopologies;i++) //if (fatssarray[i].count > 0)
+  for (i=0;i<numpoptopologies;i++)
   {
     if (modeloptions[ADDGHOSTPOP]==0)
       fatssarray[i].ppcp = calcppcp(uniquenodes,fatssarray[i].treestr,nodecounts,totaltreecount,nunique);
@@ -1954,12 +1952,43 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   else
     FP "Full Population Tree Sample Counts and Frequencies (%d entries) - not printed\n\n",numpoptopologies);
 
+  /* print sorted topologies based on ppcp */
+  FP "Tree Topologies Sorted by ppcp ");
+  if (numpoptopologies > 180 )
+  {
+    FP "(top 100)\n---------------------------------------\n");
+    numpprint = 100;
+  }
+  else
+  {
+    FP "\n------------------------------\n");
+    numpprint = numpoptopologies;
+  }
+  qsort(fatssarray,numpoptopologies,sizeof(foralltreestringsort),foralltreestringsort_compppcp);
+  FP "Tree\tpriorprob\tcount\tfreq_ALL\tppcp\n");
+  for (i=0;i<numpprint;i++)
+  {
+    if (uniformprior == 0)
+      temp1 = exp(topologypriors[fatssarray[i].origi]);
+    FP "%s\t%.4f\t%d\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].ppcp);
+  }
+  FP "\n");
+  
+  nodearray = static_cast<fornodeppsort *> (malloc (nunique * sizeof (fornodeppsort)));
+  for (i=0;i<nunique;i++)
+  {
+    nodearray[i].count = nodecounts[i];
+    strcpy(nodearray[i].nodestr,uniquenodes[i]);
+    nodearray[i].pp = (double) nodearray[i].count/ (double) totaltreecount; 
+  }
+  qsort(nodearray,nunique,sizeof(fornodeppsort),fornodeppsort_comp);
 
-/*  FP" Roberson-Foulds distances\n");
-for (i=0;i<numpoptopologies;i++)
-  FP"%d\n",RFtreedis[i]);
-FP"\n"); */
-
+  FP "Clade Posterior Probabilities (>= 0.01)\n");
+  FP "---------------------------------------\n");
+  FP "Descendant#s\tcount\tcpp\n");
+  for (i=0;i<nunique;i++) if (nodearray[i].pp > 0.01)
+    FP "%s\t%d\t%.5f\n",nodearray[i].nodestr,nodearray[i].count,nodearray[i].pp);
+  FP "\n");
 
   XFREE(fatssarray);
   for (i = 0; i < numuniquenodes[(npops - modeloptions[ADDGHOSTPOP])]; i++)
@@ -1968,7 +1997,7 @@ FP"\n"); */
   XFREE(nodecounts);
   XFREE(set1counts);
   XFREE(set2counts);
-  
+  XFREE(nodearray);
 }//sort_and_print_alltreestrings
 
                                //callprintacceptancerates

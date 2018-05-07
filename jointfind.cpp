@@ -1160,6 +1160,7 @@ void findjointpeaks(FILE **outfile,char *outfilename, char *nestfname,int number
       fprintf(*outfile, "\t%s", logpstrformat(2*(bestvals[nparams]-holdml)));
       fprintf(*outfile, "\t%s",logpstrformat(effective_sample_size));
       printjointpeakvals(*outfile,paramsnotused[mi], popnest);
+//should this be &outfile ??
       closeopenout (outfile, outfilename);
       // print some info to stdout
       printf ("done model : %s\n", modelnamelines[mi]);

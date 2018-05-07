@@ -507,7 +507,7 @@ init_holdgtree (struct genealogy *g, int numgenes)
     g->gtree[i].cmm = 0;
     g->gtree[i].up[0] = -1;
     g->gtree[i].up[1] = -1;
-    g->gtree[i].down = -1;
+    g->gtree[i].down = UNDEFINEDINT;
     g->gtree[i].time = 0;
     g->gtree[i].mut = -1;
     g->gtree[i].pop = -1;
@@ -640,7 +640,7 @@ restoreedges (int ci, int li, int edge, int sisedge, int downedge,
   if (newsisedge != sisedge)
   {
     down = gtree[downedge].down;
-    if (down != -1)
+    if (down != UNDEFINEDINT)
     {
       if (gtree[down].up[0] == downedge)
         gtree[down].up[0] = newsisedge;
@@ -654,7 +654,7 @@ restoreedges (int ci, int li, int edge, int sisedge, int downedge,
       assert (C[ci]->G[li].roottime <= TIMEMAX);
     }
     gtree[newsisedge].down = down;
-    if (down != -1)
+    if (down != UNDEFINEDINT)
     {
       i = 0;
       while (gtree[newsisedge].mig[i].mt > -0.5)
@@ -738,7 +738,7 @@ restoreedges (int ci, int li, int edge, int sisedge, int downedge,
   gtree[edge].fpop = copyedge[0].fpop;
   down = gtree[sisedge].down;
   gtree[sisedge].down = copyedge[1].down;
-  if (down != -1)
+  if (down != UNDEFINEDINT)
   {
     if (gtree[down].up[0] == sisedge)
       gtree[down].up[0] = downedge;
@@ -793,7 +793,7 @@ restoreedges (int ci, int li, int edge, int sisedge, int downedge,
   gtree[downedge].fpop = copyedge[2].fpop;
   gtree[downedge].up[0] = copyedge[2].up[0];
   gtree[downedge].up[1] = copyedge[2].up[1];
-  if (gtree[downedge].down == -1)
+  if (gtree[downedge].down == UNDEFINEDINT)
   {
     C[ci]->G[li].roottime = gtree[gtree[downedge].up[0]].time;
     assert (C[ci]->G[li].roottime <= TIMEMAX);
@@ -830,14 +830,14 @@ storeAinfo (int li, struct edge *gtree, int edge, int sisedge,
     copyedge[1].A[ai] = gtree[sisedge].A[ai];
     copyedge[1].dlikeA[ai] = gtree[sisedge].dlikeA[ai];
     copyedge[2].A[ai] = gtree[downedge].A[ai];
-    if (gtree[downedge].down != -1)   // added this 5/27/08 
+    if (gtree[downedge].down != UNDEFINEDINT)   // added this 5/27/08 
     {
       copyedge[2].dlikeA[ai] = gtree[downedge].dlikeA[ai];
       holddownA[ai] = gtree[gtree[downedge].down].A[ai];      // changed this 5/27/08
     }
     else
     {
-      copyedge[2].down = -1;  // inserted this 5/27/08
+      copyedge[2].down = UNDEFINEDINT;  // inserted this 5/27/08
       holddownA[ai] = -1;
       copyedge[2].dlikeA[ai] = 0;
     }
@@ -2653,7 +2653,7 @@ finishSWupdateA (int ci, int li, int ai, int edge,
       upt = 0;
     }
 
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       t[i] = gtree[e[i]].time - upt;
       assert (t[i] >= 0.0);
@@ -2663,7 +2663,7 @@ finishSWupdateA (int ci, int li, int ai, int edge,
   wsumdiff = 0;
   for (i = 0, j = 0; i < 3; i++)
   {
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       if (i < 2)
         d = gtree[e[i]].A[ai] - oldA;
@@ -2687,7 +2687,7 @@ finishSWupdateA (int ci, int li, int ai, int edge,
   gtree[downedge].A[ai] = newA;
   assert (newA >= L[li].minA[ai]);
   dA = newA - oldA;             /* difference between new value, and what it would be based simply on weighted mean */
-  if (gtree[sisedge].down != -1 && sisedge != newsisedge)
+  if (gtree[sisedge].down != UNDEFINEDINT && sisedge != newsisedge)
   {
     if (sisedge >= L[li].numgenes)
     {
@@ -2711,7 +2711,7 @@ finishSWupdateA (int ci, int li, int ai, int edge,
   likeadj = gtree[sisedge].dlikeA[ai];
   for (i = 0, j = 0; i < 3; i++)
   {
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       if (i < 2)
         d = gtree[e[i]].A[ai] - newA;
@@ -2729,7 +2729,7 @@ finishSWupdateA (int ci, int li, int ai, int edge,
     wsumdiff += abs (d);
     j++;
   }
-  if (copyedge[2].down != -1)
+  if (copyedge[2].down != UNDEFINEDINT)
   {
     d = holddownA[ai] - newA;
     wsumdiff += abs (d);
@@ -2799,7 +2799,7 @@ oldfinishSWupdateA (int ci, int li, int ai, int edge,
       upt = 0;
     }
 
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       t[i] = gtree[e[i]].time - upt;
       assert (t[i] >= 0.0);
@@ -2809,7 +2809,7 @@ oldfinishSWupdateA (int ci, int li, int ai, int edge,
   wsumdiff = 0;
   for (i = 0, j = 0; i < 3; i++)
   {
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       if (i < 2)
         d = gtree[e[i]].A[ai] - oldA;
@@ -2833,7 +2833,7 @@ oldfinishSWupdateA (int ci, int li, int ai, int edge,
   gtree[downedge].A[ai] = newA;
   assert (newA >= L[li].minA[ai]);
   dA = newA - oldA;             /* difference between new value, and what it would be based simply on weighted mean */
-  if (gtree[sisedge].down != -1 && sisedge != newsisedge)
+  if (gtree[sisedge].down != UNDEFINEDINT && sisedge != newsisedge)
   {
     if (sisedge >= L[li].numgenes)
     {
@@ -2857,7 +2857,7 @@ oldfinishSWupdateA (int ci, int li, int ai, int edge,
   likeadj = gtree[sisedge].dlikeA[ai];
   for (i = 0, j = 0; i < 3; i++)
   {
-    if (gtree[e[i]].down != -1)
+    if (gtree[e[i]].down != UNDEFINEDINT)
     {
       if (i < 2)
         d = gtree[e[i]].A[ai] - newA;
@@ -2875,7 +2875,7 @@ oldfinishSWupdateA (int ci, int li, int ai, int edge,
     wsumdiff += abs (d);
     j++;
   }
-  if (copyedge[2].down != -1)
+  if (copyedge[2].down != UNDEFINEDINT)
   {
     d = holddownA[ai] - newA;
     wsumdiff += abs (d);
@@ -2959,7 +2959,7 @@ node to be updated. branch lengths are used for the weighting */
 
       wsumdiff = abs (oldA - upA[0]) / tup[0] + abs (oldA - upA[1]) / tup[1];
       weightsum = 1 / tup[0] + 1 / tup[1];
-      if (down != -1)
+      if (down != UNDEFINEDINT)
       {
         tdown = gtree[i].time - gtree[up[0]].time;
         downA = gtree[gtree[i].down].A[ai];
@@ -2985,7 +2985,7 @@ node to be updated. branch lengths are used for the weighting */
       if (newA != oldA)
       {
         wsumdiff = abs (newA - upA[0]) / tup[0] + abs (newA - upA[1]) / tup[1];
-        if (down != -1)
+        if (down != UNDEFINEDINT)
         {
           wsumdiff += abs (newA - downA) / tdown;
         }
@@ -2997,7 +2997,7 @@ node to be updated. branch lengths are used for the weighting */
         like = dlikeup[0] = -(tup[0] * u) + log (bessi (d, tup[0] * u));
         d = newA - upA[1];
         like += dlikeup[1] = -(tup[1] * u) + log (bessi (d, tup[1] * u));
-        if (down != -1)
+        if (down != UNDEFINEDINT)
         {
           d = newA - downA;
           like += dlikedown = -(tdown * u) + log (bessi (d, tdown * u));
@@ -3015,7 +3015,7 @@ node to be updated. branch lengths are used for the weighting */
         if (metropolishastingsdecide(metropolishastingsratio,1))
         {
           gtree[i].A[ai] = newA;
-          if (down != -1)
+          if (down != UNDEFINEDINT)
             gtree[i].dlikeA[ai] = dlikedown;
           gtree[up[0]].dlikeA[ai] = dlikeup[0];
           gtree[up[1]].dlikeA[ai] = dlikeup[1];
@@ -3029,7 +3029,7 @@ node to be updated. branch lengths are used for the weighting */
   like = 0;
   for (i = 0; i < 2 * ng - 1; i++)
   {
-    if (gtree[i].down != -1)
+    if (gtree[i].down != UNDEFINEDINT)
     {
       like += gtree[i].dlikeA[ai];
     }

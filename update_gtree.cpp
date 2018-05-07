@@ -197,7 +197,7 @@ kinds of upper limits
   else
   {
     /* go down */
-    if (gtree[*sis].down == -1 || *timepoint + *slidedist < gtree[*sis].time)
+    if (gtree[*sis].down == UNDEFINEDINT || *timepoint + *slidedist < gtree[*sis].time)
     {
 
       /* if sis is the root, or distance is less than to next down node, just slide down */
@@ -318,7 +318,7 @@ use recursion */
   else
   {
     /* go down */
-    if (gtree[*sis].down == -1 || *timepoint + *slidedist < gtree[*sis].time)
+    if (gtree[*sis].down == UNDEFINEDINT || *timepoint + *slidedist < gtree[*sis].time)
     {
       /* if sis is the root, or distance is less than to next down node, just slide down */
       *timepoint += *slidedist;
@@ -372,7 +372,7 @@ joinsisdown (int ci, int li, int sis, int *tmrcachange)
   if (hiddenoptions[HIDDENGENEALOGY])
   {
     if (gtree[sis].cmmhg + gtree[down].cmmhg > MIGMAX)
-      return -1;
+      return UNDEFINEDINT;
   }
   i = 0;
   while (gtree[sis].mig[i].mt > -0.5)
@@ -406,7 +406,7 @@ joinsisdown (int ci, int li, int sis, int *tmrcachange)
   gtree[sis].down = gtree[down].down;
   gtree[sis].fpop = gtree[down].fpop;  // fix fpop bug 
   downdown = gtree[sis].down;
-  if (downdown != -1)
+  if (downdown != UNDEFINEDINT)
   {
     rootmove = 0;
     if (gtree[downdown].up[0] == down)
@@ -464,7 +464,7 @@ joinsisdown (int ci, int li, int sis, int *tmrcachange)
     }
 
     C[ci]->G[li].root = sis;
-    gtree[sis].down = -1;
+    gtree[sis].down = UNDEFINEDINT;
     gtree[sis].time = TIMEMAX;
     if (L[li].model == STEPWISE || L[li].model == JOINT_IS_SW)
       for (ai = (L[li].model == JOINT_IS_SW); ai < L[li].nlinked; ai++)
@@ -495,7 +495,7 @@ splitsisdown (int ci, int li, int slidingedge, int down, int newsis)
 
   /* set the up  of the edge to which down now connects, depends on whether newsis is the root */
   downdown = gtree[newsis].down;
-  if (downdown != -1)
+  if (downdown != UNDEFINEDINT)
   {
     if (gtree[downdown].up[0] == newsis)
       gtree[downdown].up[0] = down;
@@ -539,7 +539,7 @@ splitsisdown (int ci, int li, int slidingedge, int down, int newsis)
     nowpop = C[ci]->poptree[nowpop].down;
   gtree[down].pop = gtree[newsis].fpop = nowpop;  // fix fpop bug 
   j = 0;
-  if (downdown != -1)
+  if (downdown != UNDEFINEDINT)
   {
     while (gtree[newsis].mig[j + i].mt > -0.5)
     {
@@ -567,7 +567,7 @@ splitsisdown (int ci, int li, int slidingedge, int down, int newsis)
       nowpophg = gtree[newsis].pophg;
     gtree[down].pophg = nowpophg;
     j = 0;
-    if (downdown != -1)
+    if (downdown != UNDEFINEDINT)
     {
       while (gtree[newsis].mighg[j + i].mt > -0.5)
       {
@@ -834,7 +834,7 @@ updategenealogy (int ci, int li, int *topolchange, int *tmrcachange)
   do
   {
     edge = randposint (L[li].numlines);
-  } while (gtree[edge].down == -1);
+  } while (gtree[edge].down == UNDEFINEDINT);
   freededge = gtree[edge].down;
   if ((oldsis = gtree[freededge].up[0]) == edge)
     oldsis = gtree[freededge].up[1];
@@ -865,8 +865,8 @@ updategenealogy (int ci, int li, int *topolchange, int *tmrcachange)
     return 0;   // too large cmm or cmmhg value,  reject update 
 
                             // use when debugging with gtreeprint()
-  //gtree[edge].down = -1;  // not necessary but makes gtreeprint() output easier to read for intermediate stages
-  //gtree[freededge].down = -1; // not necessary but makes gtreeprint() output easier to read for intermediate stages
+  //gtree[edge].down = UNDEFINEDINT;  // not necessary but makes gtreeprint() output easier to read for intermediate stages
+  //gtree[freededge].down = UNDEFINEDINT; // not necessary but makes gtreeprint() output easier to read for intermediate stages
 
 
 // remove any migrations  from the slidingedge, do the slide and identify new sister branch
@@ -937,8 +937,8 @@ updategenealogy (int ci, int li, int *topolchange, int *tmrcachange)
     break;
   case INFINITESITES:
     newpdg = newpdg_a[0] = like = likelihoodIS (ci, li, G->uvals[0]);
-	//std::cout << "after likelihoodIS " << newpdg << "\n";
-    rejectIS = (like == FORCEREJECTIONCONSTANT);
+    //rejectIS = (like == FORCEREJECTIONCONSTANT);
+    rejectIS = newpdg < COMPAREFORCEREJECTION;
     /*if (rejectIS)   // can this help avoid having this big condition around rejectIS? 
       goto rejectjump; */
 
@@ -963,7 +963,7 @@ updategenealogy (int ci, int li, int *topolchange, int *tmrcachange)
     }
   case JOINT_IS_SW:
     newpdg = newpdg_a[0] = likelihoodIS (ci, li, G->uvals[0]);
-    rejectIS = (newpdg == FORCEREJECTIONCONSTANT);
+    rejectIS = newpdg < COMPAREFORCEREJECTION;
     for (ai = 1; ai < L[li].nlinked; ai++)
     {
       newpdg_a[ai] =
@@ -999,7 +999,7 @@ since only genealogy li is being changed at the present time,  the ratio works o
     proposalratio = migweight + slideweight + Atermsum;
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
-    if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
     {
       metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
     }
@@ -1009,11 +1009,8 @@ since only genealogy li is being changed at the present time,  the ratio works o
     }
     if (metropolishastingsdecide(metropolishastingsratio,1))
     {
-      /* accept the update */
-	//std::cout << "G->pdg = " << G->pdg << " newpdg = " << newpdg << "\n";
       C[ci]->allpcalc.pdg -= G->pdg;
       C[ci]->allpcalc.pdg += newpdg;
-      //std::cout << "C[ci]->allpcalc.pdg " << C[ci]->allpcalc.pdg << "\n";
       G->pdg = newpdg;
       for (ai = 0; ai < L[li].nlinked; ai++)
         G->pdg_a[ai] = newpdg_a[ai];

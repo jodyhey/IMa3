@@ -945,7 +945,7 @@ changet_NW (int chain, int timeperiod)
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
   /* the likelihood does not appear in this update so beta is not used when calculating the marginallikelihood */
 
-  if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
   {
     metropolishastingsratio = priorratio + proposalratio;
   }

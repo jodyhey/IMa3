@@ -16,6 +16,7 @@ ciforallbeta[i] for the current node, for position i in allbetas[], ciforallbeta
 static int **swapcount;
 
 // these are only used if numprocesses > 1
+static int swapdist;
 static int **swapcount_rec; 
 
 static int sizeofswapmatrix;
@@ -41,7 +42,8 @@ swapweight (int ci, int cj)
 
   likelihoodratio = C[cj]->allpcalc.pdg - C[ci]->allpcalc.pdg;
   priorratio = 0.0;
-  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+ // if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) JH 4/26/2018  not entirely clear what to do in this case,  as far as calculating marginal likelihood 
+  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR] == 1)
   {
     if (modeloptions[EXPOMIGRATIONPRIOR])
     {
@@ -87,7 +89,10 @@ swapweight (int ci, int cj)
       priorratio += log(tempi/tempj); 
     }
   }
-  if (calcoptions[CALCMARGINALLIKELIHOOD])
+  else
+    priorratio = 0.0;   // demographic priors if hyperpriors not being used 
+
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
   {
    // w = exp ((beta[ci] - beta[cj]) * likelihoodratio + priorratio);
      w = ((beta[ci] - beta[cj]) * likelihoodratio + priorratio);
@@ -133,49 +138,30 @@ calcpartialswapweight (int ci, double *likelihood, double *prior)
     priorsum += C[ci]->allpcalc.probhgg;
   if (usetopologypriors)
     priorsum += topologypriors[C[ci]->poptreenum];
-  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])  // need to include ratio of demographic priors,  but if hyperpriors are not being used then demographic priors cancel out
   {
-    if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+    if (modeloptions[EXPOMIGRATIONPRIOR])
     {
-      if (modeloptions[EXPOMIGRATIONPRIOR])
+      for (i=0,tempp = 0.0;i<nummigrateparams;i++)
       {
-        /*for (i=0,tempp = 0.0;i<nummigrateparampairs;i++)
-        {
-          assert(strcmp(C[ci]->imig[2*i].descstr,C[ci]->imig[2*i+1].descstr) ==0);
-          //tempp += C[ci]->mltorhpriors[C[ci]->currentpairpos[i]];
-          tempp += getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
-          //tempp += C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]];
-          tempp += getval(C[ci]->imig[2*i].descstr,C[ci]->mrtolhpriors);
-        } */
-        for (i=0,tempp = 0.0;i<nummigrateparams;i++)
-        {
-          tempp +=  C[ci]->imig[i].pr.expomean;
-        }
-        priorsum -= tempp/mprior; // multiple by the product of the exponential densities for the priors
+        tempp +=  C[ci]->imig[i].pr.expomean;
       }
-      else
-      {
-        /*for (i=0,tempp = 1.0;i<nummigrateparampairs;i++)
-        {
-          assert(strcmp(C[ci]->imig[2*i].descstr,C[ci]->imig[2*i+1].descstr) ==0);
-          //tempp *= C[ci]->mltorhpriors[C[ci]->currentpairpos[i]];
-          tempp *= getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
-          //tempp *= C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]];
-          tempp *= getval(C[ci]->imig[2*i].descstr,C[ci]->mrtolhpriors);
-        } */
-        for (i=0,tempp = 1.0;i<nummigrateparams;i++)
-        {
-          tempp *=  C[ci]->imig[i].pr.max;
-        }
-        priorsum -= log(tempp); // i.e. divide by the product of the migration priors 
-      }
-      // now do popsize terms
-      for (i=0,tempp = 1.0;i<numpopsizeparams;i++)
-      {
-        tempp *= C[ci]->qhpriors[(int) C[ci]->descendantpops[i]];
-      }
-      priorsum -= log(tempp);  // divide by the product of the theta priors 
+      priorsum -= tempp/mprior; // multiple by the product of the exponential densities for the priors
     }
+    else
+    {
+      for (i=0,tempp = 1.0;i<nummigrateparams;i++)
+      {
+        tempp *=  C[ci]->imig[i].pr.max;
+      }
+      priorsum -= log(tempp); // i.e. divide by the product of the migration priors 
+    }
+    // now do popsize terms
+    for (i=0,tempp = 1.0;i<numpopsizeparams;i++)
+    {
+      tempp *= C[ci]->qhpriors[(int) C[ci]->descendantpops[i]];
+    }
+    priorsum -= log(tempp);  // divide by the product of the theta priors 
   }
   *prior = priorsum;
 }
@@ -185,11 +171,7 @@ double
 swapweight_bwprocesses(double likelihoodratio, double priorratio,double betai, double betaj)
 {
   double w;
-  /*if (calcoptions[CALCMARGINALLIKELIHOOD])
-    w = exp ((betai - betaj) * likelihoodratio); // priorratio cancel when doing thermodynamic integration
-  else
-    w = exp ((betai - betaj) * (likelihoodratio + priorratio)); */
-  if (calcoptions[CALCMARGINALLIKELIHOOD])
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
     w = ((betai - betaj) * likelihoodratio); // priorratio cancel when doing thermodynamic integration
   else
     w = ((betai - betaj) * (likelihoodratio + priorratio));
@@ -214,6 +196,7 @@ swapbetas (int ci, int cj)   // used for swaps between chains on the same proces
 
 /************** global functions *****************/
 
+#define SWAPDISTANCEDEFAULT 7 // default maximum distance in chain array of two chains with betas being swapped, not sure how much this matters
 void initswapstuff(void)
 {
   beta = static_cast<double *> (malloc ((numchainspp) * sizeof (double)));
@@ -229,7 +212,7 @@ void initswapstuff(void)
     }
     clearswapinfo();
   }
-  
+  swapdist = IMAX((int) SWAPDISTANCEDEFAULT,(int) numchainstotal*0.1);  // JH 4/30/2018,  changed from fixed value of SWAPDISTANCEDEFAULT  (7),  allowed for a wider range of chains 
 }
 
 void clearswapinfo(void)  // does not appear to be used
@@ -270,18 +253,42 @@ void freeswapstuff(void)
 
 int setswaptries(void)
 {
-   /* Consider the # of swap attemps as a function of # of chains and # of nodes
+   /* 
+   4/17/2018
 
-     each chain can swap with any other that is within + or- SWAPDIST positions from it
-     if # chains is less than 2*SWAPDIST then pretty much all chains can swap 
-     the number of possible swaps is approx  numchainstotal * (2*SWAPDIST)/2 = numchainstotal*SWAPDIST
+   keep in mind that the # of swaptries should not be a function of the # of cpus 
+   did some playing around to see the affect of # of swaptries per step
+   did not see a huge effect. 
+
+   Assume that the number of swaptries go up with # of chains. So 
+   we settle on going for one swap attempt per chain every 5 steps,  or 20% chance of swapping for each chain in each step. 
+
+   When there are n chains,  the probability that a chain gets picked on a try is 2/n.  
+   Let m be the # of swaptries
+
+   so approximately  m x 2/n = 0.2  
+
+   m = 0.1 x n  
+
+   But this will be super high
+   so set m = 0.1 x n  if n <= 400  and m = 0.05 x n for n > 400 
+
+   
+   
+   previous old discussion,  mostly wrong because it worries about # of cpus:
+   --------------------------------------------------------------------------
+    Consider the # of swap attemps as a function of # of chains and # of nodes
+
+     each chain can swap with any other that is within + or- swapdist positions from it
+     if # chains is less than 2*swapdist then pretty much all chains can swap 
+     the number of possible swaps is approx  numchainstotal * (2*swapdist)/2 = numchainstotal*swapdist
 
      target swap rate is to have each chain attempt a swap with every other that is within reach of it once every 10 steps 
       this is pretty arbitrary  - hope its a good happy medium between mixing and time spent swapping 
 
      then the total number of swap attempts per step would be 
-      (numchainstotal * SWAPDIST) / 10
-     since SWAPDIST == 10,  this gives numchainstotal swap attempts per step 
+      (numchainstotal * swapdist) / 10
+     since SWAPDISTANCEDEFAULT == 10,  this gives numchainstotal swap attempts per step 
   
   BUT - turns out that this approach to putting a number on  numchainstotal swap attempts slows things down REALLY badly 
   
@@ -344,8 +351,8 @@ int setswaptries(void)
   int st;
   int m = 1;  // number of steps on average between times each chain is involved in an attempted swap
   double temp;
-
-  if (numprocesses > 1)
+  // 4/17/2018 JH redid setting of swaptries 
+  /*if (numprocesses > 1)
   {
     temp = numchainstotal/(4.0 * m);
   }
@@ -353,9 +360,20 @@ int setswaptries(void)
   {
     temp = numchainstotal/(2.0 * m);
   }
-  st = IMIN(40,IMAX(2,INTEGERROUND(temp)));
+  st = IMIN(40,IMAX(2,INTEGERROUND(temp))); */
+  if (numchainstotal <= 400)
+    st = INTEGERROUND(numchainstotal * 0.1);
+  else
+    st = INTEGERROUND(numchainstotal * 0.05);
   return st;
 }
+
+#define CHAIN0FRAC 0.1  // 0.1 is best it seems.  deal with difficulty of using beta=0 in lowest chain when doing thermodynamic integration 
+/* this use of CHAIN0FRAC is an awkward kludge,  but could not find a way to 
+  have beta = 0.0 and get thermodynamic integration to work. 
+  with CHAIN0FRAC == 0.1  the marginal likelihood does come out to be pretty consistent
+  even as chain numbers vary,  so at least there is that.  */
+
 
 void
 setheat (double hval1, double hval2, int heatmode, int currentid)
@@ -363,31 +381,22 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
   int ci;
   int x = 0;
   double h = 0.0;
-  int hchains = numchainstotal;
   int no2;
 
   initswapstuff();
 
-   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-//AS: Changing how i maintain count of swaps as on 6/13/2014
-//allbetas is an array that's saved on each processor
-//therefore, every time i swap, i check beta that is received/being sent with allbetas, then add 1 
-//to the corresponding temperature, instead of the chain id.
-//	if (currentid == HEADNODE) {
-	//allbetas = static_cast<double *> (malloc ((numchainstotal) * sizeof (double)));
   if (numprocesses == 1 && numchainspp == 1) 
   {
       allbetas[0] = 1.0;
       beta[0] = 1.0;
       return;
   }
-	///FILL up allbetas - this would be faster than actually having to send it from other processes, I think
-	for (int i = 0; i < numchainstotal; i++) {
+	for (int i = 0; i < numchainstotal; i++) 
+ {
 			switch (heatmode)
 			{
 			case HLINEAR:
 				allbetas[x] = 1.0 / (1.0 + hval1 * i);
-			//	std::cout << "allbetas[" << x << "] is " << allbetas[x] << "\n";
 				x++;
 				break;
 			case HGEOMETRIC:
@@ -408,26 +417,16 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
     x++;
 				break;
 			case HEVEN: // default for calculating marginal likelihood // no longer default
-				/*if (ODD(numchainstotal) == 0) {
-					hchains = numchainstotal - 1;
-				} else {
-					hchains = numchainstotal;
-				}*/
-				h = 1.0 / (hchains - 1);
-
+      h = 1.0 / (numchainstotal - 1);
 						allbetas[x] = 1.0 - i * h;	
-				//	}
 					x++;
 					break;
-				//}
 			}
-			if (i == hchains)
-				break;
 	}
   if (calcoptions[CALCMARGINALLIKELIHOOD]==1)
   {
-    //assert (allbetas[numchainstotal-1] == 0.0); should be very close to 0
-    allbetas[numchainstotal-1] = allbetas[numchainstotal-2]*0.1;  // for some reason the last chain causes problems with doing thermodynamic integration
+    assert (nearlyequaldouble(allbetas[numchainstotal-1],0.0,1e-10)); //should be very close to 0
+    allbetas[numchainstotal-1] = allbetas[numchainstotal-2]* CHAIN0FRAC;  // for some reason the last chain causes problems with doing thermodynamic integration
   }
   int i = 0;
   for (ci = currentid * numchainspp; ci < currentid * numchainspp + numchainspp; ci++)
@@ -435,18 +434,9 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
     beta[i] = allbetas[ci];
     if (beta[i] < 0.0 || beta[i] > 1.0)
       IM_err (IMERR_COMMANDLINEHEATINGTERMS, "command line heating terms have caused a heating value out of range. chain %d beta %lf", ci, beta[i]);
-    //allbetapos[i] = ci;
     i += 1;
   }
 
-/*  we do Thermodynamic integration using Simpson's rule which requires an even number of intervals 
-    this means we need the total number of chains to be odd.
-    But if numprocesses > 1,  then it may be difficult to find a combination of numprocesses and numchainstotal 
-    that gives an odd number of chains.  
-    So we need a way to have a chain that is not used. 
-*/
-  //if (heatmode == HEVEN  && ODD(numchainstotal) == 0 )  when using trapezoid rule do not need even number of chains,  turn this off 7/27/2016
-  //	hchains = numchainstotal - 1;
 }                               /* setheat */
 
 
@@ -454,14 +444,20 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
   explanation: 
     only used with mpi
     complex function with a lot of tricky mpi work
+    
+    main outer loop is over swaptries
+    for each attempt all nodes are tied up with implementing that attempt 
+      - first the head node picks the betas
+      - then the node(s) that have those betas do some work,  while all other nodes wait. 
 
-  STEP 1. HEADNODE picks 2 heating values randomly but with indices that are within SWAPDIST positions
+  FOR EACH SWAP ATTEMPT:
+  STEP 1. HEADNODE picks 2 heating values randomly but with indices that are within swapdist positions
           does this by picking two positions in allbetas[], which every cpus has and which never changes 
   STEP 2. Bcast those values to all the other nodes.
           After step 2,  all nodes know the indices in allbetas[]
-  STEP 3. each node: check to see if either chain is on the current node, set doISswap  (1 if either is on current node. else 0) 
+  STEP 3. each node: check to see if either beta belongs to a chain on the current node, set doISswap  (1 if either is on current node. else 0) 
             keep in mind several possibilities:
-              both betas could be on the same node
+              both betas are on the same node
                 that node could be the current node, or not  
               else betas are different nodes
                 one of those could be the current node
@@ -470,38 +466,40 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
         After step 3 the HEADNODE knows which two nodes have the chains corresponding to the picked indices in allbetas[]
         
   STEP 4. broadcast from HEADNODE to others the node numbers for the beta values 
-        After step 4,  all nodes know the node numbers corresponding to the picked indices in allbetas[]
+        After step 4,  all nodes know the node numbers corresponding to the picked beta values 
 
   if doISwap:  (one of the beta values is on the current node), then attempt a swap 
     STEP 5.  
-		 	  send/receive between nodes for A, B   poptreestrings,  put in holdpoptreestring vars
-			   set treematch (1 if A tree is same as B tree, else 0) 
-						if nodes for A and B are the same: (STEP 5.1)
+		 	 send/receive between nodes for A, B   poptreestrings,  put in holdpoptreestring vars
+			  set treematch (1 if A tree is same as B tree, else 0) 
+					if nodes for A and B are the same (i.e. both on the current node): (STEP 5.1)
 				    swapchains without MPI 
 			  else  
-				  if current node is the node for A (STEP 5.2.A )
-					  calc likelihood and prior using calcpartialswapweight() for chain  A 
-					  send/receive from node for B info on RY and NW updating 
-					  send/receive from node for B info on beta vals and allbetapos and likelihoods and priors
-					  increment swapcount below diagonal
-				  if current node is the node for B (STEP 5.2.B )
-					  calc likelihood and prior using calcpartialswapweight() for chain  B 
-					  send/receive from node for A info on RY and NW updating 
-					  send/receive from node for A info on beta vals and allbetapos and likelihoods and priors			
+				    if current node is the node for A (STEP 5.2.A )
+					     calc likelihood and prior using calcpartialswapweight() for chain  A 
+					     send/receive from node for B info on RY and NW updating 
+					     send/receive from node for B info on beta vals and allbetapos and likelihoods and priors
+					     increment swapcount below diagonal
+				    if current node is the node for B (STEP 5.2.B )
+					     calc likelihood and prior using calcpartialswapweight() for chain  B 
+					     send/receive from node for A info on RY and NW updating 
+					     send/receive from node for A info on beta vals and allbetapos and likelihoods and priors			
 			
-			  if current node is the node for A (STEP 5.3 )  (use node for A for actual metropolis hastings)
-				  increment attempts
-				  calculate metropolishastings ratio 
-				  if success
-					   increment successes
-					   increment swapcount above diagonal
-					   increment chain0 swap count
-				    set swapvar indicating update accepted or not
-				    send swapvar to B 
-			   else  (STEP 5.4 )
-				    if swapvar
-					     set beta, betapos
-					     set RY NW  update info
+			     if current node is the node for A (STEP 5.3 )  (use node for A for actual metropolis hastings)
+				      increment attempts
+				      calculate metropolishastings ratio 
+				      if success
+            change beta, betapos
+					       increment successes
+					       increment swapcount above diagonal
+					       increment chain0 swap count
+				      set swapvar indicating update accepted or not
+				      send swapvar to B 
+			     else  (A was on another node, where swap attempt is made) (STEP 5.4 )
+          receive swapvar from A
+				      if swapvar 
+					       change beta, betapos
+					       set RY NW  update info
   else (i.e. doISwap == 0)  do nothing 	
 
  */
@@ -549,21 +547,21 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
     
 /**** STEP 1 *****/
       /*  only the head node picks the chains that swap */ 
-		  if (currentid == HEADNODE)  //## pick the positions in allbetas of the beta values and send them to all the other processors
+		  if (currentid == HEADNODE)  //## pick sa and sb, the positions in allbetas of the beta values and send them to all the other processors
     {
 			   sa = (int) (uniform() * numchainstotal);
-      /* ## pick swap chain indices sa and sb  using the SWAPDIST range,  sa and sb are indices in allbetas[] (not in betas[]) */
+      /* ## pick swap chain indices sa and sb  using the swapdist range,  sa and sb are indices in allbetas[] (not in betas[]) */
       int sbmin;
       int sbrange;
-      if (numchainstotal < 2*SWAPDIST + 3)
+      if (numchainstotal < 2*swapdist + 3)
       {
         sbmin = 0;
         sbrange = numchainstotal;
       }
       else
       {
-        sbmin = IMAX(0,sa-SWAPDIST);
-        sbrange = IMIN(numchainstotal, sa+SWAPDIST) -sbmin;
+        sbmin = IMAX(0,sa-swapdist);
+        sbrange = IMIN(numchainstotal, sa+swapdist) -sbmin;
       } 
       do
       {
@@ -583,7 +581,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 
 /**** STEP 3 *****/
 		/* at this point all processors know which chain numbers were picked  */
-  /* now identify wehther the current node  has either of these chains,  and then send that information to HEADNODE */
+  /* now identify whether the current node  has either of these chains,  and then send that information to HEADNODE */
 
   /* identify the beta values */
     abeta = allbetas[sa];
@@ -594,8 +592,8 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
     whichElementB = 0; // will be the chain index (position in C[])  on whatever processor sb applies to 
     doISwap = 0;
     areWeA = 0; // 1 if current node has A 
-    procIdForA = -1;   //  is sa applies to the current node,  then procIdForA=currentid else procIdForA remains = -1
-    procIdForB = -1;  //  is sb applies to the current node,  then procIdForB=currentid else procIdForB remains = -1
+    procIdForA = UNDEFINEDINT;   //  is sa applies to the current node,  then procIdForA=currentid else procIdForA remains = -1
+    procIdForB = UNDEFINEDINT;  //  is sb applies to the current node,  then procIdForB=currentid else procIdForB remains = -1
 
     /*  loop over chains on current node, see if abeta is the beta for one of the chains in the current processor
      if so, and this is not head node, send procIdForA to the head node */
@@ -635,12 +633,12 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 		  }
     /* corresponding Recv's for 12345,1973 */
     /* at this point doISwap == 1 if either sa or sb is on the current node */
-		  if (currentid == HEADNODE && procIdForA == -1)  // receive from some other processor the processor number for which abeta is  beta[y]
+		  if (currentid == HEADNODE && procIdForA == UNDEFINEDINT)  // receive from some other processor the processor number for which abeta is  beta[y]
     {  
       rc = MPI_Recv(&procIdForA, 1, MPI_INT, MPI_ANY_SOURCE, 12345, MPI_COMM_WORLD, &status);
 			   if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
 		  }
-		  if (currentid == HEADNODE && procIdForB == -1)   // receive from some other processor the processor number for which bbeta is  beta[y]
+		  if (currentid == HEADNODE && procIdForB == UNDEFINEDINT)   // receive from some other processor the processor number for which bbeta is  beta[y]
     {
       rc = MPI_Recv(&procIdForB, 1, MPI_INT, MPI_ANY_SOURCE, 1973, MPI_COMM_WORLD, &status);
       if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
@@ -930,7 +928,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 /* 
   swaps between chains on the same processor  
   called either from qupdate or from swapchains_bwprocesses() 
-  if called from qupdate, it will attempt multiple swaps, each time picking two chains within SWAPDIST positions of each other
+  if called from qupdate, it will attempt multiple swaps, each time picking two chains within swapdist positions of each other
   if called from swapchains_bwprocesses()  the two chain indices will be passed into this function 
     in this case ci and cj are the chain numbers on the current node for which betas are swapped 
   first value after nargs must be the # of swaptries
@@ -973,15 +971,15 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
 			   betai = (int) (uniform() * numchainstotal);  // random chain index
       int cmin;
       int crange;
-      if (numchainstotal < 2*SWAPDIST + 3)
+      if (numchainstotal < 2*swapdist + 3)
       {
         cmin = 0;
         crange = numchainstotal;
       }
       else
       {
-        cmin = IMAX(0,betai-SWAPDIST);
-        crange = IMIN(numchainstotal, betai+SWAPDIST) -cmin;
+        cmin = IMAX(0,betai-swapdist);
+        crange = IMIN(numchainstotal, betai+swapdist) -cmin;
       } 
       do
       {

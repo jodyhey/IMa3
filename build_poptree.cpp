@@ -217,7 +217,7 @@ parenth (int ci, int tempcurrent, int startparenth)
       C[ci]->poptree[C[ci]->poptree[current].up[1]].e = periodi + 1;
     periodi++;
   }
-  if (C[ci]->poptree[current].down != -1)
+  if (C[ci]->poptree[current].down != UNDEFINEDINT)
   {
     numpopnodes++;
     current = C[ci]->poptree[current].down;
@@ -240,7 +240,7 @@ makepoptreestring (int ci, int curpop, char *buildstr)
   if (curpop == -1)
   {
     i = 0;
-    while (C[ci]->poptree[i].down != -1)
+    while (C[ci]->poptree[i].down != UNDEFINEDINT)
       i++;
     curpop = i;
     pos = 0;
@@ -567,7 +567,7 @@ simpoptree (int ci)
   int list[2 * MAXPOPS - 1];
   for (i = 0; i < numtreepops; i++)
     C[ci]->poptree[i].up[0] = C[ci]->poptree[i].up[1] =
-      C[ci]->poptree[i].down = -1;
+      C[ci]->poptree[i].down = UNDEFINEDINT;
   for (i = 0; i < npops; i++)
   {
     C[ci]->poptree[i].b = 0;
@@ -599,7 +599,7 @@ simpoptree (int ci)
     C[ci]->poptree[C[ci]->poptree[newpop].up[0]].down =
       C[ci]->poptree[C[ci]->poptree[newpop].up[1]].down = newpop;
   }
-  C[ci]->poptree[2 * npops - 2].down = -1;
+  C[ci]->poptree[2 * npops - 2].down = UNDEFINEDINT;
   C[ci]->poptree[2 * npops - 2].time = TIMEMAX;
 }                               /* simpoptree */
 
@@ -618,7 +618,7 @@ poptreeread (int ci, char *poptreestring)
     /*C[ci]->poptree[i].up = static_cast<int *> (malloc (2 * sizeof (int)));  */  /*changed up to a fixed array for hidden genealogy stuff */
     for (j = 0; j < 2; j++)
       C[ci]->poptree[i].up[j] = -1;
-    C[ci]->poptree[i].down = -1;
+    C[ci]->poptree[i].down = UNDEFINEDINT;
   }
   for (; i < numtreepops; i++)
   {
@@ -626,10 +626,10 @@ poptreeread (int ci, char *poptreestring)
     /*C[ci]->poptree[i].up = static_cast<int *> (malloc (2 * sizeof (int))); */  /*changed up to a fixed array for hidden genealogy stuff */
     for (j = 0; j < 2; j++)
       C[ci]->poptree[i].up[j] = -1;
-    C[ci]->poptree[i].down = -1;
+    C[ci]->poptree[i].down = UNDEFINEDINT;
   }
   rewrite (poptreestring);
-  C[ci]->poptree[npops].down = -1;
+  C[ci]->poptree[npops].down = UNDEFINEDINT;
   treestringspot = poptreestring;
   if (ci == 0|| modeloptions[POPTREETOPOLOGYUPDATE] == 1)
     parenth0 ();
@@ -710,7 +710,7 @@ setup_poptree (int ci, char poptreestring[])
     C[ci]->poptree = static_cast<popedge *> (malloc (sizeof (struct popedge)));
     C[ci]->poptree[0].numup = 2;
     /*C[ci]->poptree[0].up = static_cast<int *> (malloc (2 * sizeof (int))); */  /*changed up to a fixed array for hidden genealogy stuff */
-    C[ci]->poptree[0].down = -1;
+    C[ci]->poptree[0].down = UNDEFINEDINT;
     C[ci]->poptree[0].time = TIMEMAX;
     C[ci]->poptree[0].b = 0;
     C[ci]->poptree[0].e = -1;
@@ -781,7 +781,10 @@ void set_poptree_update_record(void)
   sprintf (poptreeuinfo->upnames[IM_UPDATE_POPTREE_TOPOLOGY], "topology   ");
   sprintf (poptreeuinfo->upnames[IM_UPDATE_POPTREE_TMRCA],    "tmrca      ");
   poptreeuinfo->upinf = static_cast<update_rate_calc *> 
-        (calloc ((size_t) poptreeuinfo->num_uptypes,sizeof (struct update_rate_calc)));
+        (malloc ((size_t) poptreeuinfo->num_uptypes * sizeof (struct update_rate_calc)));
+  for (int i=0;i < poptreeuinfo->num_uptypes; i++)
+    init_upinf(&poptreeuinfo->upinf[i]);
+
   for (i=0;i<poptreeuinfo->num_uptypes;i++)
   {
     poptreeuinfo->upinf[i].accp = 0;

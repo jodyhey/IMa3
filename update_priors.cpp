@@ -112,7 +112,7 @@ int update_migration_prior_intree(int ci, int mi) // 0<mi<nummigrateparams
   initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   priorratio += C[ci]->allpcalc.probg - localholdallpcalc.probg;
   
-  if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
   {
     metropolishastingsratio = priorratio + proposalratio;
   }
@@ -209,7 +209,7 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
           newpriorval = getnewpriorval(expo_m_mean,oldpriorval,1);
           proposalratio = 0.0;
           priorratio = (oldpriorval-newpriorval)/expo_m_mean;
-          /*if (calcoptions[CALCMARGINALLIKELIHOOD])   // calculating marginal likelihood does not seem to work when updating population tree  - not sure why 9/13/2016
+          /*if (hiddenoptions[PRIORRATIOHEATINGON] == 0)   // calculating marginal likelihood does not seem to work when updating population tree  - not sure why 9/13/2016
           {
             metropolishastingsratio = exp(priorratio + proposalratio);
           }
@@ -220,7 +220,7 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
           U = uniform (); 
           //U = 2;
           if (U <= DMIN(1.0, metropolishastingsratio)) */
-          if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+          if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
           {
             metropolishastingsratio = priorratio + proposalratio;
           }
@@ -289,7 +289,7 @@ int update_popsize_prior_intree(int ci, int qi)
   initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   priorratio += C[ci]->allpcalc.probg - localholdallpcalc.probg;
 
-  if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
   {
     metropolishastingsratio = priorratio;
   }

@@ -145,13 +145,13 @@ void renumberpopnodes_hold(int ci,double *tvals)
         j++;
       newpoptree[i].time = pnodetimes[j].time;
       if (j == npops-1)
-        newpoptree[i].down = -1;
+        newpoptree[i].down = UNDEFINEDINT;
       else
         newpoptree[i].down = j+npops;
     }
     for (i=0;i<numtreepops;i++)
     {
-      if (newpoptree[i].down  != -1)
+      if (newpoptree[i].down != UNDEFINEDINT)
       {
         if (newpoptree[newpoptree[i].down].up[0]  == -1)
           newpoptree[newpoptree[i].down].up[0] = i;
@@ -187,7 +187,7 @@ void renumberpopnodes_hold(int ci,double *tvals)
         j++;
       b = j+1;
     }
-    if (ptree[i].down == -1)
+    if (ptree[i].down == UNDEFINEDINT)
     {
       e = -1;
     }
@@ -262,7 +262,7 @@ void renumberpopnodes(int ci,double *tvals)
       else
         newpoptree[i].up[1] =  rejigger[ptree[i].up[1]];
       newpoptree[i].down =  rejigger[ptree[i].down];
-      if (newpoptree[i].down == -1)
+      if (newpoptree[i].down == UNDEFINEDINT)
         newpoptree[i].time = TIMEMAX;
       else
         newpoptree[i].time = pnodetimes[newpoptree[i].down - npops].time;
@@ -281,7 +281,7 @@ void renumberpopnodes(int ci,double *tvals)
       if (ptree[i].down >= 0)
         newpoptree[rejigger[i]].down =  rejigger[ptree[i].down];
     }
-    newpoptree[i].down = -1;
+    newpoptree[i].down = UNDEFINEDINT;
   
 #ifdef TURNONCHECKS
     //poptreeprint_frompointer(ci,&newpoptree[0]);
@@ -296,7 +296,7 @@ void renumberpopnodes(int ci,double *tvals)
     }
     orderupnodes(C[ci]->poptree);
   }
-  ptree[numtreepops-1].down = -1;
+  ptree[numtreepops-1].down = UNDEFINEDINT;
   for (i=0;i<numtreepops;i++) // set b and e regardless of whether node number order was out of wack. // why?? 
   {
     if (i<npops)
@@ -312,7 +312,7 @@ void renumberpopnodes(int ci,double *tvals)
         j++;
       b = j+1;
     }
-    if (ptree[i].down == -1)
+    if (ptree[i].down == UNDEFINEDINT)
     {
       e = -1;
     }
@@ -350,7 +350,7 @@ poptreejoinsisdown (struct popedge *ptree,int sis, int *roottimechanges)
   /* set the up to which sis now connects */
   ptree[sis].down = ptree[down].down;
   downdown = ptree[sis].down;
-  if (downdown != -1)
+  if (downdown != UNDEFINEDINT)
   {
     if (ptree[downdown].up[0] == down)
       ptree[downdown].up[0] = sis;
@@ -361,7 +361,7 @@ poptreejoinsisdown (struct popedge *ptree,int sis, int *roottimechanges)
   else
   {
     //sis now connects to the root, root time must change 
-    ptree[sis].down = -1;
+    ptree[sis].down = UNDEFINEDINT;
     ptree[sis].time = TIMEMAX;
     *roottimechanges = 1;
   }
@@ -384,7 +384,7 @@ poptreesplitsisdown (struct popedge *ptree,int slidingedge, int down, int newsis
 
   /* set the up  of the edge to which down now connects, depends on whether newsis is the root */
   downdown = ptree[newsis].down;
-  if (downdown != -1)
+  if (downdown != UNDEFINEDINT)
   {
     if (ptree[downdown].up[0] == newsis)
       ptree[downdown].up[0] = down;
@@ -481,7 +481,7 @@ use recursion */
   else
   {
     /* go down */
-    if (ptree[*sis].down == -1 )// sis edge is the root, slide heads down and moves the root
+    if (ptree[*sis].down == UNDEFINEDINT )// sis edge is the root, slide heads down and moves the root
     {
       dnlimit = T[numsplittimes-1].pr.max;   // time upper bound is the maximum time of the basal split in the tree. No point in considering a branch point older than this. 
       assert(dnlimit > *timepoint);
@@ -818,12 +818,12 @@ int
 change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachange, int *tmrcachange, int topologychangeallowed)
 {
   int i,li;
-	int edge;
-	int freededge;
-	int oldsis,newsis;
-	double holdt[MAXPERIODS],newt[MAXPERIODS];
-	double roottime;
-	double oldslidestdv,newslidestdv,slidedist,holdslidedist;
+  int edge;
+  int freededge;
+  int oldsis,newsis;
+  double holdt[MAXPERIODS],newt[MAXPERIODS];
+  double roottime;
+  double oldslidestdv,newslidestdv,slidedist,holdslidedist;
   double topologypriorratio = 0.0;
   double metropolishastingsratio;
   double priorratio,proposalratio;
@@ -833,7 +833,6 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
   double temptime,temptmax;
   int tempb,oldtreenum;
   int ghostmoved = 0;
-  
   double newpriorp, oldpriorp, propose_old_given_new, propose_new_given_old;
   double slideweightnum = 0.0, slideweightdenom = 0.0;
   int roottimechanges = 0;
@@ -868,7 +867,7 @@ checkpoptree(ci,0);
 checkgenealogyweights(ci);
 #endif //TURNONCHECKS
   *topolchange = 0;
-	numtreepops = 2*npops - 1;
+	 numtreepops = 2*npops - 1;
 // initialize and make copies structures that hold quantities for calculating prob of genealogy
   for (li=0;li <nloci;li++)
   {
@@ -878,7 +877,7 @@ checkgenealogyweights(ci);
   copy_probcalc (&holdallpcalc, &C[ci]->allpcalc);
  
   storegenealogystats_all_loci_hg (ci, 0);
-	copy_poptree(C[ci]->poptree,&poptreehold[0]);
+	 copy_poptree(C[ci]->poptree,&poptreehold[0]);
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {
     copyimigpriors(ci,0);
@@ -887,13 +886,13 @@ checkgenealogyweights(ci);
   }
   strcpy(&holdpoptreestring[0],C[ci]->chainpoptreestring);
   //checkupdatescalarer(&C[ci]->branchslideinfo);  as of 5/3/2017  not updating this 
-	for (i = 0; i < lastperiodnumber; i++)
-	  holdt[i] = C[ci]->tvals[i];
-	roottime = C[ci]->tvals[npops-2];
+	  for (i = 0; i < lastperiodnumber; i++)
+	    holdt[i] = C[ci]->tvals[i];
+	  roottime = C[ci]->tvals[npops-2];
   do
   {
     edge = randposint (numtreepops);
-  } while (C[ci]->poptree[edge].down == -1);
+  } while (C[ci]->poptree[edge].down == UNDEFINEDINT);
   freededge = C[ci]->poptree[edge].down;
   if ((oldsis = C[ci]->poptree[freededge].up[0]) == edge)
     oldsis = C[ci]->poptree[freededge].up[1];
@@ -1071,8 +1070,8 @@ checkpoptree(ci,1);
             /* C[ci]->imig[2*i].descstr and C[ci]->imig[2*i+1].descstr should be the same */ 
             //mpriorratio += holdimig[2*i].pr.expomean - getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
             mpriorratio += holdimig[2*i].pr.expomean - C[ci]->imig[2*i].pr.expomean;
-            assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to);
-            assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from);
+            //assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to);  md no longer used by holdimig
+            //assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from);  md no longer used by holdimig
 
             //mpriorratio += C[ci]->mrtolhpriors[holdcurrentpairpos[i]] - C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]];
             //mpriorratio += holdimig[2*i+1].pr.expomean - getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhpriors);
@@ -1093,8 +1092,8 @@ checkpoptree(ci,1);
               //mpriorratio *= C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]]/C[ci]->mrtolhpriors[holdcurrentpairpos[i]];
               //mpriorratio *= getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhpriors)/holdimig[2*i+1].pr.max;
               mpriorratio *= C[ci]->imig[2*i+1].pr.max/holdimig[2*i+1].pr.max;
-              assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to);
-              assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from);
+              //assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to); md no longer used by holdimig
+              //assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from); md no longer used by holdimig
             }
             mpriorratio = -log(mpriorratio); 
         }
@@ -1162,7 +1161,7 @@ checkpoptree(ci,1);
 #ifdef TURNONCHECKS
     checkdetailedbalance(0.0,0.0,newpriorp,oldpriorp,propose_old_given_new, propose_new_given_old,beta[ci]);
 #endif //TURNONCHECKS
-    if (calcoptions[CALCMARGINALLIKELIHOOD]) 
+    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
     {
       metropolishastingsratio = priorratio + proposalratio;
     }
@@ -1261,7 +1260,7 @@ checkpoptree(ci,0);
     checkgenealogyweights(ci);
 #endif //TURNONCHECKS
   // resetupdatescalarer(&C[ci]->branchslideinfo);
-  }
+  } /* reject the update */
 //printf("step %d chain %d treenum %d accp %d uni %.4lf\n",step,ci,C[ci]->poptreenum,accp,uniform());
   return accp;
 }

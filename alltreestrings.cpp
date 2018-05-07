@@ -47,9 +47,9 @@ int cardinality(SET x)  // returns count of items in the set
   {
 		  x ^= (x & -x); ++count;
 		}
-	   return(count);
+	 return(count);
 } 
-/* fills up subsets with all possible subsets of nset */
+/* fills up subsets[] with all possible subsets of nset */
 int makesubsets(SET nset, SET *subsets)
 {
   int i,j;
@@ -266,7 +266,7 @@ void addnode(char **a,nodearray nodes,int nodeslength,int nextnodenum, int *tree
       addnode(a,holdnodes,nodeslength,nextnodenum,treecount,addghost);
     }
   }
-}
+} // addnode()
 
 int compnodes (const void * a, const void * b)  // used for qsort in findpopsinnode, sort from low to high 
 {
@@ -318,6 +318,7 @@ void findpopsinnode(char *ns,char *popsinnodestr)
 }  //findpopsinnode
 
 // return a list of internal nodes (each represented as an ordered sequence of external node numbers in a string)
+// could also call this getclades(),  each internal node corresponds to a clade of descendant sampled populations 
 void getinternalnodes(char *tstr, char nodes[][20])
 {
   int i,ii,j;
@@ -383,7 +384,7 @@ void filldescendantpops(int ci)
   {
     C[ci]->descendantpops[i] = SINGLESET(i);
     j = i;
-    while  (C[ci]->poptree[j].down != -1)
+    while  (C[ci]->poptree[j].down != UNDEFINEDINT)
     {
       C[ci]->descendantpops[C[ci]->poptree[j].down] = SETADD(C[ci]->descendantpops[C[ci]->poptree[j].down],i);
       j = C[ci]->poptree[j].down; // an ancestral pop # that has i as a descendant 
@@ -508,7 +509,9 @@ void freepoptreestringarrays(void)
 
   XFREE(poptopologycounts);
 }
-
+/* build alltreestrings[],  a list of all possible tree strings
+   - all the word is actually done by addnode() and rewrite()
+  the order of trees in alltreestrings[] is the standard order used by list of counts and proposals */
 int buildpoptreestringarray(void)
 {
   int numtrees, numtreesng;
@@ -540,8 +543,6 @@ int buildpoptreestringarray(void)
     assert(numtrees==numtreesng);
   }
   assert(numtrees == numtreesarray[npops - modeloptions[ADDGHOSTPOP]]);
-
-  
   return numtrees;
 } /* buildpoptreestringarray */
 
@@ -686,17 +687,18 @@ void printnewickstring(FILE * outto, char *ps, double *tvals, int ghostintree)
 
 
 /*
-  For a population tree strint tstr
-  Find each internal node (not root) get the string of sampled populations 
+  na is a list of unique internal nodes  (i.e. clades, each represented as an ordered sequence of external node numbes in a string)
+   nc is a corresponding set of counts (i.e. the number of sampled topologies that have that node)
+   nunique is the number of nodes in na
+   tstr is a treestring 
+
+  For a population tree string tstr
+  Find each internal node (not root) get the string of sampled populations that constitute that clade
   check to see if that is in the list of nodes (na) that has been found before
   if not add it to the list
   add the count to nc 
-*/
-//getnodecounts(uniquenodes,fatssarray[i].treestr,fatssarray[i].count,nodecounts, &nunique);
-/* na is a list of unique internal nodes  (each represented as an ordered sequence of external node numbes in a string)
-   nc is a corresponding set of counts 
-   nunique is the number of nodes in na
-   tstr is a treestring 
+
+   
 */
 void getnodecounts(char **na,char *tstr,int count,int *nc, int *nunique)
 {
@@ -733,7 +735,7 @@ void getnodecounts(char **na,char *tstr,int count,int *nc, int *nunique)
 
 /*
   calculate the product of the posterior clade probabilities
-   na is a list of unique internal nodes  (each represented as an ordered sequence of external node numbes in a string)
+   na is a list of unique internal nodes  (each represented as an ordered sequence of external node numbers in a string)
    nc is a corresponding set of counts 
    nunique is the number of nodes in na
    tstr is a treestring  */
@@ -769,14 +771,39 @@ double calcppcp(char **na,char *tstr, int *nc, int totaltreecount, int nunique)
   return ppcp;
 } //calcppcp
 
-int foralltreestringsort_comp (const void * a, const void * b)  // used for qsort, sort from high to low // used in  sort_and_print_alltreestrings()
+int foralltreestringsort_comp (const void * a, const void * b)  // used for qsort, sort from high to low using count// used in  sort_and_print_alltreestrings()
 {
   foralltreestringsort *fA = (foralltreestringsort *)a;
   foralltreestringsort *fB = (foralltreestringsort *)b;
   return ( fB->count - fA->count);
 }
 
+int foralltreestringsort_compppcp (const void * a, const void * b)  // used for qsort, sort from high to low using ppcp// used in  sort_and_print_alltreestrings()
+{
+  foralltreestringsort *fA = (foralltreestringsort *)a;
+  foralltreestringsort *fB = (foralltreestringsort *)b;
+  if (fB->ppcp < fA->ppcp)
+    return -1;
+  else
+  {
+    if (fB->ppcp > fA->ppcp)
+      return 1;
+    else
+      return 0;
+  }
+
+}
+
+int fornodeppsort_comp (const void * a, const void * b)  // used for qsort, sort from high to low using count// used in  sort_and_print_alltreestrings()
+{
+  fornodeppsort *fA = (fornodeppsort *)a;
+  fornodeppsort *fB = (fornodeppsort *)b;
+  return ( fB->count - fA->count);
+}
+
+
 /* for printing full table of population tree posteriors,  simple */
+/* why is this in this file */ 
 void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed,int uniformprior )
 {
   int i,j, totaltreecount = 0;
@@ -852,7 +879,6 @@ void init_RF_nodeinfo(void)
   {
     for (k=0;k<numpoptopologies;k++) 
       RFtreedis[k] = k;
-    
   }
   else
   {

@@ -269,7 +269,7 @@ makeHKY (int ci, int li, int nosimmigration)
   C[ci]->G[li].mignum = 0;
   for (i = 0; i < 2 * L[li].numgenes - 1; i++)
   {
-    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = -1;
+    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = UNDEFINEDINT;
   }
   for (i = L[li].numgenes; i < 2 * L[li].numgenes - 1; i++)
   {
@@ -418,7 +418,7 @@ makeIS (int ci, int li, int nosimmigration)
   C[ci]->G[li].mignum = 0;
   for (i = 0; i < 2 * L[li].numgenes - 1; i++)
   {
-    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = -1;
+    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = UNDEFINEDINT;
   }
   for (i = 0; i < L[li].numgenes; i++)
   {
@@ -615,7 +615,7 @@ makeJOINT_IS_SW (int ci, int li, int nosimmigration)
   C[ci]->G[li].mignum = 0;
   for (i = 0; i < 2 * L[li].numgenes - 1; i++)
   {
-    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = -1;
+    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = UNDEFINEDINT;
   }
   for (i = 0; i < L[li].numgenes; i++)
   {
@@ -828,7 +828,7 @@ makeSW (int ci, int li, int nosimmigration)
 
   for (i = 0; i < L[li].numlines; i++)
   {
-    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = -1;
+    gtree[i].up[0] = gtree[i].up[1] = gtree[i].down = UNDEFINEDINT;
     gtree[i].mig[0].mt = -1;
     gtree[i].cmm = 0;
   }

@@ -242,7 +242,7 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
     copy_treeinfo (&holdgweight_t_RY[li], &G->gweight);
     for (i = 0; i < L[li].numlines; i++)
     {
-      if (gtree[i].down != -1)
+      if (gtree[i].down != UNDEFINEDINT)
       {
         if (gtree[i].time <= oldt && gtree[i].time > t_u)
 
@@ -350,7 +350,7 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
   priorratio = (C[ci]->allpcalc.probg - holdallpcalc_t_RY.probg);
   proposalratio = (ecd + emd) * log (t_d_hterm) + (ecu + emu) * log (t_u_hterm);
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-  if  (calcoptions[CALCMARGINALLIKELIHOOD])
+  if  (hiddenoptions[PRIORRATIOHEATINGON] == 0)
   {
     metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
   }
@@ -402,7 +402,7 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
       copy_treeinfo (&G->gweight, &holdgweight_t_RY[li]);
       for (i = 0; i < L[li].numlines; i++)
       {
-        if (gtree[i].down != -1)
+        if (gtree[i].down != UNDEFINEDINT)
         {
           if (gtree[i].time <= newt && gtree[i].time > t_u)
           {

@@ -84,6 +84,10 @@
 #define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #endif
 
+#ifndef RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
+#undef STDTEST
+#endif
+
 /* #define RANDOM_NUMBERS_FROM_FILE   coded by Janeen, used to be called SANITY_TEST
  * for testing only. Usually used on testbed.  Avoids use of random number generator to make things more repeatable. 
  * read a random number from a file "randNums" which contains a list of random numbers (in ascii)
@@ -106,7 +110,6 @@
 #endif 
 
 #undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
-
 
 #ifdef STDTEST
 #undef TURNONCHECKS   // turn off debugging check when running standard tests
@@ -184,11 +187,11 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 /**********************************************/
 
 /* CONSTANTS */
-#define MAXLOCI  201            //100
+#define MAXLOCI  501            // changed to 501 on 4/1/6/2018
 #define MAXGENES 1000           // maximum sample size for a locus  
 #define DEFAULTNUMCHAINS 1
-#define SWAPDIST 7 //10         // maximum distance in chain array of two chains with betas being swapped, not sure how much this matters
 #define MINNUMCHAINSPERPROCESSOR 2 // changed to 2 after some testing on 10/4/2017  4  // must have at least 4 for swaps within chains
+#define MINNUMCHAINS  4
 #define MAXPOPS 9 // 10     set this back to 9 , have not tested it with this many        // MAXPOPS cannot exceed 10 because the treestring functions assume populations and nodes are represented by single integers
 #define MAXPOPS_PHYLOGENYESTIMATION 9  // actually 8,  but 9 prevents a crash  (with ghost it becomes 9) for larger numbers the list of possble trees just gets too large. 
 #define MAXPERIODS (MAXPOPS+1)
@@ -226,7 +229,9 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define HMAX  20                // highest value for h scalars, if HMAX=20 it gives a range of ratios for h scalars from 1/20  to 20  (i.e. they can differ by up to 400 fold)
 #define TIMEPRIORMULTIPLIER 10  // useful for plotting TMRCAs
 #define EXPOMIGPLOTSCALE  10 // changed to 10 when adding hyperprior   20 //with exponential prior on migration, this number times the given prior mean value sets peak search interval and plot scale
-#define FORCEREJECTIONCONSTANT  -1e100      // a very low value, indicates failure of IS model
+#define JUSTSOMEBIGDOUBLE 1e100  // used in various places where we want a big number
+#define FORCEREJECTIONCONSTANT  -1.01e100      // a very low value, indicates failure of IS model
+#define COMPAREFORCEREJECTION -1e100  // crude but should deal with floating point comparison i.e. (FORCEREJECTIONCONSTANT < COMPAREFORCEREJECTION) ==1
 #define REJECTMIGRATIONPROPOSAL  -1000000000.0      // a very low value, indicates failure of migration proposal because too many were proposed
 #define NUMTARRAYBINS  100      // number of bins for multidimensional peak estimation of splitting times
 #define ARBCHAIN 0   // used as a chain index for those cases when any chain will do because they are all the same for the info referred to 
@@ -237,6 +242,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define CHECKINTERVALSTEPS 500 //1000
 #define MPRIORFRACFORHG  0.1  // used when hiddenoptions[UPDATEMRATEFORHGUPDATE]==0 to fix the migration rate used when updating hg
 #define NUMPCOUNTARRAYS 10 // # maximum # of phylogeny count arrays in the burntrend file
+#define UNDEFINEDINT -1  // some integer variables used -1 to indicated undefined or invalid, but it is clearer to use UNDEFINEDINT,  started using 4/24/2018  JH  
 
 /* some things that were once command line options but are now just turned on */
 #define PRINTDEMOGHIST 1 //- print out distributions on demographic scales - requires mutation rates and generation times 
@@ -290,6 +296,8 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 
 
 #ifdef TURNONCHECKS  // these are used for checking if floating point values are 'equal' ,  very crude 
+
+// 4/26/2018 JH  should replace calls to these with calls to nearlyequalfloat() and nearlyequaldouble()
 //#define checkfloatsclose(x,y) ( ((x)==(y)) || ((fabs((x) - (y)) / DMAX(fabs(x), fabs(y))) < (1e-7) ) ) // evaluates to 1 if floats x and y are near each other 
 #define checkfloatsclose(x,y) ( ((x)==(y)) || ( (fabs(x) - fabs(y)) < 1e-12 )  || ( ((x)==0.0)  && (fabs(y) < 1e-12) ) || ( ((y)==0.0)  && (fabs(x) < 1e-12) ) || ((fabs((x) - (y)) / DMAX(fabs(x), fabs(y))) < (1e-7) )  )
 #define checkfloatsortaclose(x,y) ( ((x)==(y)) || ((fabs((x) - (y)) / DMAX(fabs(x), fabs(y))) < (1e-4) ) ) // evaluates to 1 if floats x and y are near each other 
@@ -319,7 +327,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 
 /* these are supposedly bulletproof macros suggested by Melissa Hibnuz
  * but still, do not nest calls to these min and max macros 
-  - later found that these were copied for nrutil.h */
+  - later found that these were copied from nrutil.h */
 static double sqrarg;
 #define SQR(a) ((sqrarg=(a)) == 0.0 ? 0.0 : sqrarg*sqrarg)
 static double dmaxarg1, dmaxarg2;
@@ -472,7 +480,7 @@ NUMRUNMODES = 7};
     PRINT2NMASCIICURVES  prints ascii curves for 2Nm,  takes some time so off by default 
     SKIPMOSTUSCALAROUTPUT  stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
     STOPMOSTINTERVALOUTPUT  stop writing most interval output to the screen  use -jhb or -jhB on command line
-
+    PRIORRATIOHEATINGON = 12, // -jhD raise the prior ratio to beta when calculating MH,  set this off as default on 4/27/2018
   some options tried, but proved unnecessary or harmful:
    - SUPERHEATING    in chain swapping raised the mh ratio term to the largest of the two betas,  did not work at all
    - tried having an update in which topology was never updated within a chain,  but only updated by swapping in chains
@@ -498,7 +506,8 @@ enum
   SKIPMOSTUSCALAROUTPUT = 9, // stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
   STOPMOSTINTERVALOUTPUT = 10,// stop writing most interval output to the screen  use -jhb or -jhB on command line
   READOLDMCFFILE = 11, // -jhC on command line, read mcf files generated before 1/17/2018  use -jhb or -jhC on command line
-  HIDDENOPTIONNUMBER=12};
+  PRIORRATIOHEATINGON = 12, // -jhD raise the prior ratio to beta when calculating MH,  set this off as default on 4/27/2018
+  HIDDENOPTIONNUMBER=13};
 
 /* calcoptions -c
     DONTCALCLIKELIHOODMUTATION - don't calculate p(Data|G)  if set to 1 then data likelihood functions return a constant
@@ -513,7 +522,7 @@ enum
   FINDJOINTPOSTERIOR = 2,
   LOADPRIORSFROMFILE = 3,
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-  CALCMARGINALLIKELIHOOD = 4,  // as of 6/17/2017 no confidence that this is useful.  it does not appear in help menu
+  CALCMARGINALLIKELIHOOD = 4,  
   DONTCALCGENEALOGYPRIOR = 5, // JH added 4/27/2017,  causes the treeweight and integrate functions to do nothing , not checked much
   CALOPTIONSNUMBER = 6
   /*, FINDJOINTPEAK, PRINTPEAKFINDDETAILS */  
@@ -549,7 +558,7 @@ enum
   PARAMETERSBYPERIOD,//7
   NOMIGRATION, //8
   ONEMIGRATIONPARAMETER,//9
-  ONEPOPSIZEPARAMETER,//10
+  ONEPOPSIZEPARAMETER,//10 use 'X' 
   MODELOPTIONSNUMBER
   };
 
@@ -636,14 +645,14 @@ enum
 
 /* heating modes */
 /* 6/14/2017  stopped using all but HGEOMETRIC
-  made use of -hfg on command line optional */ 
+  made use of -hmg on command line optional */ 
 enum
 { 
   HLINEAR, 
   HGEOMETRIC,
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
   HEVEN,
-  HFULL   //JH added to deal with hidden genealogies and topology updating - use -hfs
+  HFULL   //JH added to deal with hidden genealogies and topology updating - use -hms
 };
 
 /* kinds of acceptance of genealogy update */
@@ -745,6 +754,19 @@ enum
   IMERR_MISCPROBPROBLEM = 62,
   IMERR_CHAINNUM = 70,
   IMERR_MISCELLANEOUS = 72
+  /* some more for debugging, must also check simerrmsg[] in utilities.cpp
+  ,
+  IMERR_MISCELLANEOUS1 = 73,
+  IMERR_MISCELLANEOUS2 = 74,
+  IMERR_MISCELLANEOUS3= 75,
+  IMERR_MISCELLANEOUS4= 76,
+  IMERR_MISCELLANEOUS5 = 77,
+  IMERR_MISCELLANEOUS6 = 78,
+  IMERR_MISCELLANEOUS7 = 79,
+  IMERR_MISCELLANEOUS8 = 80,
+  IMERR_MISCELLANEOUS9 = 81,
+  IMERR_MISCELLANEOUS10 = 82,
+  IMERR_MISCELLANEOUS11 = 83 */
 };
 
 
@@ -776,6 +798,15 @@ typedef struct  // used in  sort_and_print_alltreestrings()
   int origi; // original index 
 }  foralltreestringsort;
 
+typedef struct  // used in  sort_and_print_alltreestrings()
+{
+  char nodestr[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
+  int count;
+  double pp;
+}  fornodeppsort;
+
+
+
 struct topolseq // holds the entire sampled sequences of tree numbers and Robinson Foulds distances (from tree 0).  Kept only on cpu with rank 0.
 {
   int  *vals; // the current tree number 
@@ -803,7 +834,9 @@ struct eevent
 
 //typedef struct eevent im_eevent;
 
-/* for calculating autocorrelations */
+/* struct autoc for calculating autocorrelations 
+  this is used as part of a value_record and nowhere else apparently
+*/
 
 struct autoc
 {
@@ -1042,6 +1075,10 @@ struct i_param
 struct value_record  for recording stuff needed for posterior plots, trends and ESS
 all purpose 
 there are many differentn instances of these
+
+a value_record is an mportant part of struct chainstate_record_updates_and_values
+includes struct autoc ac   and this is the only place they occur 
+
 they are only used on the head node because that is the node that writes output 
 so with mpi  there is a lot of MPI_Send and MPI_Recv of the data that gets putinto a value_record 
 
@@ -1374,7 +1411,7 @@ gextern struct edgemiginfo oldedgemig;
 gextern struct edgemiginfo oldsismig;
 gextern struct edgemiginfo newedgemig;
 gextern struct edgemiginfo newsismig;
-gextern int *poptopologyproposedlist; // checklist of all trees proposed 
+gextern int *poptopologyproposedlist; // count of # of times each tree was proposed 
 gextern struct topolseq poptopologysequence;
 gextern int totaltopolupdates;
 gextern int chain0topolupdates;
@@ -1449,6 +1486,8 @@ void printnewickstring(FILE * outto, char *ps, double *tvals, int ghostintree);
 void getnodecounts(char **na,char *tstr,int count,int *nc, int *nunique);
 double calcppcp(char **na,char *tstr, int *nc, int totaltreecount,int nunique);
 int foralltreestringsort_comp (const void * a, const void * b);
+int foralltreestringsort_compppcp (const void * a, const void * b);
+int fornodeppsort_comp (const void * a, const void * b);
 void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed, int uniformprior );
 void init_RF_nodeinfo(void);
 /**** GLOBAL FUNCTIONS IN build_gtree.cpp ****/
@@ -1501,6 +1540,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
 void printmigrationhistograms (FILE * outfile, long int mcmcrecords);
 
 /**** GLOBAL FUNCTIONS IN initialize.cpp ****/
+void init_upinf(struct update_rate_calc *upinf);
 void set_iparam_poptreeterms (int ci);// also called from update_poptree
 void setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char topologypriorinfostring[],int currentid);
 /**** GLOBAL FUNCTIONS IN output.cpp ****/
@@ -1733,6 +1773,8 @@ struct dictionary_node_kr *dictionary_install(char *name, double val,struct dict
 double getvalue(char *key, struct dictionary_node_kr **hashtab);
 int metropolishastingsdecide(double logmhratio,int othercriteria);
 char* timestring(time_t seconds);
+int nearlyequalfloat(float a, float b, float epsilon);
+int nearlyequaldouble(double a, double b, double epsilon);
 
 /* GLOBAL Functions in multi_t_bins */
 void setup_multi_t_arrays (int z);

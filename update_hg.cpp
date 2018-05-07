@@ -21,7 +21,7 @@ static double holdsisdlikeA[MAXLINKED];
 extern int rootmove;  //declared in  update_gtree.cpp
 
 static int holddownA[MAXLINKED];
-static double forcereject = -1e100;
+//static double forcereject = -1e100;
 #define SLIDESTDVMAX 20   // not sure what's best, copied from update_ptree.cpp
 #define  MIGCLOSEFRAC  0.9  // when both edges updating, chance of zero or 1 migration event in last migration period, copied from update_gtree_common.cpp
 
@@ -146,14 +146,14 @@ storeoldedgeshg (int ci, int li, int edge, int sisedge, int downedge)
       copyedgehg[1].A[ai] = gtree[sisedge].A[ai];
       copyedgehg[1].dlikeA[ai] = gtree[sisedge].dlikeA[ai];
       copyedgehg[2].A[ai] = gtree[downedge].A[ai];
-      if (gtree[downedge].down != -1)   // added this 5/27/08 
+      if (gtree[downedge].down != UNDEFINEDINT)   // added this 5/27/08 
       {
         copyedgehg[2].dlikeA[ai] = gtree[downedge].dlikeA[ai];
         holddownA[ai] = gtree[gtree[downedge].down].A[ai];      // changed this 5/27/08
       }
       else
       {
-        copyedgehg[2].down = -1;  // inserted this 5/27/08
+        copyedgehg[2].down = UNDEFINEDINT;  // inserted this 5/27/08
         holddownA[ai] = -1;
         copyedgehg[2].dlikeA[ai] = 0;
       }
@@ -171,7 +171,7 @@ restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsis
   if (newsisedge != sisedge)
   {
     down = gtree[downedge].down;
-    if (down != -1)
+    if (down != UNDEFINEDINT)
     {
       if (gtree[down].up[0] == downedge)
         gtree[down].up[0] = newsisedge;
@@ -185,7 +185,7 @@ restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsis
       assert (C[ci]->G[li].roottime <= TIMEMAX);
     }
     gtree[newsisedge].down = down;
-    if (down != -1)
+    if (down != UNDEFINEDINT)
     {
       i = 0;
       while (gtree[newsisedge].mig[i].mt > -0.5)
@@ -243,7 +243,7 @@ restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsis
   gtree[edge].fpop = copyedgehg[0].fpop;
   down = gtree[sisedge].down;
   gtree[sisedge].down = copyedgehg[1].down;
-  if (down != -1)
+  if (down != UNDEFINEDINT)
   {
     if (gtree[down].up[0] == sisedge)
       gtree[down].up[0] = downedge;
@@ -292,7 +292,7 @@ restoreedgeshg (int ci, int li, int edge, int sisedge, int downedge,  int newsis
   gtree[downedge].fpop = copyedgehg[2].fpop;
   gtree[downedge].up[0] = copyedgehg[2].up[0];
   gtree[downedge].up[1] = copyedgehg[2].up[1];
-  if (gtree[downedge].down == -1)
+  if (gtree[downedge].down == UNDEFINEDINT)
   {
     C[ci]->G[li].roottime = gtree[gtree[downedge].up[0]].time;
     assert (C[ci]->G[li].roottime <= TIMEMAX);
@@ -787,7 +787,8 @@ static double addmigrationhg (int ci,int  li)
   if (nm < 0) 
   {
     //badmigrationupdate += 1;
-    return forcereject;
+    //return forcereject;
+    return FORCEREJECTIONCONSTANT;
   }
 
   assert (newedgemig.fpop >= 0);
@@ -796,14 +797,16 @@ static double addmigrationhg (int ci,int  li)
   if (isnan_(mproposedenom) || isinf_DBL(mproposedenom))
   {
     //badmigrationupdate += 1;
-    return forcereject;
+    //return forcereject;
+    return  FORCEREJECTIONCONSTANT;
   }
   /* calculate probability of reverse update    */
   mproposenum = getmprobhg (ci, &oldedgemig, &oldsismig, &newedgemig, &newsismig,C[ci]->G[li].mhg);
   if (isnan_(mproposenum) || isinf_DBL(mproposenum))
   {
     //badmigrationupdate += 1;
-    return forcereject;
+    //return forcereject;
+    return FORCEREJECTIONCONSTANT;
   }
   weight = mproposenum - mproposedenom + mhgproposeratio;
   return weight;
@@ -1058,7 +1061,7 @@ void calcnumancestralpops(int ci, int counts[])
   for (i=0;i<npops;i++)
   {
     j = i;
-    while  (C[ci]->poptree[j].down != -1)
+    while  (C[ci]->poptree[j].down != UNDEFINEDINT)
     {
       j = C[ci]->poptree[j].down;
       counts[j] += 1;
@@ -1437,7 +1440,7 @@ int  update_hidden_genealogy(int ci,  int li, int *topolchange, int *tmrcachange
   double like;
   int joinstatus;
   double oldmhg;
-
+  
 
 #ifdef TURNONCHECKS
 checkgenealogyweights(ci);
@@ -1466,7 +1469,7 @@ checkprobs(ci,li);
   do
   {
     edge = randposint (L[li].numlines);
-  } while (gtree[edge].down == -1);
+  } while (gtree[edge].down == UNDEFINEDINT);
   freededge = gtree[edge].down;
   if ((oldsis = gtree[freededge].up[0]) == edge)
     oldsis = gtree[freededge].up[1];
@@ -1514,7 +1517,12 @@ checkprobs(ci,li);
       or
       treeweight() fails - there are some rare cases where the sequence of events handled in treeweight just does not make a valid tree,  hard to debug
   */
-  if (migweight > forcereject)  // adding migration went ok 
+  //if (migweight > forcereject)  // adding migration went ok 
+  if (migweight < COMPAREFORCEREJECTION) // migweight too small,  should only get here if too many migration events were added in addmigrationhg()
+  {
+    autoreject = 1;
+  }
+  else
   {
   /*  copy the migration info in newedgemig and newsismig  to the genealogy */
   /* determine all the weights needed for calculating the probability of the genealogy */
@@ -1529,15 +1537,9 @@ checkprobs(ci,li);
     if (tw < 0) // some failure in treeweight()
     {
       autoreject = 1;
-      accp = 0;
     }
     else
       autoreject = 0;
-  }
-  else // migweight too small,  should only get here if too many migration events were added in addmigrationhg()
-  {
-    autoreject = 1;
-    accp = 0;
   }
   if (autoreject == 0)
   {
@@ -1552,6 +1554,7 @@ checkprobs(ci,li);
       break;
     case INFINITESITES:
       newpdg = newpdg_a[0] = like = likelihoodIS (ci, li, G->uvals[0]);
+      autoreject = newpdg < COMPAREFORCEREJECTION;
       break;
     case STEPWISE:
       {
@@ -1567,6 +1570,7 @@ checkprobs(ci,li);
       }
     case JOINT_IS_SW:
       newpdg = newpdg_a[0] = likelihoodIS (ci, li, G->uvals[0]);
+      autoreject = newpdg < COMPAREFORCEREJECTION;
       for (ai = 1; ai < L[li].nlinked; ai++)
       {
         newpdg_a[ai] =
@@ -1579,14 +1583,14 @@ checkprobs(ci,li);
       //checklikelihoodSW(ci, li,Q[ci]->us[li]);  
       break;
     }
+  }
 
 #ifdef TURNONCHECKS
     //gtreeprint(ci,li);
-
-
 #endif //TURNONCHECKS
-
+  if (autoreject == 0)
 /* metropolis-hastings weight calculation */
+  {
     /*C[ci]->allpcalc.probhgg is a simple sum of hgprob values,  one of which is being updated */
     C[ci]->allpcalc.probhgg -= C[ci]->G[li].hgprob; // subtract out old value
     C[ci]->G[li].hgprob = prob_hg_given_g(ci,li);   // calculate new value
@@ -1594,19 +1598,19 @@ checkprobs(ci,li);
     priorratio = C[ci]->allpcalc.probhgg - holdallpcalc_updategenealogy.probhgg;
     priorratio -= C[ci]->allpcalc.probg;
     integrate_tree_prob (ci, &C[ci]->allgweight,
-                         &holdallgweight_updategenealogy, &C[ci]->allpcalc,
-                         &holdallpcalc_updategenealogy);
+                          &holdallgweight_updategenealogy, &C[ci]->allpcalc,
+                          &holdallpcalc_updategenealogy);
     priorratio += C[ci]->allpcalc.probg;
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
     likelihoodratio =  (newpdg - G->pdg);
     proposalratio = migweight + slideweight + Atermsum;
-    if (calcoptions[CALCMARGINALLIKELIHOOD]) 
-    	{
+    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+    {
       metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
     }
     else
     {
-       metropolishastingsratio = beta[ci] * (likelihoodratio + priorratio)+ proposalratio;
+        metropolishastingsratio = beta[ci] * (likelihoodratio + priorratio)+ proposalratio;
     }
     if (metropolishastingsdecide(metropolishastingsratio,1))
     {
@@ -1627,8 +1631,6 @@ checkprobs(ci,li);
       accp = 1;
 #ifdef TURNONCHECKS
     //gtreeprint(ci,li);
-
-
   checkgenealogy(ci,li,0);
   checkgenealogyweights(ci);
   checktreeweight(ci,li);
@@ -1637,6 +1639,8 @@ checkprobs(ci,li);
     else
       accp = 0;
   }
+  else
+    accp = 0;
   /* reject the update */
   if (accp == 0)
   {

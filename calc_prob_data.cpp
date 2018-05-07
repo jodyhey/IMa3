@@ -501,7 +501,7 @@ void labelgtree( int ci, int li, int edge)
 	struct edge *gtree = C[ci]->G[li].gtree;
 
 	dow1 = gtree[edge].down;
-	if (dow1 != -1)
+	if (dow1 != UNDEFINEDINT)
 		{
 		
 		if ((sis = gtree[dow1].up[0]) == edge)
@@ -545,7 +545,7 @@ void labelgtree (int ci, int li, int edge)
   {
     flag = 0;
     dow1 = gtree[edge].down;
-    if (dow1 == -1)
+    if (dow1 == UNDEFINEDINT)
       break;
 //    if ((sis = gtree[dow1].up[0]) == edge)// broke this up,  profiling said it was slow 
   //    sis = gtree[dow1].up[1];
@@ -676,7 +676,7 @@ calc_sumlogk (int ci, int li, double *psumlogk)
            *  over from the original likelihood function that Rasmus wrote,
            *  but it is not needed to get the sumlogk constant 
            
-          if (gtree[node].down == -1)
+          if (gtree[node].down == UNDEFINEDINT)
           {
             if ((upup = gtree[up1].up[0]) == -1)
               t = gtree[up1].time;
@@ -797,7 +797,7 @@ likelihoodIS (int ci, int li, double mutrate)
         else
         {
           /* i is the root node add together both branch times */
-          if (gtree[node].down == -1)
+          if (gtree[node].down == UNDEFINEDINT)
           {
             if ((upup = gtree[up1].up[0]) == -1)
               ptime = gtree[up1].time;
@@ -840,7 +840,6 @@ likelihoodIS (int ci, int li, double mutrate)
     }
   }
   p -= *sumlogk[li];
-//std::cout << "likelihoodIS returned is " << p << "\n";
   return p;
 }                               /* likelihood */
 
@@ -860,7 +859,7 @@ likelihoodSW (int ci, int li, int ai, double u, double tr)
   iszero = 0;
   for (i = 0; i < L[li].numlines; i++)
   {
-    if (gtree[i].down != -1)
+    if (gtree[i].down != UNDEFINEDINT)
     {
       assert (gtree[i].A[ai] >= L[li].minA[ai]
               && gtree[i].A[ai] <= L[li].maxA[ai]);
@@ -929,7 +928,7 @@ checklikelihoodSW (int ci, int li, int ai, double u)
   gtree = C[ci]->G[li].gtree;
   for (i = 0; i < L[li].numlines; i++)
   {
-    if (gtree[i].down != -1)
+    if (gtree[i].down != UNDEFINEDINT)
     {
       d = gtree[i].A[ai] - gtree[gtree[i].down].A[ai];
       if (gtree[i].up[0] == -1)

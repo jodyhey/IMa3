@@ -194,7 +194,7 @@ readprior_parenth (int mode, int tempcurrent, int startparenth)
       temppoptree[temppoptree[current].up[1]].e = periodi + 1;
     periodi++;
   }
-  if (temppoptree[current].down != -1)
+  if (temppoptree[current].down != UNDEFINEDINT)
   {
     numpopnodes++;
     current = temppoptree[current].down;
@@ -225,7 +225,7 @@ readprior_poptreeread (int mode, char *poptreestring)
       /*temppoptree[i].up = static_cast<int *> (malloc (2 * sizeof (int))); */ /* changed to fixed array for hidden genealogy work */
       for (j = 0; j < 2; j++)
         temppoptree[i].up[j] = -1;
-      temppoptree[i].down = -1;
+      temppoptree[i].down = UNDEFINEDINT;
     }
     for (; i < numtreepops; i++)
     {
@@ -233,9 +233,9 @@ readprior_poptreeread (int mode, char *poptreestring)
 /*      temppoptree[i].up = static_cast<int *> (malloc (2 * sizeof (int))); */ /* changed to fixed array for hidden genealogy work */
       for (j = 0; j < 2; j++)
         temppoptree[i].up[j] = -1;
-      temppoptree[i].down = -1;
+      temppoptree[i].down = UNDEFINEDINT;
     }
-    temppoptree[npops].down = -1;
+    temppoptree[npops].down = UNDEFINEDINT;
     readprior_parenth0 ();
   }
   else

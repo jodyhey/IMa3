@@ -472,7 +472,8 @@ marginalopt_popmig (int firsttree, int lasttree, double *mlval, double *peakloc,
   replace use of mnbrak with function calls over POPMIG_MARGINBINS to find an interval with 
   a peak.  This is quite crude */
     ax = MINPARAMVAL;
-    maxf = 1e100;
+    //maxf = 1e100;
+    maxf = JUSTSOMEBIGDOUBLE;
     maxj = -1;
     for (j = 0;j< POPMIG_MARGINBINS;j++)
     {

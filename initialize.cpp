@@ -8,8 +8,11 @@
 /*********** LOCAL STUFF **********/
 
 extern double pi[MAXLOCI][4];
-extern int urri[2 * MAXLOCI][2 * MAXLOCI];      // used mostly in update_mc_params.c
-extern double urrlow[2 * MAXLOCI][2 * MAXLOCI], urrhi[2 * MAXLOCI][2 * MAXLOCI];        // used mostly in update_mc_params.c
+
+// moved these down to within condition   if (calcoptions[MUTATIONPRIORRANGE])
+// should probably make them dynamic 
+  //extern int urri[2 * MAXLOCI][2 * MAXLOCI];      // used mostly in update_mc_params.c
+  //extern double urrlow[2 * MAXLOCI][2 * MAXLOCI], urrhi[2 * MAXLOCI][2 * MAXLOCI];        // used mostly in update_mc_params.c
 
 static double **uvals;
 //static char startpoptreestring[POPTREESTRINGLENGTHMAX]; moved to ima.hpp 
@@ -176,6 +179,7 @@ void init_i_params (void)
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {
+    // holdimig is used to hold copies of priors,   way overkill as no other part of struct i_param is used as of 4/25/2018 JH
     holdimig = static_cast<i_param *> 
                 (malloc (nummigrateparams * sizeof (struct i_param))); 
     init_migration_prior_update();
@@ -1033,6 +1037,8 @@ setuinfo (double summut)   // called only for chain 0 because mutation rate info
 
   if (calcoptions[MUTATIONPRIORRANGE])
   {
+    extern int urri[2 * MAXLOCI][2 * MAXLOCI];      // used mostly in update_mc_params.c
+    extern double urrlow[2 * MAXLOCI][2 * MAXLOCI], urrhi[2 * MAXLOCI][2 * MAXLOCI];        // used mostly in update_mc_params.c
     assert (numuprior > 1);
     numupair = numuprior * (numuprior - 1) / 2;
     upriorpairlist1 = static_cast<int *> 
@@ -1311,9 +1317,13 @@ init_g_rec (int li)
   sprintf (L[li].g_rec->upnames[IM_UPDATE_GENEALOGY_ANY],      "branch     ");
   sprintf (L[li].g_rec->upnames[IM_UPDATE_GENEALOGY_TOPOLOGY], "topology   ");
   sprintf (L[li].g_rec->upnames[IM_UPDATE_GENEALOGY_TMRCA],    "tmrca      ");
+ 
+
   L[li].g_rec->upinf = static_cast<update_rate_calc *> 
-        (calloc ((size_t) L[li].g_rec->num_uptypes, 
-        sizeof (struct update_rate_calc)));
+      (malloc ((size_t) L[li].g_rec->num_uptypes * sizeof (struct update_rate_calc)));
+  for (int i = 0;i < L[li].g_rec->num_uptypes;i++)
+    init_upinf(&L[li].g_rec->upinf[i]);
+
   L[li].g_rec->num_vals = 1;
   L[li].g_rec->v = static_cast<value_record *> 
             (malloc (L[li].g_rec->num_vals * sizeof (struct value_record)));
@@ -1426,7 +1436,7 @@ init_migration_counts (void)
 
 
 void
-init_migration_counts_hold (void)   // only for cold chain
+init_migration_counts_hold (void)   // only for cold chain  // delete ?   
 {
   int i, j, k, pi, pj, ji, jj, mrows;//, nummigdirs;
   int z = whichiscoldchain();
@@ -1530,8 +1540,11 @@ init_mutation_scalar_rec (int li)
       sprintf (L[li].u_rec[ui].upnames[i], "scalar_update");
     }
     L[li].u_rec[ui].upinf = static_cast<update_rate_calc *> 
-            (calloc ((size_t) L[li].u_rec[ui].num_uptypes, 
-                     sizeof (struct update_rate_calc)));
+            (malloc ((size_t) L[li].u_rec[ui].num_uptypes * sizeof (struct update_rate_calc)));
+    for (i = 0;i < L[li].u_rec[ui].num_uptypes;i++)
+      init_upinf(&L[li].u_rec[ui].upinf[i]);
+
+
     L[li].u_rec[ui].num_vals = 1;
     L[li].u_rec[ui].v = static_cast<value_record *> 
             (malloc (L[li].u_rec[ui].num_vals * sizeof (struct value_record)));
@@ -1565,8 +1578,10 @@ init_mutation_scalar_rec (int li)
       sprintf (L[li].kappa_rec->upnames[i], "kappa_update");
     }
     L[li].kappa_rec->upinf = static_cast<update_rate_calc *> 
-                    (calloc ((size_t) num_u_update_types, 
-                             sizeof (struct update_rate_calc)));
+                    (malloc ((size_t) num_u_update_types *  sizeof (struct update_rate_calc)));
+    for (i=0;i< num_u_update_types;i++)
+      init_upinf(&L[li].kappa_rec->upinf[i]);
+
     L[li].kappa_rec->num_vals = 1;
     L[li].kappa_rec->v = static_cast<value_record *> 
             (malloc (L[li].kappa_rec->num_vals * sizeof (struct value_record)));
@@ -1604,8 +1619,10 @@ init_mutation_scalar_rec (int li)
         sprintf (L[li].A_rec[ai].upnames[i], "STR_update");
       }
       L[li].A_rec[ai].upinf = static_cast<update_rate_calc *> 
-                        (calloc ((size_t) num_A_update_types, 
-                         sizeof (struct update_rate_calc)));
+                        (malloc ((size_t) num_A_update_types * sizeof (struct update_rate_calc)));
+      for (i=0;i< num_A_update_types;i++)
+        init_upinf(&L[li].A_rec[ai].upinf[i]);
+
       L[li].A_rec[ai].num_vals = 0;
       L[li].A_rec[ai].v  = NULL;
     }
@@ -1893,7 +1910,7 @@ finish_setup_C (int currentid)
         C[ci]->G[li].gtree[i].mig[0].mt = -1;
         C[ci]->G[li].gtree[i].up[0] = -1;
         C[ci]->G[li].gtree[i].up[1] = -1;
-        C[ci]->G[li].gtree[i].down = -1;
+        C[ci]->G[li].gtree[i].down = UNDEFINEDINT;
         C[ci]->G[li].gtree[i].time = 0;
         C[ci]->G[li].gtree[i].mut = -1;
         C[ci]->G[li].gtree[i].pop = -1;
@@ -2195,8 +2212,10 @@ setup_T ()
         sprintf (T[i].upnames[update_type_RY], "RannalaYang");
       }
       T[i].upinf = static_cast<update_rate_calc *> 
-                (calloc ((size_t) T[i].num_uptypes, 
-                         sizeof (struct update_rate_calc)));
+                (malloc ((size_t) T[i].num_uptypes * sizeof (struct update_rate_calc)));
+      for (int ii=0;ii<  T[i].num_uptypes;ii++)
+        init_upinf(&T[i].upinf[ii]);
+
       T[i].num_vals = 1;
       T[i].v = static_cast<value_record *> 
                 (malloc (T[i].num_vals * sizeof (struct value_record)));
@@ -2289,8 +2308,11 @@ void setup_migprior_recording()
     mh[i].upnames = static_cast<strnl *> (malloc (mh[i].num_uptypes * sizeof (strnl)));
     sprintf (mh[i].upnames[PRIOR_UPDATE], "InPoptree");
     mh[i].upinf = static_cast<update_rate_calc *> 
-              (calloc ((size_t) mh[i].num_uptypes, 
-                        sizeof (struct update_rate_calc)));
+              (malloc ((size_t) mh[i].num_uptypes *  sizeof (struct update_rate_calc)));
+    for (int ii=0;ii< mh[i].num_uptypes;ii++)
+        init_upinf(&mh[i].upinf[ii]);
+
+
     mh[i].num_vals = 1;
     mh[i].v = static_cast<value_record *> 
               (malloc (mh[i].num_vals * sizeof (struct value_record)));
@@ -2299,7 +2321,7 @@ void setup_migprior_recording()
     mh[i].v->do_xyplot = 1;
     mh[i].v->do_trend = 0;
     mh[i].v->do_logplot = 0;
-    //mh[i].v->do_autoc = 1;
+
     mh[i].v->plotrange.max = mh[i].pr.max ;
     mh[i].v->plotrange.min = 0;
     mh[i].v->plotrescale = 1.0;
@@ -2316,7 +2338,13 @@ void setup_migprior_recording()
     mhnit->pr.min = 0;
     sprintf (mhnit->str, "allm");
     mhnit->num_uptypes= NUM_PRIOR_UPDATE_RECORD_TYPES;
-    mhnit->upinf = static_cast<update_rate_calc *>  (calloc ((size_t) mhnit->num_uptypes,sizeof (struct update_rate_calc)));
+    mhnit->upinf = static_cast<update_rate_calc *>  (malloc ((size_t) mhnit->num_uptypes * sizeof (struct update_rate_calc)));
+    for (int ii=0;ii< mhnit->num_uptypes;ii++)
+        init_upinf(&mhnit->upinf[ii]);
+
+
+
+
     mhnit->upnames = static_cast<strnl *> (malloc (mhnit->num_uptypes * sizeof (strnl)));
     sprintf (mhnit->upnames[PRIOR_UPDATE], "NotInPoptree");
     mhnit->num_vals = 0;
@@ -2344,8 +2372,11 @@ void setup_qprior_recording()
     qh[i].upnames = static_cast<strnl *> (malloc (qh[i].num_uptypes * sizeof (strnl)));
     sprintf (qh[i].upnames[PRIOR_UPDATE], "InPoptree");
     qh[i].upinf = static_cast<update_rate_calc *> 
-              (calloc ((size_t) mh[i].num_uptypes, 
-                        sizeof (struct update_rate_calc)));
+              (malloc ((size_t) qh[i].num_uptypes * sizeof (struct update_rate_calc)));
+    for (int ii=0;ii< qh[i].num_uptypes;ii++)
+        init_upinf(&qh[i].upinf[ii]);
+
+
     qh[i].num_vals = 1;
     qh[i].v = static_cast<value_record *> 
               (malloc (qh[i].num_vals * sizeof (struct value_record)));
@@ -2354,7 +2385,7 @@ void setup_qprior_recording()
     qh[i].v->do_xyplot = 1;
     qh[i].v->do_trend = 0;
     qh[i].v->do_logplot = 0;
-    //qh[i].v->do_autoc = 1;
+
     qh[i].v->plotrange.max = qh[i].pr.max ;
     qh[i].v->plotrange.min = 0;
     qh[i].v->plotrescale = 1.0;
@@ -2368,7 +2399,10 @@ void setup_qprior_recording()
     qhnit->pr.min = 0;
     sprintf (qhnit->str, "allq");
     qhnit->num_uptypes= NUM_PRIOR_UPDATE_RECORD_TYPES;
-    qhnit->upinf = static_cast<update_rate_calc *>  (calloc ((size_t) qhnit->num_uptypes,sizeof (struct update_rate_calc)));
+    qhnit->upinf = static_cast<update_rate_calc *>  (malloc ((size_t) qhnit->num_uptypes * sizeof (struct update_rate_calc)));
+    for (int ii=0;ii< qhnit->num_uptypes;ii++)
+        init_upinf(&qhnit->upinf[ii]);
+
     qhnit->upnames = static_cast<strnl *> (malloc (qhnit->num_uptypes * sizeof (strnl)));
     sprintf (qhnit->upnames[PRIOR_UPDATE], "NotInPoptree");
     qhnit->num_vals = 0;
@@ -2402,6 +2436,12 @@ void reportparamcounts(int *fpstri, char fpstr[])
 } // reportparamcounts(void)
 
 /**********  GLOBAL FUNCTIONS  *******/
+
+void init_upinf(struct update_rate_calc *upinf)
+{
+  upinf->accp = 0.0;
+  upinf->tries = 0.0;
+}
 
 void 
 setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char topologypriorinfostring[],int currentid)
@@ -2475,6 +2515,7 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
     init_migration_counts ();
   add_priorinfo_to_output(priorfilename,fpstri, fpstr);
   init_autoc_pointers ();
+//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 1a\n");
 
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
   if (calcoptions[CALCMARGINALLIKELIHOOD])

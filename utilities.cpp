@@ -186,7 +186,21 @@ static const char *simerrmsg[] = {
   /* 69 */  "",
   /* 70 */   "problem in the number of chains per CPU",
   /* 71 */  "",
-  /* 72 */ "miscellaneous error"
+  /* 72 */ "miscellaneous error" 
+  /*
+  ,
+   some more for debugging if needed, must also check the corresponding enum in ima.hpp
+  "temp1",
+  "temp2",
+  "temp3",
+  "temp4",
+  "temp5",
+  "temp6",
+  "temp7",
+  "temp8",
+  "temp9",
+  "temp10",
+  "temp11" */
 };
 
 void
@@ -2082,3 +2096,50 @@ char* timestring(time_t seconds)
    ts[sizeof(ts)-1] = '\0';  // just in case it has written past the end 
    return ts;
 }
+
+/* modified from  http://floating-point-gui.de/errors/comparison/ 
+with modifications
+*/
+
+int nearlyequalfloat(float a, float b, float epsilon) 
+{
+		if (a == b)  // shortcut, handles infinities
+		  return 1;
+		else 
+  {
+    float diff = (float) fabs(a - b);
+    if (a == 0 || b == 0 || diff <= FLT_MIN) 
+    {
+			// a or b is zero or both are extremely close to it
+			// relative error is less meaningful here
+      
+			   return (diff <= FLT_MIN);
+		  } 
+    else 
+    { // use relative error
+			   return (diff / FMIN( (float) (fabs(a) + fabs(b)), FLT_MAX) < epsilon);
+		  }
+  }
+}
+
+int nearlyequaldouble(double a, double b, double epsilon) 
+{
+  if (a == b)  // shortcut, handles infinities
+    return 1;
+  else 
+  {
+    double diff = (double) fabs(a - b);
+    if (a == 0 || b == 0 || diff <= DBL_MIN) 
+    {
+		  // a or b is zero or both are extremely close to it
+		  // relative error is less meaningful here
+      
+			   return (diff <= DBL_MIN);
+		  } 
+    else 
+    { // use relative error
+			   return (diff / DMIN( (double) (fabs(a) + fabs(b)), DBL_MAX) < epsilon);
+		  }
+  }
+}
+

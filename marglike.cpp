@@ -4,31 +4,27 @@
 /* calculate marginal likelihood */
 
 /*
-implement thermodynamic integration over a large number of intervals
+as of 4/25/2018
+  this file has some incomplete old code in it
 
-we want the marginal likelihood under the model
+  there were 3 ways to estimate marginal likelihood (ml)
 
-p(D) 
+  harmonic mean   -  inherently unstable
 
-for p_Bi(D|G)
+  thermodynamic integration - sort of works, but has a problem in that 
+    when we try to include the chain with beta=0.0,  we get infinite values
+    so have been using a cutoff value near zero.   a real kludge
 
-where Bi is a heating value i,  for a total of  j values   0<i<j-1
-
-Let L_i  be the mean of p_Bi(D|G) sampled over the course of the run
-
-L_i = Sum[p_Bi(D|G)]/k    for k samples
-
-Then 
-
-p(d) = Sum[ (Bi-B(i-1)) (L_i + L_(i-1))/2, {i, 1, j-1}] 
-
-this is trapezoidal rule 
-
-Also record the harmonic mean  - have to use eexp()
-
-p(d) = 1/ [ SUM[ 1/(p(D|G)]/k ]
+  stepping stone method modified by Aude Grelaud to avoid chain with beta=0
+    this has not been debugged
+    and it is awkward because it requires an estimate of the maximum likelihood. 
+  as of 4/25/2018
+    only do thermodynamic integration 
 
 */
+
+
+
 #define LOG_10_2  0.30102999566398119521
 #define OCUTOFF  10
 
@@ -192,7 +188,7 @@ void summarginlikecalc()
 
 } 
 
-/* should not bother with this as it does not work well */
+/* should not bother with this as it does not work well 
 double harmonicmarginlikecalc(void)
 {
   double hmlog;
@@ -223,9 +219,9 @@ double harmonicmarginlikecalc(void)
   hmlog = -(log (harmonicsum_eexp) - log( (double) genealogysamples) + (maxz - OCUTOFF) * LOG10);
   XFREE(harmonicsump);
   return hmlog;
-}
+} */
 
-/* does simpson's rule, but this requires even interval widths 
+/* does simpson's rule, but this requires even interval widths  no longer in use
 void thermo_marginlike_calc_hold(int n, double *estimator, double *stdev_d, double *stdev_s)
 {
   int i;
@@ -260,11 +256,8 @@ void thermo_marginlike_calc_hold(int n, double *estimator, double *stdev_d, doub
   *estimator = betawidth * sum/3.0; 
 } */
 
-/* trapezoid rule,  allows variable width  
-this can cause problems with the last chain with beta = 0
-see setheat(),  where this last chain is checked to have beta > 0 
-with doing thermodynamic integration
-  */
+/* trapezoid rule,  allows variable width  and odd or even number of chains  */
+
 void thermo_marginlike_calc(int n, double *estimator)
 {
   int i;
