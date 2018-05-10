@@ -290,17 +290,24 @@ if MPI,  then there are 4 conditions:
      
 */
   
-
+/* pautoc_vals will have nonsense values if z < 0 and currentid != HEADNODE  */
 void
 set_autoc_vals (double *pautoc_vals, int currentid)
 {
   int j, li, i;
   int z = whichiscoldchain();
 #ifdef MPI_ENABLED
+   if (z < 0 && currentid != HEADNODE) 
+     return;  // nothing to do in this case
    int rc = 0; 
    MPI_Status status;
    double pautocrec;
 #endif
+    // follow same sequence as used with autoc_pointer and autoc_vals arrays
+    //  poptreeuinfo (if present)
+    //  lpgpd
+    //  T (npops - 1 vals)
+    //  g_rec  (nloci vals) 
   i=0;
   if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_autoc == 1)
   {
@@ -311,15 +318,15 @@ set_autoc_vals (double *pautoc_vals, int currentid)
 #ifdef MPI_ENABLED
     if (z < 0 && currentid == HEADNODE) 
     {
-	    rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 6561, MPI_COMM_WORLD, &status);
-	    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
-	    pautoc_vals[i] = pautocrec;
+      rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 6561, MPI_COMM_WORLD, &status);
+      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+      pautoc_vals[i] = pautocrec;
     }
     if (z >= 0 && currentid != HEADNODE) 
     {
-     pautocrec = (double) RFtreedis[C[z]->poptreenum];
-	    rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 6561, MPI_COMM_WORLD);
-	    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+      pautocrec = (double) RFtreedis[C[z]->poptreenum];
+      rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 6561, MPI_COMM_WORLD);
+      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     }
 #endif
     i++;
@@ -583,6 +590,11 @@ init_autoc_pointers (void)
   if (autoc_pointer == NULL)
   {
     // count up the number of things to record ESS values 
+    // follow same sequence as used with autoc_pointer and autoc_vals arrays
+    //  poptreeuinfo (if present)
+    //  lpgpd
+    //  T (npops - 1 vals)
+    //  g_rec  (nloci vals) 
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
       num_autoc += poptreeuinfo->v->do_autoc == 1;
     num_autoc += (lpgpd_v->do_autoc == 1);      // lpgpd
@@ -639,21 +651,40 @@ nextstepcalc[AUTOCTERMS] for each lag value, the next step number at which anoth
 nextpossave[AUTOCTERMS] for each lag value, the position in the autoc_pointer[][].vals array that should get the next value to be recorded
 nextposcalc[AUTOCTERMS] for each lag value, the position in the autoc_pointer[][].vals array that is involved in the next autocorrelation calculation
 maxpos[AUTOCTERMS] for each lag value, the length of the autoc_pointer[][].vals array 
+
+Much of this function is not used on nodes that are not the head node.
+With multiple cpus  we only need to accumulate autoc stuff on the head node
+but values will have to be passed to the head node from other nodes when they host the cold chain
+those values are put into an array by set_autoc_vals (autoc_vals, currentid) 
+so set_autoc_vals (autoc_vals, currentid) needs to be called from within this code
+even though those value are only used when this function is running on the headnode 
 */
+
 void
 checkautoc (int start_autocorrelations, int burndone, int burninsteps, int currentid)
 {
   int i, j;
+  int dofillautoc,z;
   int autoc_vals_recorded = 0;
   static int nextstepcalc[AUTOCTERMS],
     nextpossave[AUTOCTERMS], nextposcalc[AUTOCTERMS], maxpos[AUTOCTERMS];
-  if (start_autocorrelations == 1) // initialize 
+#ifdef MPI_ENABLED
+  z = whichiscoldchain();
+  if (currentid != HEADNODE)
+    dofillautoc = 0;
+  else
+    dofillautoc = 1;
+#elif 
+  dofillautoc = 1;
+#endif
+
+  if (start_autocorrelations == 1)
   {
     // if not loading autoc values from mcf files,  initialize them
     if (runoptions[LOADMCSTATE]==0) for (i = 0; i < num_autoc; i++)
       iautoc (autoc_pointer[i]); 
 //for (i = 0; i < num_autoc; i++)
- //if (isnan_(autoc_pointer[i]->vals[863])) printf (" i %d isnan 3a\n");
+  //if (isnan_(autoc_pointer[i]->vals[863])) printf (" i %d isnan 3a\n");
     for (i = 0; i < AUTOCTERMS; i++)
     {
       nextstepcalc[i] = CHECKAUTOCWAIT + AUTOCINT * AUTOCSTEPSCALAR + autoc_checkstep[i] * AUTOCSTEPSCALAR + (burndone * burninsteps);
@@ -667,7 +698,6 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
       //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
         //IM_err(IMERR_MISCELLANEOUS6,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  4 i %d nextstepcalc[i]  %d step %d",i, nextstepcalc[i],step);
     }
-
   }
   else
   {
@@ -682,7 +712,7 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
               //IM_err(IMERR_MISCELLANEOUS7,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  5 i %d nextstepcalc[i]  %d step %d",i, nextstepcalc[i],step);
          autoc_vals_recorded = 1;
         }
-        for (j = 0; j < num_autoc; j++)
+        if (currentid == HEADNODE) for (j = 0; j < num_autoc; j++)
         {
           fillautoc (&autoc_pointer[j][i], nextposcalc[i], autoc_vals[j]);  // record values 
           //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 

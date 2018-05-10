@@ -31,6 +31,8 @@
 #include <iostream> 
 #include <string> 
 #include <fstream>
+#include <stack>
+#include <sstream>
 
 
 /***********************************************/
@@ -62,6 +64,14 @@
 
 #ifdef MPI_ENABLED
 #include <mpi.h>
+#endif
+
+#define XMLOUTPUT
+
+#ifdef XMLOUTPUT
+#include "tinyxml.h"
+#include "tinystr.h"
+
 #endif
 
 #define IMA3RELEASEVERSION  "0.0"  // update only when a release is made 
@@ -613,6 +623,7 @@ enum
   PRINTBURNTREND,  //5
   MCFLOADONLYSTATESPACE,  //6
   SAVELOADSAMEMCFFILE,  //7
+  UNIQUEBURNRUN, //8
   RUNOPTIONSNUMBER
 };
 

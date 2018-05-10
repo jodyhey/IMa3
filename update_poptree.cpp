@@ -867,6 +867,7 @@ checkpoptree(ci,0);
 checkgenealogyweights(ci);
 #endif //TURNONCHECKS
   *topolchange = 0;
+  *trytopolchange = 0;
 	 numtreepops = 2*npops - 1;
 // initialize and make copies structures that hold quantities for calculating prob of genealogy
   for (li=0;li <nloci;li++)
@@ -885,7 +886,7 @@ checkgenealogyweights(ci);
       copyqpriorinfo(C[ci]->descendantpops,holddescendantpops);
   }
   strcpy(&holdpoptreestring[0],C[ci]->chainpoptreestring);
-  //checkupdatescalarer(&C[ci]->branchslideinfo);  as of 5/3/2017  not updating this 
+  
 	  for (i = 0; i < lastperiodnumber; i++)
 	    holdt[i] = C[ci]->tvals[i];
 	  roottime = C[ci]->tvals[npops-2];
@@ -899,9 +900,7 @@ checkgenealogyweights(ci);
   if (topologychangeallowed)
   {
     if (SCALESLIDEDISTBYPRIOR)
-      //oldslidestdv = C[ci]->branchslideinfo.updatescalarval * T[numsplittimes-1].pr.max;
       oldslidestdv = scaletemp[scalei] * T[numsplittimes-1].pr.max;
-      //T[npops-2].pr.max; // period npops-2 is the last period with a splitting time 
     else
       oldslidestdv = C[ci]->branchslideinfo.updatescalarval * roottime; 
   }
@@ -1010,6 +1009,7 @@ checkpoptree(ci,1);
   assert(newt[npops-2] < T[npops-2].pr.max);
   C[ci]->chainpoptreestring[0] = 0;
   poptreewrite (ci, C[ci]->chainpoptreestring);
+  
   *topolchange = (strcmp(&holdpoptreestring[0],C[ci]->chainpoptreestring) != 0);
 #ifdef TURNONCHECKS
     if (topolchange)

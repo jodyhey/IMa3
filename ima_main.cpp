@@ -2,6 +2,7 @@
 
 #define GLOBVARS
 #include "ima.hpp"
+#include <stack>
 
 /*  some compilation commands
 mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 
@@ -13,6 +14,8 @@ mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 -fpermissive
 static char *infilename; 
 static char *loadfilebase; 
 static char *outfilename; 
+static char *burnfilename;
+static char *runfilename;
 static char command_line[COMMANDLINESTRINGLENGTHMAX]; 
 static char defaultpriorfilename[14]= "imapriors.txt"; 
 static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text              
@@ -120,6 +123,9 @@ void commit_mpi_updatescalar(void);
 void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo *inout, int *len, MPI_Datatype *type);
 #endif
 //void printupdatescalarinfo (FILE * outto, int currentid);  stopped using 6/7/2017
+#ifdef XMLOUTPUT
+std::stack<TiXmlElement*> xstack;
+#endif
 
 int main ( int argc, char *argv[]);
 
@@ -224,8 +230,7 @@ scan_commandline (int argc, char *argv[], int currentid)
    * is never used by the code:  Cp, Ep, Wp, Yp.  These variable flags
    * are being left in for completeness
    */
-  int Bp, Cp, Dp, Fp, Gp, Hmp, Hnp,Hap, Hbp, Ip, Jp, Lp, Mp, Op, Pp,
-    Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
+  int Bp, Cp, Dp, Fp, Gp, Hmp, Hnp,Hap, Hbp, Ip, Jp, Lp, Mp, Np, Op, Pp, Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
   double tempf;
 
   int samplemcmcinterval;
@@ -261,7 +266,7 @@ scan_commandline (int argc, char *argv[], int currentid)
   Dp = 0;                       /* number of steps in between genealogy saves */
   Fp = 0;                       /* name of mcf file */
   Gp = 0;                       /* name of prior file */
-  Hmp = 0;                      /* heating model */
+  //Hmp = 0;                      /* heating model */  // no longer used as of 5/9/2018
   Hnp = 0;                      /* # of chains */
   //Hkp = 0;                      /* # of swap attempts */  // jh no longer used as of 6/16/2016  now using setswaptries()
   Hap = 0;                      /* heat term1 */
@@ -270,6 +275,7 @@ scan_commandline (int argc, char *argv[], int currentid)
   Jp = 0;                       /* used for programmer options */
   Lp = 0;                       /* duration of chain */
   Mp = 0;                       /* migration rate max */
+  Np = 0;                       /* Expanded filepaths for IMburn/run */
   Op = 0;                       /* output file */
   Pp = 0;                       /* output options */
   Qp = 0;                       /* Theta max scalar */
@@ -329,12 +335,17 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("-d  Number of steps between sampling genealogies (default 100)\n");
       printf ("-f  Name of file with saved Markov chain state generated in previous run (use with -r3)\n");
       printf ("-g  Name of file for parameter priors, default: '%s'\n",defaultpriorfilename);
-      printf ("-h  Heating terms (MCMC mode only): \n");
-      printf ("  -hm Heating model: e even; s sigmoid;  g geometric\n");  
+      printf ("-h  Heating terms (MCMC mode only.  Default: EVEN. -ha only: GEOMETRIC. -ha and -hb SYGMOID): \n");
+      //printf ("  -hm Heating model: e even; s sigmoid;  g geometric\n");  
       printf ("  -hn Number of chains \n");
       //printf ("  -hk Number of chain swap attempts per step (default = number of chains)\n"); //  jh no longer used as of 6/16/2016  now using setswaptries()
-      printf ("  -ha First heating parameter for curve shape (less than but near 1, required for -hm s and -hm g)\n");
-      printf ("  -hb Second heating parameter  (the smallest Beta value, required for -hm g) \n");
+     // printf ("  -ha First heating parameter for curve shape (less than but near 1, required for -hm s and -hm g)\n");
+     // printf ("  -hb Second heating parameter  (the smallest Beta value, required for -hm g) \n");
+      printf ("  -ha heating curve shape parameter (less than but near 1, required for GEOMETRIC and SYBMOID)\n");
+      printf ("  -hb lower heating value  (required for GEOMETRIC) \n");
+/*  if -ha and -hb are given : HGEOMETRIC
+    if -ha  and no -hb are given : HFULL
+    if no -ha and no -hb are given HEVEN */ 
       printf ("-i  Input file name (no spaces) \n");
       printf ("-j  Model options: \n");
       printf ("    0  Population Topology Updating and Estimation (for 3 or more populations)\n");
@@ -391,6 +402,7 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    6 When loading mcf files (-r3,-r7) do not load sampled values (i.e. use previous run as burnin)\n");
       printf ("    7 Load *.mcf file if present AND save to *.mcf file.\n");
       printf ("       No burn done if *.mcf is present. Use to continue a run by repeating the same command line.\n"); 
+      printf ("    8 Use unique IMburn/run files with outfilename as a prefix \n");
       printf ("-s  Random number seed (default is taken from current time)\n");
       printf ("-t  Maximum time of population splitting\n");
       printf ("-u  Generation time in years (default is %d) \n", GENERATIONTIMEDEFAULT);
@@ -584,7 +596,7 @@ it is ok to have spaces between a flag and its values
           swaptries = atoi (&pstr[0]);   // this is Bcast down further down in this function
           Hkp = 1;
           break; */
-        case 'M':
+       /* case 'M':  // no long used 5/9/2018
           Hmp = 1;
           switch ((char) toupper (pstr[0]))
           {
@@ -592,16 +604,16 @@ it is ok to have spaces between a flag and its values
             heatmode = HGEOMETRIC;  
             break;
           case 'S':
-            heatmode = HFULL;  //JH added to deal with hidden genealogies and topology updating // not really in use as of 6/2017
+            heatmode = HFULL;  //JH added to deal with hidden genealogies and topology updating
             break;
           case 'E':
             heatmode = HEVEN;  
             break;
           default:
-            heatmode = HEVEN;  // JH changed default to even 6/27/2018
+            heatmode = HEVEN;  // JH changed default to even 5/27/2018
             break;
           }
-          break;
+          break; */
         default:
           IM_err (IMERR_COMMANDLINEHEATINGTERMS, "mistake in use of -h flag : %s", pstr);
         }
@@ -665,7 +677,7 @@ it is ok to have spaces between a flag and its values
               }
               else
               {
-                if (toupper(pstr[j])=='A') // treat 'A' as SKIPMOSTUSCALAROUTPUT, can be necessary if # of digits gets too high for hiddenoptions
+                if (toupper(pstr[j])=='A') // treat 'A' as SKIPMOSTUSCALAROUTPUT
                   hiddenoptions[SKIPMOSTUSCALAROUTPUT] = 1;
                 if (toupper(pstr[j])=='B') // treat 'B' as STOPMOSTINTERVALOUTPUT
                   hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;                  
@@ -858,16 +870,38 @@ it is ok to have spaces between a flag and its values
   {
     IM_err (IMERR_MISSINGCOMMANDINFO, " -r0 invoked without -v information, i.e. no base name for files containing genealogys was given on the command line");
   }
-  if (numchainspp > 1)
+  if (numchainspp > 1) // set heating model 
   {
-    if (!Hmp) 
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, " heating mode (-hm) required when using multiple chains");
+    if (Hap)
+    {
+      if (Hbp)
+      {
+        heatmode = HGEOMETRIC;
+        if (hval2 >= 1.0|| hval2 <= 0.0)
+          IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating model,  hb value out of range, should be < 1 and > 0)");
+        if (hval1 >= 1.0|| hval1 < 0.95 )
+          IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating model,  ha value out of range, should be <=1 and > 0.95)");
+      }
+      else
+      {
+        heatmode = HFULL;
+        if (hval1 >= 1.0|| hval1 < 0.95 )
+          IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for sygmoid heating model,  ha value out of range, should be <=1 and > 0.95)");
+      }
+    }
+    else
+    {
+      if (Hbp)
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " -hb used without -ha ");
+      heatmode = HEVEN;
+    }
+
     if ((numchainspp * numprocesses) < MINNUMCHAINS) 
     {
       IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
     }
-    if ( calcoptions[CALCMARGINALLIKELIHOOD] && !(heatmode == HFULL || heatmode == HEVEN))
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating mode.  -hm s  or -hm e required when calculating marginal likelihood ");
+    /*if ( calcoptions[CALCMARGINALLIKELIHOOD] && !(heatmode == HFULL || heatmode == HEVEN))
+      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating model.  -hm s  or -hm e required when calculating marginal likelihood ");
     if ( calcoptions[CALCMARGINALLIKELIHOOD] && hiddenoptions[PRIORRATIOHEATINGON]==1)
       IM_err (IMERR_MISCELLANEOUS, " conflict between calcoptions[CALCMARGINALLIKELIHOOD] and hiddenoptions[PRIORRATIOHEATINGON]");
     
@@ -878,13 +912,13 @@ it is ok to have spaces between a flag and its values
     if (heatmode == HGEOMETRIC)
     {
       if (!Hbp || (hval2 >= 1.0|| hval2 <= 0.0) )
-        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating mode,  hb term missing or value out of rang, should be < 1 and > 0)");
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating model,  hb term missing or value out of rang, should be < 1 and > 0)");
     }
     else
     {
       if (heatmode == HFULL  && (!Hap || (hval1 >= 1.0|| hval1 <= 0.95) ))
-        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for sygmoid heating mode,  ha term missing or value out of rang, should be <=1 and >= 0.95)");
-    }
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for sygmoid heating model,  ha term missing or value out of rang, should be <=1 and >= 0.95)");
+    } */
   }
   /* setting  mcmc step intervals:
     regardless of sampling phylgoenies or not
@@ -1081,6 +1115,27 @@ it is ok to have spaces between a flag and its values
 
   if (modeloptions[POPTREETOPOLOGYUPDATE]==0 && modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1)
     calcoptions[LOADPRIORSFROMFILE] = 0;  
+  const int ucbuffer = 200;
+  if (burndurationmode == TIMEINF) {
+      std::stringstream s("");
+      if (runoptions[UNIQUEBURNRUN]) {
+          s << outfilename << ".IMburn";
+      } else {
+          s << "IMburn";
+      }
+      burnfilename = (char *) malloc(s.str().size()+1);
+      strcpy(burnfilename,s.str().c_str());
+  }
+  if (cdurationmode == TIMEINF) {
+      std::stringstream s("");
+      if (runoptions[UNIQUEBURNRUN]) {
+          s << outfilename << ".IMrun";
+      } else {
+          s << "IMrun";
+      }
+      runfilename = (char *) malloc(s.str().size()+1);
+      strcpy(runfilename,s.str().c_str());
+  }
 
   if (phylogeniestorecord == UNDEFINEDINT)
     phylogeniestorecord = 0;
@@ -1385,10 +1440,6 @@ void add_previous_run_info_to_output(int *fpstri, char fpstr[])
     SP "-----------------------------------\n");
     SP "  Number of prior runs: %d\n",numpriormcfruns);
     SP "  Total time of prior runs : %s\n",timestring(totaltime));
-    /*SP "  Total time of prior runs : %d hours, %d minutes, %d seconds \n",
-        (int) totaltime / (int) 3600,
-          ((int) totaltime / (int) 60) - ((int) 60 * ((int) totaltime / (int) 3600)),
-              (int) totaltime - (int) 60 *((int) totaltime / (int) 60)); */
     SP "\n");
   }
 }
@@ -1495,22 +1546,16 @@ void start (int argc, char *argv[], int currentid)
 #endif
   setup (infilename, fpstri, fpstr,priorfilename, topologypriorinfostring,currentid); // setup() is in initialize.cpp and does all the big structures like L, C, T 
 
-//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 1\n");
-
   add_previous_run_info_to_output(fpstri, fpstr);
 
-if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 2\n");
   if (runoptions[LOADMCSTATE]) // set name of mcf file to read 
   {
 	  if (strcmp(&mcfreadfilename[strlen(mcfreadfilename)-4],".mcf")==0)
       sprintf(mcfreadfilename, "%s.%d", mcfreadfilename, currentid); 
     else
       sprintf(mcfreadfilename, "%s.mcf.%d", mcfreadfilename, currentid);  
-//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 3\n");
     checkautoc (1,0,0,currentid);  // added to fix a bug 4/30/2018
-//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 4\n");
     readmcf (mcfreadfilename, &mcmcrecords,&hilike,&hiprob, currentid);
-//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 5\n");
     mcf_was_read = 1;
   }
   else
@@ -1857,10 +1902,20 @@ checkgenealogyweights(ci);
         #ifdef TURNONCHECKS
         pcheck(ci,3);
         #endif
+      /*if (poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries > 1e6)
+      {
+        printf("2 step %d poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries %d\n",step,poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries);
+        exit(-1);
+      }*/
         if (ci==z) // only record acceptance and tries from the cold chain
         {
           poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries++;
           poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries += trypoptopolchange;
+      /*if (poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries > 1e6)
+      {
+        printf("3 step %d poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries %d\n",step,poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries);
+        exit(-1);
+      }*/
           poptreeuinfo->upinf[IM_UPDATE_POPTREE_TMRCA].tries += trypoptmrcachange;
           poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp += changed;
           poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].accp += (poptopolchange > 0);
@@ -2384,9 +2439,7 @@ void writeburntrendfile (int currentid)
       fprintf(burntrendfile, "burn period too short to plot trends,  trend recording begins at step %d \n",burntrendstartdelay); 
     } 
     fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %s\n",timestring(seconds));
-		  //fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %d hours, %d minutes, %d seconds \n",
-    //  (int) seconds / (int) 3600,((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),(int) seconds - (int) 60 *((int) seconds / (int) 60));
-		  fprintf (burntrendfile, "\nEnd of Burn trend output file\n");
+ 	  fprintf (burntrendfile, "\nEnd of Burn trend output file\n");
     fclose (burntrendfile);
   }
   else
@@ -2414,8 +2467,8 @@ int run (int currentid)
   static int printburntrendstep = 0, burnrecordi = 1;
   int tempburndone;
   int rc = 0; //AS: return code for MPI C bindings
-  char runfilename[] = "IMrun";
-  char burnfilename[] = "IMburn";
+  //char runfilename[] = "IMrun";
+  //char burnfilename[] = "IMburn";
   time_t timer;
   if (burndone)
   {
@@ -3852,6 +3905,17 @@ printoutput (int currentid, int finaloutput)         // mostly calls functions i
   int rc = 0;
   time(&startoutputtime);
 
+  #ifdef XMLOUTPUT
+  char s[200];
+  int n = sprintf(s,"%s.xml",outfilename);
+  TiXmlDocument doc;
+  TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  doc.LinkEndChild(decl);
+  TiXmlElement *output = new TiXmlElement("Output");
+  doc.LinkEndChild(output);
+  xstack.push(output);
+  #endif
+
 /*   printoutput()  open outout file,  deal with old outputfile */  
   if (runoptions[LOADRUN] == 0)
   {
@@ -4098,26 +4162,10 @@ printf("printed ascii curves\n");
   {
     FP "\nTime Elapsed : %s \n",timestring(seconds));
     FP "Time spent running analyses after mcmc finished : %s\n",timestring(totaloutputseconds));
-/*    FP "\nTime Elapsed : %d hours, %d minutes, %d seconds \n",
-      (int) seconds / (int) 3600,
-        ((int) seconds / (int) 60) - ((int) 60 * ((int) seconds / (int) 3600)),
-            (int) seconds - (int) 60 *((int) seconds / (int) 60));
-    FP "Time spent running analyses after mcmc finished : %d hours, %d minutes, %d seconds \n",
-      (int) totaloutputseconds / (int) 3600,
-        ((int) totaloutputseconds / (int) 60) - ((int) 60 * ((int) totaloutputseconds / (int) 3600)),
-            (int) totaloutputseconds - (int) 60 *((int) totaloutputseconds / (int) 60)); */
     if (numpriormcfruns > 0  && finaloutput)
     {
       FP "Duration of previous runs : %s \n",timestring(previoustime));
       FP "Total Time of all Runs : %s\n",timestring(totaltime));
-  /*    FP "Duration of previous runs : %d hours, %d minutes, %d seconds \n",
-        (int) previoustime / (int) 3600,
-          ((int) previoustime / (int) 60) - ((int) 60 * ((int) previoustime / (int) 3600)),
-              (int) previoustime - (int) 60 *((int) previoustime / (int) 60));
-      FP "Total Time of all Runs : %d hours, %d minutes, %d seconds \n",
-        (int) totaltime / (int) 3600,
-          ((int) totaltime / (int) 60) - ((int) 60 * ((int) totaltime / (int) 3600)),
-              (int) totaltime - (int) 60 *((int) totaltime / (int) 60)); */
     }
     strftime(timeinfostring,80,"%x - %X", endtimeinfo);
     FP "\nJob Finished: %s\n",timeinfostring);
@@ -4140,6 +4188,13 @@ printf("printed ascii curves\n");
   }
 #ifdef STDTEST
 printf("done printing output\n");
+#endif
+#ifdef XMLOUTPUT
+if (currentid == HEADNODE) {
+//doc.LinkEndChild(runbasics);
+doc.SaveFile(s);
+xstack.pop();
+}
 #endif
   return;
 }                               /* printoutput */
@@ -4291,6 +4346,16 @@ void intervaloutput (FILE * outto, int currentid)
 {
   int rc = 0; //AS: Return code for MPI C bindings
   int poptreenum_rec;
+#ifdef XMLOUTPUT
+  char s[200];
+  int n = sprintf(s,"%s.intervals.xml",outfilename);
+  TiXmlDocument doc;
+  TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  doc.LinkEndChild(decl);
+  TiXmlElement *intervals = new TiXmlElement("Interval");
+  doc.LinkEndChild(intervals);
+  xstack.push(intervals);
+#endif
 #ifdef MPI_ENABLED
 	MPI_Status status;
   int totaltopol_rec, chain0topol_rec, chain0topolswaps_rec;
@@ -4388,6 +4453,12 @@ void intervaloutput (FILE * outto, int currentid)
    } // hiddenoptions[STOPMOSTINTERVALOUTPUT]==0
   if (outto==stdout)
     fflush(stdout);
+#ifdef XMLOUTPUT
+  else if (currentid == HEADNODE) {
+      doc.SaveFile(s);
+      xstack.pop();
+  }
+ #endif
   return;
 }                               /* intervaloutput */
 
@@ -4535,6 +4606,11 @@ int main (int argc, char *argv[])
       //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
         //IM_err(IMERR_MISCELLANEOUS3,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  1 step %d",step);
       qupdate (currentid);
+/*      if (poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries > 1e6)
+      {
+        printf("1 step %d poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries %d\n",step,poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries);
+        exit(-1);
+      } */
       //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
         //IM_err(IMERR_MISCELLANEOUS4,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  2 step %d",step);
       if ((step / (int) printint) * (int) printint == step && step > 0)

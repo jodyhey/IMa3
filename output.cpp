@@ -4,7 +4,9 @@
 #include "ima.hpp"
 
 extern int numtreesarray[];   /* number of possible ordered trees,  for up to 7 populations */
-
+#ifdef XMLOUTPUT
+extern std::stack<TiXmlElement*> xstack;
+#endif
 
 /*********** LOCAL STUFF **********/
 
@@ -373,6 +375,12 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
   double ml_estimate;//, ml_stdev1, ml_stdev2;
   if (calcoptions[CALCMARGINALLIKELIHOOD])  // make this call for all processors (i.e. regardless of outfile value) 
     move_calcmarglike_vals();
+
+    #ifdef XMLOUTPUT
+    TiXmlElement *highestpdg = new TiXmlElement("HighestPDG");
+    TiXmlText *tn = new TiXmlText("Highest P(D|G) Values");
+    highestpdg->LinkEndChild(tn);
+    #endif
   if (outfile != NULL)
   {
  //printf("here 1 %ld",(long) strlen(fpstr));
@@ -822,14 +830,35 @@ void printacceptancerates (FILE * outto, int numrec,
   int i, j;
   char numstr[20];
 
+  #ifdef XMLOUTPUT
+  TiXmlElement *acceptancerates = new TiXmlElement("UpdateRates");
+  TiXmlText *text = new TiXmlText(printstring);
+  acceptancerates->LinkEndChild(text);
+  TiXmlElement *head = new TiXmlElement("Head");
+  TiXmlElement *subhead = new TiXmlElement("Subhead");
+  #endif
+  std::stringstream sh("");
   if (outto != NULL)  fprintf(outto, "\n%s\n", printstring);
   for (i = 0; i < (int) strlen (printstring); i++)
     if (outto != NULL)  fprintf(outto, "-");
   if (outto != NULL)  fprintf(outto, "\n");
 
   if (outto != NULL)  fprintf(outto, " Update Type:");
-  for (i = 0; i < rec[0]->num_uptypes; i++)
-    if (outto != NULL)  fprintf(outto, "\t%s\t", rec[0]->upnames[i]);
+  for (i = 0; i < rec[0]->num_uptypes; i++) {
+    if (outto != NULL) {
+      fprintf(outto, "\t%s\t", rec[0]->upnames[i]);
+      sh << rec[0]->upnames[i] << "  ";
+    }
+  }
+  #ifdef XMLOUTPUT
+  TiXmlText *th = new TiXmlText(sh.str().c_str());
+  head->LinkEndChild(th);
+  TiXmlText *tsh = new TiXmlText("#Tries  #Accp  %");
+  subhead->LinkEndChild(tsh);
+  acceptancerates->LinkEndChild(head);
+  acceptancerates->LinkEndChild(subhead);
+  TiXmlElement *data = new TiXmlElement("Data");
+  #endif
   if (outto != NULL)  fprintf(outto, "\n");
   if (outto != NULL)  fprintf(outto, "            ");
   for (i = 0; i < rec[0]->num_uptypes; i++)
@@ -837,6 +866,8 @@ void printacceptancerates (FILE * outto, int numrec,
   if (outto != NULL)  fprintf(outto, "\n");
   for (j = 0; j < numrec; j++)
   {
+    sh.str("");
+    sh << "_" << rec[j]->str << "  ";
     if (outto != NULL)  fprintf(outto, " %s", rec[j]->str);
     i = (int) strlen (rec[j]->str);
     while (i < 13)
@@ -848,19 +879,33 @@ void printacceptancerates (FILE * outto, int numrec,
     {
       sprintf (&numstr[0], "%.3e", (float) rec[j]->upinf[i].tries);
       if (outto != NULL)  fprintf(outto, "\t%s", shorten_e_num (&numstr[0]));
+      sh << shorten_e_num(&numstr[0]) << "  ";
       sprintf (&numstr[0], "%.3e", (float) rec[j]->upinf[i].accp);
       if (outto != NULL)  fprintf(outto, "\t%s", shorten_e_num (&numstr[0]));
+      sh << shorten_e_num(&numstr[0]) << "  ";
       if (rec[j]->upinf[i].tries >= 0.5)  // tries is a double,  but accumulates as if an int
         {
           if (outto != NULL)  fprintf(outto, "\t%.3f", (float) 100 * rec[j]->upinf[i].accp / rec[j]->upinf[i].tries);
+          sh << ((float) 100*rec[j]->upinf[i].accp / rec[j]->upinf[i].tries) << "  ";
       }
       else
       {
         if (outto != NULL)  fprintf(outto, "\tna");
+        sh << "na  ";
       }
     }
     if (outto != NULL)  fprintf(outto, "\n");
+    #ifdef XMLOUTPUT
+    TiXmlElement *row = new TiXmlElement("Row");
+    TiXmlText *text = new TiXmlText(sh.str().c_str());
+    row->LinkEndChild(text);
+    data->LinkEndChild(row);
+    #endif
   }
+  #ifdef XMLOUTPUT
+  acceptancerates->LinkEndChild(data);
+  xstack.top()->LinkEndChild(acceptancerates);
+  #endif
 }                               /* printacceptancerates() */
 
                            
@@ -881,6 +926,12 @@ void callprintacceptancerates (FILE * outto, int currentid)
   double *y_rec = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
   double *z1 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
   double *z_rec = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
+
+  #ifdef XMLOUTPUT
+  TiXmlElement *acceptancerates = new TiXmlElement("AcceptanceRates");
+  xstack.top()->LinkEndChild(acceptancerates);
+  xstack.push(acceptancerates);
+  #endif
 
 
 /* SPLITTING TIME UPDATE RATES 
@@ -1143,19 +1194,13 @@ void callprintacceptancerates (FILE * outto, int currentid)
 /* POPULATION TOPOLOGY UPDATE RATES 
    --------------------------------*/
   double a1,a2,a3, a_rec, b1,b2,b3, b_rec;
-  //if (modeloptions[POPTREETOPOLOGYUPDATE] == 1)   // fixed 5/3/2017
   if (hiddenoptions[HIDDENGENEALOGY] == 1)
   {
     i = 0;
     reclist_saved[i] = poptreeuinfo;
 #ifdef MPI_ENABLED
-	//AS: 4/13/2016 Changing this part of the function
-//    int x, y, y_rec, z, z_rec;
-    //if (numprocesses > 1)  // 3/29/2017  commented this out,  was causing no results printed when only 1 cpu 
-    {
-      a1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries;
-      b1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp;
-    }
+    a1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries;
+    b1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp;
     rc = MPI_Reduce(&a1, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)
 		  MPI_Abort(MPI_COMM_WORLD, rc);
@@ -1490,27 +1535,60 @@ void callprintacceptancerates (FILE * outto, int currentid)
       printacceptancerates (outto, i, reclist,
                             "Update Rates (chain 0) -- STR Genealogy Allele States");
     } */
+    #ifdef XMLOUTPUT
+    xstack.pop();
+    #endif
 
   return;
 }
 
 /* this code does not deal with MPI and multiple processors, so the values that are getting output  could be from any chain */ 
 /* 4/19/2017  edited it so nothing is output if multiple cpus are in use  */
-
 void printcurrentvals (FILE * outto)
 {
   int li, i;
   if (numprocesses >  1)
     return;
+  #ifdef XMLOUTPUT
+  TiXmlElement *currentvals = new TiXmlElement("CurrentVals");
+  xstack.top()->LinkEndChild(currentvals);
+  #endif
+  std::stringstream s("");
+  char s_buf[50];
   if (numsplittimes > 0)
   {
+      #ifdef XMLOUTPUT
+      TiXmlElement *splittime = new TiXmlElement("SplittingTime");
+      TiXmlElement *data = new TiXmlElement("Data");
+      TiXmlElement *head = new TiXmlElement("Head");
+      TiXmlText *splittext = new TiXmlText("Current Splitting Time Values");
+      splittime->LinkEndChild(splittext);
+      TiXmlText *headtext = new TiXmlText("Time  Value");
+      head->LinkEndChild(headtext);
+      splittime->LinkEndChild(head);
+      splittime->LinkEndChild(data);
+      currentvals->LinkEndChild(splittime);
+      #endif
     if (outto != NULL)  fprintf(outto, "\nCurrent Splitting Time Values\n");
     if (outto != NULL)  fprintf(outto, "------------------------------\n");
     if (npops > 1)
     {
       if (outto != NULL)  fprintf(outto, "Split times");
       for (i = 0; i < lastperiodnumber; i++)
-        if (outto != NULL)  fprintf(outto, "   t%i: %.3f", i, C[ARBCHAIN]->tvals[i]);
+        if (outto != NULL) {
+            fprintf(outto, "   t%i: %.3f", i, C[ARBCHAIN]->tvals[i]);
+            #ifdef XMLOUTPUT
+            //sprintf(s_buf, "t%i", i);
+            s << "t" << i << "  ";
+            sprintf(s_buf, "%.3f",C[ARBCHAIN]->tvals[i]);
+            s << s_buf;
+            TiXmlText *tr = new TiXmlText(s.str().c_str());
+            TiXmlElement *row = new TiXmlElement("Row");
+            row->LinkEndChild(tr);
+            data->LinkEndChild(row);
+            s.str("");
+            #endif
+        }
       if (outto != NULL)  fprintf(outto, "\n\n");
     }
   }
@@ -1521,27 +1599,55 @@ void printcurrentvals (FILE * outto)
     if (outto != NULL)  fprintf(outto, "Locus#    p(D|G)     u  ");
 
     if (outto != NULL)  fprintf(outto, "\n");
+
+    #ifdef XMLOUTPUT
+    TiXmlElement *scalars = new TiXmlElement("Scalars");
+    TiXmlElement *data = new TiXmlElement("Data");
+    TiXmlElement *head = new TiXmlElement("Head");
+    TiXmlText *splittext = new TiXmlText("Current Locus Likelihoods and Mutation Rate Scalars");
+    scalars->LinkEndChild(splittext);
+    TiXmlText *headtext = new TiXmlText("Locus#  p(D|G)  u");
+    head->LinkEndChild(headtext);
+    scalars->LinkEndChild(head);
+    scalars->LinkEndChild(data);
+    currentvals->LinkEndChild(scalars);
+    #endif
+
+    if (outto != NULL) {
     for (li = 0; li < nloci; li++)
     {
       for (i = 0; i < L[li].nlinked; i++)
       {
-        if (outto != NULL)  fprintf(outto, "%2i", li);
+        fprintf(outto, "%2i", li);
+        s << li << "  ";
         if (L[li].nlinked > 1)
         {
-          if (outto != NULL)  fprintf(outto, "_%-2d", i);
+          fprintf(outto, "_%-2d", i);
+          s << "_" << i << "  ";
         }
         else
         {
-          if (outto != NULL)  fprintf(outto, "   ");
+          fprintf(outto, "   ");
         }
-        if (outto != NULL)  fprintf(outto, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
-        if (outto != NULL)  fprintf(outto, "\n");
+        fprintf(outto, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
+        sprintf(s_buf, " %9.3lg %9.4lg", C[ARBCHAIN]->G[li].pdg_a[i], C[ARBCHAIN]->G[li].uvals[i]);
+        s << s_buf;
+        #ifdef XMLOUTPUT
+        TiXmlText *t2 = new TiXmlText(s.str().c_str());
+        TiXmlElement *row = new TiXmlElement("Row");
+        row->LinkEndChild(t2);
+        data->LinkEndChild(row);
+        #endif
+        s.str("");
+        fprintf(outto, "\n");
       }
+    }
     }
   }
   if (outto == stdout)
     fflush(stdout);
-}                               /* printcurrentvals */
+}  
+
 
 /* used for when there are multiple cpus,  only prints tvalues */ 
 void printcurrent_tvals (FILE * outto,int  currentid)
@@ -1552,6 +1658,12 @@ void printcurrent_tvals (FILE * outto,int  currentid)
 #ifdef MPI_ENABLED
   MPI_Status status;
 #endif
+  #ifdef XMLOUTPUT
+  TiXmlElement *currentvals = new TiXmlElement("CurrentVals");
+  xstack.top()->LinkEndChild(currentvals);
+  std::stringstream s("");
+  char s_buf[50];
+  #endif
   if (numsplittimes > 0)
   {
 	      if (z >= 0 && currentid == HEADNODE) 
@@ -1573,14 +1685,37 @@ void printcurrent_tvals (FILE * outto,int  currentid)
 	 	      if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
 	      }
 	#endif
-  if (currentid == HEADNODE)
+  if (currentid == HEADNODE && outto != NULL)
     {
-      if (outto != NULL)  fprintf(outto, "\nCurrent Splitting Time Values\n");
-      if (outto != NULL)  fprintf(outto, "------------------------------\n");
-      if (outto != NULL)  fprintf(outto, "Split times");
-      for (i = 0; i < lastperiodnumber; i++)
-        if (outto != NULL)  fprintf(outto, "   t%i: %.3f", i, t_rec[i]);
-      if (outto != NULL)  fprintf(outto, "\n\n");
+      #ifdef XMLOUTPUT
+      TiXmlElement *splittime = new TiXmlElement("SplittingTime");
+      TiXmlElement *data = new TiXmlElement("Data");
+      TiXmlElement *head = new TiXmlElement("Head");
+      TiXmlText *splittext = new TiXmlText("Current Splitting Time Values");
+      splittime->LinkEndChild(splittext);
+      TiXmlText *headtext = new TiXmlText("Time  Value");
+      head->LinkEndChild(headtext);
+      splittime->LinkEndChild(head);
+      splittime->LinkEndChild(data);
+      currentvals->LinkEndChild(splittime);
+      #endif
+      fprintf(outto, "\nCurrent Splitting Time Values\n");
+      fprintf(outto, "------------------------------\n");
+      fprintf(outto, "Split times");
+      for (i = 0; i < lastperiodnumber; i++) {
+        fprintf(outto, "   t%i: %.3f", i, t_rec[i]);
+        #ifdef XMLOUTPUT
+        s << "t" << i << "  ";
+        sprintf(s_buf, "%.3f ", t_rec[i]);
+        s << s_buf;
+        TiXmlText *tr = new TiXmlText(s.str().c_str());
+        TiXmlElement *row = new TiXmlElement("Row");
+        row->LinkEndChild(tr);
+        data->LinkEndChild(row);
+        s.str("");
+        #endif
+    }
+      fprintf(outto, "\n\n");
       if (outto == stdout)
         fflush(stdout);
     }
@@ -1600,6 +1735,10 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
   for (j = *lastgenealogysavedvalue; j < genealogysamples; j++)
   {
     // save everything as a float  - round integers later, when they get used
+    //std::cout << "What is going on here???";
+//	for (i = 0; i < gsampinflength; i++) {
+//		std::cout << gsampinf[0][i] << "\n";
+//	}
     for (i = 0; i < gsampinflength; i++)
       fprintf (genealogyinfosavefile, "%.6f\t", (float) gsampinf[j][i]);
     if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
@@ -1866,16 +2005,35 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     if (fatssarray[i].ppcp == temphi)
       counthipcp += 1;
   }
+  #ifdef XMLOUTPUT
+  TiXmlElement *data = new TiXmlElement("Data");
+  TiXmlElement *treetop = new TiXmlElement("TreeTopology");
+  TiXmlElement *head = new TiXmlElement("Head");
+  TiXmlElement *pops = new TiXmlElement("Populations");
+  treetop->LinkEndChild(head);
+  treetop->LinkEndChild(pops);
+  treetop->LinkEndChild(data);
+  xstack.top()->LinkEndChild(treetop);
+  #endif
+  std::stringstream ss("");
   FP "%s",outputbanner("Estimated Posterior Probabilities of Population Tree Topologies"));
   FP "Population Names\n");
   FP "----------------\n");
   for (i = 0; i < npops; i++)
   {
-    if (i==npops-1 && modeloptions[ADDGHOSTPOP]==1)
+    if (i==npops-1 && modeloptions[ADDGHOSTPOP]==1) {
       FP " Population %d : ghost \n", i);
-    else
+      ss << "ghost  ";
+    } else {
       FP " Population %d : %s \n", i, popnames[i]);
+      ss << popnames[i] << "  ";
+    }
   }
+  #ifdef XMLOUTPUT
+  TiXmlText *pt = new TiXmlText(ss.str().c_str());
+  pops->LinkEndChild(pt);
+  #endif
+  ss.str("");
   FP "\n");
   FP "Priors\n");
   FP "------\n");
@@ -1928,22 +2086,46 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   if (modeloptions[ADDGHOSTPOP]==0)
   {
     FP "Tree_string\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
+    #ifdef XMLOUTPUT
+    TiXmlText *t = new TiXmlText("Tree_string  priorprob  count  freq_ALL  freq_set1  freq_set2  ppcp");
+    head->LinkEndChild(t);
+    #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
      if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
       FP "%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      #ifdef XMLOUTPUT
+      ss << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      TiXmlText *t = new TiXmlText(ss.str().c_str());
+      TiXmlElement *row = new TiXmlElement("Row");
+      row->LinkEndChild(t);
+      data->LinkEndChild(row);
+      ss.str("");
+      #endif
     }
     FP "\n");
   }
   else
   {
     FP "Tree\tTree(w/ghost)\tpriorprob\tcount\tfreq_ALL\tfreq_set1\tfreq_set2\tppcp\n");
+    #ifdef XMLOUTPUT
+    TiXmlText *t = new TiXmlText("Tree  Tree(w/ghost)  priorprob  count  freq_ALL  freq_set1  freq_set2  ppcp");
+    head->LinkEndChild(t);
+    #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
       if (uniformprior == 0)
         temp1 = exp(topologypriors[fatssarray[i].origi]);
       FP "%s\t%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      #ifdef XMLOUTPUT
+      ss << fatssarray[i].treestrnoghost << "  " << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      TiXmlText *t = new TiXmlText(ss.str().c_str());
+      TiXmlElement *row = new TiXmlElement("Row");
+      row->LinkEndChild(t);
+      data->LinkEndChild(row);
+      ss.str("");
+      #endif
     }
     FP "\n");
   }

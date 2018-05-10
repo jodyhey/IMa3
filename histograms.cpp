@@ -28,7 +28,7 @@ static void fillvec (void);     //fills up the marginal distribution estimates
 static double multi_t_prior_func (double x, double y, double tmax, int ti,
                                   int numt);
 //static void writehistogram (FILE * outfile, int numhistprint);
-static void writehistogram (FILE * outfile, int numhistprint, int dosmooth);
+static void writehistogram (FILE * outfile, int numhistprint, int dosmooth, const char * histtitle);
 static int getdemogscale (double scaleumeaninput);
 static void prepare_splittime_and_mutation_rate_histograms (int
                                                             *numhistprint);
@@ -47,6 +47,12 @@ static void prepare_migration_histograms (int locusrow, int nummigdirs);
 void copysmthmaxvals(void);
 double get_cdf_percentile_value(struct plotpoint *xy,int n, double p);
 void print_prior_posterior_suggestions(FILE * outfile, long int mcmcrecords,char priorfilename[]);
+
+#ifdef XMLOUTPUT
+extern std::stack<TiXmlElement*> xstack;
+extern TiXmlDocument global_doc;
+#endif
+extern char *outfilename;
 
 char *
 histformatdouble (double pval)
@@ -175,7 +181,7 @@ Free all the pointers that were set up at the beginning
 */
 
 void
-writehistogram (FILE * outfile, int numhistprint, int dosmooth)
+writehistogram (FILE * outfile, int numhistprint, int dosmooth, const char * histtitle)
 {
   double *xysum;
   double *ysum;
@@ -217,11 +223,31 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
   smthprobvals = static_cast<double *> 
                  (calloc ((size_t) numhistprint, sizeof (double)));
 
+
+#ifdef XMLOUTPUT
+  TiXmlElement *histogram = new TiXmlElement("Histogram");
+  histogram->SetAttribute("title",histtitle);
+  TiXmlElement *data = new TiXmlElement("Data");
+  TiXmlElement *vars = new TiXmlElement("Variables");
+  histogram->LinkEndChild(vars);
+  histogram->LinkEndChild(data);
+  xstack.top()->LinkEndChild(histogram);
+#endif
+  std::stringstream s("");
+
+
   FP " Summaries\n\tValue  ");
   for (j = 0; j < numhistprint; j++)
   {
     FP "\t %s", hp[j].str);
+    s << hp[j].str << "  ";
   }
+#ifdef XMLOUTPUT
+  TiXmlText *vt = new TiXmlText(s.str().c_str());
+  vars->LinkEndChild(vt);
+#endif
+  s.str("");
+
   FP "\n\tMinbin ");
   for (j = 0; j < numhistprint; j++)
   {
@@ -435,13 +461,24 @@ writehistogram (FILE * outfile, int numhistprint, int dosmooth)
   FP "\n\n");
   for (i = 0; i < GRIDSIZE; i++)
   {
+    s.str("");
     FP "\t%4d", i);
     for (j = 0; j < numhistprint; j++)
     {
-      FP "\t%s", histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x));
-      FP "\t%s", histformatdouble (hp[j].yscaleadjust * hp[j].xy[i].y));
+      char * hfd1 = histformatdouble (hp[j].xscaleadjust * hp[j].xy[i].x);
+      FP "\t%s", hfd1);
+      s << hfd1 << "  ";
+      char * hfd2 = histformatdouble (hp[j].yscaleadjust * hp[j].xy[i].y);
+      FP "\t%s", hfd2);
+      s << hfd2 << "  ";
     }
     FP "\n");
+    #ifdef XMLOUTPUT
+    TiXmlElement *row = new TiXmlElement("Row");
+    TiXmlText *rt = new TiXmlText(s.str().c_str());
+    row->LinkEndChild(rt);
+    data->LinkEndChild(row);
+    #endif
   }
   FP " SumP\t");
   for (j = 0; j < numhistprint; j++)
@@ -699,7 +736,7 @@ void print_tprior_divide_histograms (FILE * outfile, int *numhistprint)
     hp[*numhistprint].before = T[i].v->beforemin;
     hp[*numhistprint].after = T[i].v->aftermax;
   }
-  writehistogram (outfile, *numhistprint,1);
+  writehistogram (outfile, *numhistprint,1,"NA");
   orig2d_free2D ((void **) t_prior_divide, numsplittimes);
 }                               //void prepare_tprior_divide_histograms(int *numhistprint);
 
@@ -868,7 +905,7 @@ void print_populationmigrationrate_histograms (FILE * outfile,
       }
     }
   }
-  writehistogram (outfile, hpi,0);
+  writehistogram (outfile, hpi,0,"NA");
   orig2d_free2D ((void **) popmigxy, *numhistprint);
 }                               //void print_populationmigrationrate_histograms
 
@@ -954,6 +991,16 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
   int li, predictmcmchist = 0, predictparamhist = 0, numhist; 
   int numhistsets, histsetcount;
 
+  #ifdef XMLOUTPUT
+  //TiXmlDocument doc;
+  //TiXmlDeclaration *decl = new TiXmlDeclaration("1.0","","");
+  //doc.LinkEndChild(decl);
+  TiXmlElement *allhistograms = new TiXmlElement("AllHistograms");
+  //doc.LinkEndChild(allhistograms);
+  xstack.top()->LinkEndChild(allhistograms);
+  xstack.push(allhistograms);
+  #endif
+
   // number passed to init_print_histograms  just needs to be large enough to hold as many histograms as might be printed
 
   for (li = 0; li < nloci; li++)
@@ -1024,7 +1071,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     FP "    curve height is an estimate of marginal posterior probability\n");
     if (runoptions[LOADRUN])
       FP "  IMa LOAD TREES MODE  - splittime values loaded from *.ti file, mutation rate scalar histograms are not available \n");
-    writehistogram (outfile, numhistprint,1);
+    writehistogram (outfile, numhistprint,1,"Marginal Distribution Values/Parameters in MCMC");
 
     //  calculate the average mutation rate scalar, need to do this here because scalars have just been estimated by writehistogram() 
     if (PRINTDEMOGHIST && counturateperyear > 0)  // need to set the scalars needed for demographic histograms using info contained in smthmaxvals[], which was set in in last call to writehistogram
@@ -1044,7 +1091,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "\n\nHISTOGRAM GROUP %d: MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF POPULATION SIZE AND MIGRATION PARAMETERS\n", histsetcount);
       FP "--------------------------------------------------------------------------------------------------------\n");
       FP "       curve height is an estimate of marginal posterior probability\n");
-      writehistogram (outfile, numhistprint,0);
+      writehistogram (outfile, numhistprint,0,"Population Size and Migration Parameters");
     }
     numhistprint = 0;
 
@@ -1087,7 +1134,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
             else 
               FP "\tGeometric mean of ML estimates of relevant mutation rate scalars calculated from scalar histograms: %le\n", scaleumean);
           }
-          writehistogram (outfile, numhistprint,1);
+          writehistogram (outfile, numhistprint,1,"Demographic Units");
         }
       }
     }
@@ -1137,7 +1184,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
         histsetcount++;
         FP "\n\nHISTOGRAM GROUP %d: MARGINAL DISTRIBUTIONS OF TMRCA VALUES\n", histsetcount);
         FP "--------------------------------------------------------\n");
-        writehistogram (outfile, numhistprint,1);
+        writehistogram (outfile, numhistprint,1,"TMRCA Values");
       }
     }
     if (outputoptions[THISTDIVIDEBYPRIOR] && numsplittimes > 1)
@@ -1158,7 +1205,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
       FP "\n\nHISTOGRAM GROUP %d: PRIOR HISTOGRAMS\n", histsetcount);
       FP "--------------------------------------------------------------------------------------------------------\n");
       FP "       curve height is an estimate of marginal posterior probability\n");
-      writehistogram (outfile, numhistprint,1);
+      writehistogram (outfile, numhistprint,1,"Priors");
       copysmthmaxvals();
     }
     numhistprint = 0;
@@ -1169,6 +1216,9 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     print_prior_posterior_suggestions(outfile,mcmcrecords,priorfilename);
   }
   free_print_histogram ();
+  #ifdef XMLOUTPUT
+  xstack.pop();
+  #endif
 }                               // printhistograms
 
 /* plots of counts and times of migration events are handled a little differently than 
@@ -1205,7 +1255,7 @@ void printmigrationhistograms (FILE * outfile, long int mcmcrecords)
     }
     FP "===================\n");
     /* 8/26/2011 */
-    writehistogram (outfile, nummigdirs,1);
+    writehistogram (outfile, nummigdirs,1,"Migration Count Distributions");
     //writehistogram (outfile, 2 * nummigdirs,1);
   }
   free_print_histogram ();

@@ -13,6 +13,7 @@
 
 import math
 import sys
+import os
 ## some users won't have colormath
 try:
     from colormath.color_objects import LabColor, sRGBColor

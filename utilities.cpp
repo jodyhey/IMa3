@@ -2084,7 +2084,8 @@ int metropolishastingsdecide(double logmhratio,int othercriteria)
     return 0;
 }
 
-/* return point to a string with time info
+/* return pointer to a string with time info
+  that string should get written soon after timestring() is called as returning a pointer here is a bit risky
   should be safe since ts is static and should not dissappear after exiting */ 
 char* timestring(time_t seconds)
 {
