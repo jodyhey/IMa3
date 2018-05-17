@@ -93,15 +93,6 @@ changeu (int ci, int j, int *k)
     *k = 1;
   }
 
-  //if (beta[ci] == 0.0)
-    //return 0;
-/*  if (calcoptions[CALCMARGINALLIKELIHOOD]  && ci == numchainspp - 1) 
-  {
-    C[ci]->G[lj].uvals[aj] =  C[ci]->G[lk].uvals[ak] = 1.0;
-    return 0;
-  }  */
-
-
   lj = ul[j].l;
   aj = ul[j].u;
   lk = ul[*k].l;
@@ -222,10 +213,6 @@ changeu (int ci, int j, int *k)
 
     d = exp ((newr - r) / 2);
   }
-  /*if (calcoptions[CALCMARGINALLIKELIHOOD]  && ci == numchainspp - 1) 
-  {
-    d = newd(C[ci]->G[lj].uvals[aj], C[ci]->G[lk].uvals[ak] );
-  } */
 
   C[ci]->G[lj].uvals[aj] *= d;
   C[ci]->G[lk].uvals[ak] /= d;
@@ -305,10 +292,6 @@ changeu (int ci, int j, int *k)
     //propose_new_given_old = propose_old_given_new = 0.0;
     checkdetailedbalance(newlikelihood,oldlikelihood,0.0,0.0,0.0,0.0,beta[ci]);
 #endif //TURNONCHECKS
-/*  metropolishastingsratio = exp(beta[ci] * likelihoodratio);  // moved outside the loop 9/12/2016,  why not sooner 
-
-  U = uniform ();
-  if (U < DMIN(1.0, metropolishastingsratio))  */
   metropolishastingsratio = beta[ci] * likelihoodratio;
   if (metropolishastingsdecide(metropolishastingsratio,1))
   {

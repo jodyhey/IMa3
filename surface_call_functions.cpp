@@ -697,22 +697,17 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
               if ((ii==2 && C[ARBCHAIN]->imig[i].b == k && C[ARBCHAIN]->imig[i].pr.max > MPRIORMIN ) ||
                   (ii==3 && C[ARBCHAIN]->imig[mterm[i]].b == k && C[ARBCHAIN]->imig[mterm[i]].pr.max > MPRIORMIN ))
               {
-                /*if (fabs (temptest[i]) > 1e6)
-                  sprintf (llrstring, "bad value\t");
-                else */
+                if (temptest[i] > 9.54954)
                 {
-                  if (temptest[i] > 9.54954)
-                  {
-                    printsigfootnote = 1;
-                    sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[3]);
-                  }
-                  else if (temptest[i] > 5.41189)
-                    sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[2]);
-                  else if (temptest[i] > 2.70554)
-                    sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[1]);
-                  else
-                    sprintf (&llrstring[0], "\t%7.3lf%s", temptest[i], sig[0]);
+                  printsigfootnote = 1;
+                  sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[3]);
                 }
+                else if (temptest[i] > 5.41189)
+                  sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[2]);
+                else if (temptest[i] > 2.70554)
+                  sprintf (llrstring, "\t%7.3lf%s", temptest[i], sig[1]);
+                else
+                  sprintf (&llrstring[0], "\t%7.3lf%s", temptest[i], sig[0]);
                 FP "%s", llrstring);
               }
             FP "\n");

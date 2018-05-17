@@ -32,8 +32,6 @@ static unsigned long *sgEvent_indx;
 extern  struct edge *copyedgehg; // if hidden genealogies,  then this is declared and malloced in update_hg.cpp,  
 static struct edge *copyedge;   // if hidden genealogies are used this just assigned to copyedgehg,  otherwise it is malloced in this file
 
-//double *nnminus1; //  moved to ima.h when adding hidden genealogy stuff 
-
 /* prototype of local functions */
 //static void IMA_initmemory_edgemiginfo (struct edgemiginfo *em);
 static double integrate_coalescent_term (int cc, double fc, double hcc,
@@ -395,7 +393,6 @@ also, calls to this function should be based on single edges,  not estiamtes of 
 double
 calcmrate (int mc, double mt)
 {
-  //return 0.5; //try for debugging effect of mrate
   assert (mc >= 0);
   //assert(mt>0.0);  // possible bug here,  this was triggered on 5/3/2017  so I turned it off, but don't know why
   if (mt <= 0.0)
@@ -926,7 +923,6 @@ getmprob(int ci, struct edgemiginfo *edgem,
                     lastm_2_pop = pop[0];  
                   else
                    lastm_2_pop = edgem->mig[edgem->mpall-3].mp; //not sure why mpall-3, but crshes if its mpall-2
-/*assert(checkpop(ci,edgem->e, lastm_2_pop)); */
                   if (lastm_2_pop == topop)
                     pathc = -log((double) popc); 
                   else
@@ -2198,13 +2194,6 @@ checktreeweight (int ci, int li)
   }
   assert (ncount == ec); /* FIXME: island model is checked here? */
   indexx ((unsigned long) ec, sgEvent - 1, sgEvent_indx - 1);  // sorts an index of locations in ec by time;-1 because NR routines use arrays that begin at 1
-/*if (step==1542608) for (j = 0; j < ec; j++)
-{
-    
-  sgp = sgEvent + (sgEvent_indx[j] - 1); // -1 because NR sort routines use arrays that begin at 1
-  printf("%d %.13lf %d %d\n",j,sgp->time,sgp->cmt,sgp->pop);
-} */
-
   for (i = 0; i < npops; i++)
     n[i] = L[li].samppop[i];  // use regular num indexing  (not sets)
 
@@ -2215,12 +2204,10 @@ checktreeweight (int ci, int li)
   G->length = G->tlength = 0;   // does not really belong here, but this is an easy place to measure tlength, the total length of genealogy
   lastsplitt = C[ci]->tvals[lastperiodnumber - 1];
   k = 0;                        //period
-//if (step==1542608) printf("j time cmt pop n0 n1 n2\n");
   for (j = 0; j < ec; j++)
   {
     
     sgp = sgEvent + (sgEvent_indx[j] - 1); // -1 because NR sort routines use arrays that begin at 1
-//if (step==1542608) printf("%d %.3lf %d %d %d %d %d\n",j,sgp->time,sgp->cmt,sgp->pop,n[0],n[1],n[2]);
     timeinterval = sgp->time - lasttime;
     assert (timeinterval >= 0);
     timeadd = nsum * timeinterval;
@@ -3019,7 +3006,6 @@ node to be updated. branch lengths are used for the weighting */
             gtree[i].dlikeA[ai] = dlikedown;
           gtree[up[0]].dlikeA[ai] = dlikeup[0];
           gtree[up[1]].dlikeA[ai] = dlikeup[1];
-          //*count = *count + 1;
           *count = *count + 1;
           L[li].A_rec[ai].upinf->accp++;
         }

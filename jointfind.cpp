@@ -612,7 +612,6 @@ void nextgen(double *lowpd, double *hipd, int modelparams,int modelnum)
     A = randposint(depopsize);
     B = randposint(depopsize);
     Cvalue = randposint(depopsize);
-    //for (j=nparamrange[0];j<nparamrange[1];j++) 
     for (j=nparamrange[0];j<jmax;j++) 
     {
       u = uniform();
@@ -1113,39 +1112,36 @@ void findjointpeaks(FILE **outfile,char *outfilename, char *nestfname,int number
   for (nowmodeltype = typeloopstart; nowmodeltype <= typeloopstop;nowmodeltype++)
   {
     j++;
-   // if (modeltypecounts[nowmodeltype] > 0)
+    printf(" starting model: %s\n", modelstartstr[nowmodeltype]);
+    switch (nowmodeltype)
     {
-      printf(" starting model: %s\n", modelstartstr[nowmodeltype]);
-      switch (nowmodeltype)
-      {
-        case 0 : 
-              largestmodel_nparams = nparams; 
-              nparamrange[0] = 0;
-              nparamrange[1] = nparams;
-              break;
-        case 1 : 
-              largestmodel_nparams = numpopsizeparams;
-              nparamrange[0] = 0;
-              nparamrange[1] = numpopsizeparams;
-          break;
-        case 2 : 
-              largestmodel_nparams = nummigrateparams;
-              nparamrange[0] = numpopsizeparams;
-              nparamrange[1] = numpopsizeparams+nummigrateparams;
-          break;
-      }
-      modelloop(-1);
-      holdml = bestvals[nparams];
-      /* CR 110921.1  Change type of outfile parameter */
-      fprintf(*outfile, "%d\t%s\t%d\t-\t-",j,
-                         logpstrformat(-bestvals[nparams]), largestmodel_nparams);
-      fprintf(*outfile, "\t%s",logpstrformat(effective_sample_size));
-      printjointpeakvals(*outfile,paramsallused, bestvals);
-//should this be &outfile ??
-      closeopenout (outfile, outfilename);
-      printf ("done model : %s\n", modelstartstr[nowmodeltype]);
-      printf("joint density: %f\n",-bestvals[nparams]);
+      case 0 : 
+            largestmodel_nparams = nparams; 
+            nparamrange[0] = 0;
+            nparamrange[1] = nparams;
+            break;
+      case 1 : 
+            largestmodel_nparams = numpopsizeparams;
+            nparamrange[0] = 0;
+            nparamrange[1] = numpopsizeparams;
+        break;
+      case 2 : 
+            largestmodel_nparams = nummigrateparams;
+            nparamrange[0] = numpopsizeparams;
+            nparamrange[1] = numpopsizeparams+nummigrateparams;
+        break;
     }
+    modelloop(-1);
+    holdml = bestvals[nparams];
+    /* CR 110921.1  Change type of outfile parameter */
+    fprintf(*outfile, "%d\t%s\t%d\t-\t-",j,
+                        logpstrformat(-bestvals[nparams]), largestmodel_nparams);
+    fprintf(*outfile, "\t%s",logpstrformat(effective_sample_size));
+    printjointpeakvals(*outfile,paramsallused, bestvals);
+//should this be &outfile ??
+    closeopenout (outfile, outfilename);
+    printf ("done model : %s\n", modelstartstr[nowmodeltype]);
+    printf("joint density: %f\n",-bestvals[nparams]);
     for (mi = 0;mi<num_nestedmodels;mi++) if (fullmodeltype[mi] == nowmodeltype)
     {
       j++;

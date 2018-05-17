@@ -345,7 +345,6 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
   ecd /= 2;
   ecu /= 2;
   integrate_tree_prob (ci, &C[ci]->allgweight, &holdallgweight_t_RY,  &C[ci]->allpcalc, &holdallpcalc_t_RY);   // try enforcing full cacullation
-//initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   likelihoodratio = (pdgnewsum - pdgoldsum);
   priorratio = (C[ci]->allpcalc.probg - holdallpcalc_t_RY.probg);
   proposalratio = (ecd + emd) * log (t_d_hterm) + (ecu + emu) * log (t_u_hterm);
@@ -408,7 +407,6 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
           {
             gtree[i].time =
               beforesplit (timeperiod, newt, oldt, t_u, gtree[i].time);
-            //cecu++;
           }
 
           else
@@ -417,7 +415,6 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
             {
               gtree[i].time =
                 aftersplit (timeperiod, newt, oldt, t_d, gtree[i].time);
-              //cecl++;
             }
           }
           j = 0;
@@ -428,25 +425,19 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
               gtree[i].mig[j].mt =
                 beforesplit (timeperiod, newt, oldt, 
                              t_u, gtree[i].mig[j].mt);
-              //cemu++;
             }
             else if (gtree[i].mig[j].mt > newt && gtree[i].mig[j].mt < t_d)
             {
               gtree[i].mig[j].mt =
                 aftersplit (timeperiod, newt, oldt, t_d, 
                             gtree[i].mig[j].mt);
-              //ceml++;
             }
             j++;
           }
         }
       }
-//        assert(fabs(C[ci]->G[li].gtree[  C[ci]->G[li].gtree[C[ci]->G[li].root].up[0]].time - C[ci]->G[li].roottime) < 1e-8);    
     }
-    /*    assert(ecu==cecu/2);
-       assert(ecd==cecl/2);
-       assert(emu==cemu);
-       assert(emd==ceml); */
+
     for (li = 0; li < nloci; li++)
     {
       if (L[li].model == HKY)
@@ -458,7 +449,6 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
       if (L[li].model == JOINT_IS_SW)
         for (ai = 1; ai < L[li].nlinked; ai++)
           likelihoodSW (ci, li, ai, C[ci]->G[li].uvals[ai], 1.0);
-      // assert(fabs(C[ci]->G[li].gtree[  C[ci]->G[li].gtree[C[ci]->G[li].root].up[0]].time - C[ci]->G[li].roottime) < 1e-8);    
     }
 #ifdef TURNONCHECKS
     for (li = 0; li < nloci; li++)

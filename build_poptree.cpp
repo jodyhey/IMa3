@@ -65,42 +65,6 @@ with these ancestral populations.
 */
 
 /**** LOCAL FUNCTIONS *****/
-/* don't need these copies of set_x and init_value_record
-void
-set_x_local (struct value_record *v, int isint) // same as in initialize,  but needed it in this file as well, so made a local copy
-{
-  int i;
-  for (i = 0; i < GRIDSIZE; i++)
-  {
-    if (v->do_logplot)
-    {
-      v->xy[i].x = exp (v->plotrange.min + (i + 0.5) * v->plotrescale); // the same scale is used for all mutation rate scalars 
-    }
-    else
-    {
-      if (isint)
-        v->xy[i].x = (double) i;
-      else
-        v->xy[i].x = v->plotrange.min + ((i + 0.5) * (v->plotrange.max * v->plotrescale - v->plotrange.min)) / GRIDSIZE;
-    }
-  }
-}                               // set_x_local 
-
-void
-init_value_record_local (struct value_record *v, int isint)   // same as in initialize,  but needed it in this file as well, so made a local copy
-{
-  if (v->do_xyplot)
-  {
-    v->xy = static_cast<plotpoint *> 
-                (calloc (GRIDSIZE, sizeof (struct plotpoint)));
-    set_x_local (v, isint);
-  }
-
-  if (v->do_trend)
-    v->trend = static_cast<double *> (calloc (TRENDDIM, sizeof (double)));
-
-  v->beforemin = v->aftermax = 0;
-}                               // init_value_Record_local */
 
 void
 parenth0 ()
@@ -124,7 +88,7 @@ parenth0 ()
     {
       if (*ne == ')')
       {
-        ne += 2;
+        ne += 1;
         itemp = strtol (ne, &ne, 10);
         ancestralpopnums[npops + psetlist[nextlistspot - 1]] = itemp;
         nextlistspot--;
@@ -192,9 +156,10 @@ parenth (int ci, int tempcurrent, int startparenth)
     }
   } while (*treestringspot != ')');
   treestringspot++;             /* skip parentheses */
-  if (*treestringspot == ':')
+  //if (*treestringspot == ':')
+  if (isdigit(*treestringspot))
   {
-    treestringspot++;
+    //treestringspot++;
     i = atoi (treestringspot);
     if (i < npops)
       IM_err (IMERR_POPTREESTRINGFAIL,
@@ -269,7 +234,7 @@ makepoptreestring (int ci, int curpop, char *buildstr)
     }
     else
     {
-      sprintf (ss, "):%d", curpop);
+      sprintf (ss, ")%d", curpop);
       strinsert (buildstr, ss, pos);
       pos += (int) strlen(ss);
     }
@@ -287,7 +252,8 @@ makepoptreestring (int ci, int curpop, char *buildstr)
 
 void rewritecheckchar(char c)
 {
-  if ((isdigit(c) || c=='(' || c==',' || c==')' || c==':') == 0)
+  //if ((isdigit(c) || c=='(' || c==',' || c==')' || c==':') == 0)
+  if ((isdigit(c) || c=='(' || c==',' || c==')' ) == 0)
     IM_err (IMERR_POPTREESTRINGFAIL," something wrong in formatting of population string in input file");
 }
 
@@ -317,18 +283,18 @@ void rewrite (char *substr)
     {
       if (slengths[subcount] > 1)
       {
-        pos++;
+        //pos++;
         i = atoi (&substr[pos]);
         periodi[subcount] = i;
         if (i >= 10)
         {
           pos += 2;
-          slengths[subcount] += 3;
+          slengths[subcount] += 2; //3
         }
         else
         {
           pos++;
-          slengths[subcount] += 2;
+          slengths[subcount] += 1; //2
         }
       }
       else
@@ -673,13 +639,13 @@ int getpoptreestringnum(char *s)
   }
   return i;
 }
-
+/* redundant off addoutgroup()
 void
 add_ghost_to_popstring (char poptreestring[])
 {
   size_t i;
   int n;
-  char stringBuf[POPTREESTRINGLENGTHMAX]; /* temp buffer to build newstring */
+  char stringBuf[POPTREESTRINGLENGTHMAX]; 
   char newstring[POPTREESTRINGLENGTHMAX];
 
   strcpy (newstring, "(");
@@ -700,7 +666,7 @@ add_ghost_to_popstring (char poptreestring[])
     }
   }
   sprintf (poptreestring, "%s,%d):%d", newstring, npops, 2*npops);
-}
+} */
 
 void
 setup_poptree (int ci, char poptreestring[])
@@ -790,7 +756,6 @@ void set_poptree_update_record(void)
     poptreeuinfo->upinf[i].accp = 0;
     poptreeuinfo->upinf[i].tries = 0;
   }
-  //poptreeuinfo->num_vals = 0;
   poptreeuinfo->num_vals = 1;
   poptreeuinfo->v = static_cast<value_record *> 
             (malloc (poptreeuinfo->num_vals * sizeof (struct value_record)));

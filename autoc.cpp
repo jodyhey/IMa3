@@ -67,10 +67,6 @@ that was saved previously in position n of the the vals[] array */
 void
 fillautoc (struct autoc *a, int n, double v)
 {
-//  if (isnan_(a->vals[n]))
-  //  IM_err(IMERR_MISCELLANEOUS," in fillautoc a->vals[n] (for cov.s)is NaN,  n: %d",n);
-  //if (isnan_(v))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  v  (for cov.ss) is NaN ");
   a->cov.n++;
   a->cov.s += a->vals[n];
   a->cov.ss += v;
@@ -79,34 +75,6 @@ fillautoc (struct autoc *a, int n, double v)
   a->var[1].s += v;
   a->var[0].s2 += SQR (a->vals[n]);
   a->var[1].s2 += SQR (v);
-  //if (isnan_(a->cov.s))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  cov.s  step %d",step);
-  //if (isnan_(a->cov.ss))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  cov.ss  step %d",step);
-  //if (isnan_(a->cov.s2))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  cov.s2  step %d",step);  
-  //if (isnan_(a->cov.n))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  cov.n  step %d",step);  
-  //if (isnan_(a->var[0].s))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var0.s  step %d",step);  
-  //if (isnan_(a->var[0].ss))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var0.ss  step %d",step);    
-  //if (isnan_(a->var[0].s2))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var0.s2  step %d",step);    
-  //if (isnan_(a->var[0].n))
-    //IM_err(IMERR_MISCELLANEOUS,"in fillautoc  var0.n  step %d",step);    
-  //if (isnan_(a->var[1].s))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var1.s  step %d",step);    
-  //if (isnan_(a->var[1].ss))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var1.ss  step %d",step);    
-  //if (isnan_(a->var[1].s2))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var1.s2  step %d",step);      
-  //if (isnan_(a->var[1].n))
-    //IM_err(IMERR_MISCELLANEOUS," in fillautoc  var1.n  step %d",step);     
-  //for (int i=0;i<AUTOCNEXTARRAYLENGTH;i++)
-    //if (isnan_(a->vals[i]))
-     //IM_err(IMERR_MISCELLANEOUS," in fillautoc  vals n %d step %d",i,step);     
-
 }
 
 /* calculated a correlation using the cov and var terms in a struct autoc */
@@ -274,7 +242,6 @@ autoc_pointer: order of values
 	T[j].v
 	g_rec->v
 
-
 if no MPI and #cpu > 1, then always true that z >= 0 && currentid == HEADNODE
 
 if MPI,  then there are 4 conditions:
@@ -286,8 +253,6 @@ if MPI,  then there are 4 conditions:
     send 
   if (z < 0 and currentid != HEADNODE)
     do nothing 
-
-     
 */
   
 /* pautoc_vals will have nonsense values if z < 0 and currentid != HEADNODE  */
@@ -410,137 +375,6 @@ set_autoc_vals (double *pautoc_vals, int currentid)
   }
 }                               //set_autoc_vals
 
-/*void  // several bugs in this older version ,  updated on 4/24/2018 JH
-set_autoc_vals_hold (double *pautoc_vals, int currentid)
-{
-  int j, li, i = 0;
-  int z = whichiscoldchain();
-#ifdef MPI_ENABLED
-   int rc = 0; 
-   MPI_Status status;
-#endif
-  if (lpgpd_v->do_autoc == 1)
-  {
-    if (z >= 0 && currentid == HEADNODE) 
-    {	
-      if (hiddenoptions[HIDDENGENEALOGY]==0)
-        pautoc_vals[i] = C[z]->allpcalc.pdg  + C[z]->allpcalc.probg;
-      else
-        pautoc_vals[i] = C[z]->allpcalc.pdg  + C[z]->allpcalc.probg + C[z]->allpcalc.probhgg;
-    i++;
-    }
-    #ifdef MPI_ENABLED
-    if (z < 0 && currentid == HEADNODE) 
-    {
-	    double pautocrec = 0.0;
-	    rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 5656, MPI_COMM_WORLD, &status);
-	    if (rc != MPI_SUCCESS)
-		    MPI_Abort(MPI_COMM_WORLD, rc);
-	    pautoc_vals[i] = pautocrec;
-	    i++;
-    }
-    if (z >= 0 && currentid != HEADNODE) 
-    {
-	    double pautocrec;
-      if (hiddenoptions[HIDDENGENEALOGY] == 0)
-        pautocrec = C[z]->allpcalc.pdg + C[z]->allpcalc.probg;
-      else
-        pautocrec = C[z]->allpcalc.pdg + C[z]->allpcalc.probg + C[z]->allpcalc.probhgg;
-    	rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 5656, MPI_COMM_WORLD);
-	    if (rc != MPI_SUCCESS)
-		    MPI_Abort(MPI_COMM_WORLD, rc);
-	    i++;
-    }
-    #endif
-  }
-  if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_autoc == 1)
-  {
-    if (z >= 0 && currentid == HEADNODE) 
-    {	
-      pautoc_vals[i] = (double) RFtreedis[C[z]->poptreenum];
-      i++;
-    }
-#ifdef MPI_ENABLED
-    if (z < 0 && currentid == HEADNODE) 
-    {
-	    double pautocrec = 0.0;
-	    rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 6561, MPI_COMM_WORLD, &status);
-	    if (rc != MPI_SUCCESS)
-		    MPI_Abort(MPI_COMM_WORLD, rc);
-	    pautoc_vals[i] = pautocrec;
-	    i++;
-    }
-    if (z >= 0 && currentid != 0) 
-    {
-	    double pautocrec;
-      if (hiddenoptions[HIDDENGENEALOGY] == 0)
-        pautocrec = C[z]->allpcalc.pdg + C[z]->allpcalc.probg;
-      else
-        pautocrec = C[z]->allpcalc.pdg + C[z]->allpcalc.probg + C[z]->allpcalc.probhgg;
-	    rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 6561, MPI_COMM_WORLD);
-	    if (rc != MPI_SUCCESS)
-		    MPI_Abort(MPI_COMM_WORLD, rc);
-	    i++;
-    }
-#endif
-  }
-
-  for (j = 0; j < numsplittimes; j++)
-  {
-    if (T[j].v->do_autoc == 1)
-    {
-      if (z >= 0 && currentid == HEADNODE) {
-	      pautoc_vals[i] = C[z]->tvals[j];
-	      i++;
-	}
-	#ifdef MPI_ENABLED
-	if (z < 0 && currentid == HEADNODE) {
-		double pautocrec = 0.0;
-		rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 6767, MPI_COMM_WORLD, &status);
-		if (rc != MPI_SUCCESS)
-			MPI_Abort(MPI_COMM_WORLD, rc);
-		pautoc_vals[i] = pautocrec;
-		i++;
-	}
-	if (z >= 0 && currentid != 0) {
-		double pautocrec = C[z]->tvals[j];
-		rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 6767, MPI_COMM_WORLD);
-		if (rc != MPI_SUCCESS)
-			MPI_Abort(MPI_COMM_WORLD, rc);
-		i++;
-	}
-	#endif
-    }
-  }
-  for (li = 0; li < nloci; li++)
-  {
-    if (L[li].g_rec->v->do_autoc == 1)
-    {
-	     if (z >= 0 && currentid == HEADNODE) 
-      {
-	      pautoc_vals[i] = C[z]->G[li].roottime;
-	      i++;
-	     }
-#ifdef MPI_ENABLED
-	     if (z < 0 && currentid == HEADNODE) 
-      {
-		      double pautocrec = 0.0;
-		      rc = MPI_Recv(&pautocrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 7878, MPI_COMM_WORLD, &status);
-		      if (rc != MPI_SUCCESS)MPI_Abort(MPI_COMM_WORLD, rc);
-		      pautoc_vals[i] = pautocrec;
-		      i++;
-	     }
-	     if (z >= 0 && currentid != 0) 
-      {
-		      double pautocrec = C[z]->G[li].roottime;
-		      rc = MPI_Send(&pautocrec, 1, MPI_DOUBLE, 0, 7878, MPI_COMM_WORLD);
-		      if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);		
-		      i++;
-	     }
-#endif
-    }
-  }
-}                               //set_autoc_vals_hold */
 
 /*********** GLOBAL FUNCTIONS *************/
 
@@ -571,8 +405,6 @@ free_autoc_pointers (void)
     L[li].u_rec[ui].v[i]
     migration_counts[j][i]
     L[li].kappa_rec->v
-
-
 */
 
 /* 
@@ -609,13 +441,15 @@ init_autoc_pointers (void)
     i = 0;
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_autoc == 1)
     {
-      autoc_pointer[i] = &(poptreeuinfo->v->ac[0]);
+      //autoc_pointer[i] = &(poptreeuinfo->v->ac[0]);
+      autoc_pointer[i] = poptreeuinfo->v->ac;
       autoc_str_pointer[i] = poptreeuinfo->v->strshort;
       i++;
     }
     if (lpgpd_v->do_autoc == 1)
     {
-      autoc_pointer[i] = &(lpgpd_v->ac[0]);
+      //autoc_pointer[i] = &(lpgpd_v->ac[0]);
+      autoc_pointer[i] = lpgpd_v->ac;
       autoc_str_pointer[i] = lpgpd_v->strshort;
       i++;
     }
@@ -623,7 +457,8 @@ init_autoc_pointers (void)
     {
       if (T[j].v->do_autoc == 1)
       {
-        autoc_pointer[i] = &(T[j].v->ac[0]);
+        //autoc_pointer[i] = &(T[j].v->ac[0]);
+        autoc_pointer[i] = T[j].v->ac;
         autoc_str_pointer[i] = T[j].v->strshort;
         i++;
       }
@@ -631,7 +466,8 @@ init_autoc_pointers (void)
     for (li = 0; li < nloci; li++)
       if (L[li].g_rec->v->do_autoc == 1)
       {
-        autoc_pointer[i] = &(L[li].g_rec->v->ac[0]);
+        //autoc_pointer[i] = &(L[li].g_rec->v->ac[0]);
+        autoc_pointer[i] = L[li].g_rec->v->ac;
         autoc_str_pointer[i] = L[li].g_rec->v->strshort;
         i++;
       }
@@ -674,7 +510,7 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
     dofillautoc = 0;
   else
     dofillautoc = 1;
-#elif 
+#else 
   dofillautoc = 1;
 #endif
 
@@ -683,8 +519,6 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
     // if not loading autoc values from mcf files,  initialize them
     if (runoptions[LOADMCSTATE]==0) for (i = 0; i < num_autoc; i++)
       iautoc (autoc_pointer[i]); 
-//for (i = 0; i < num_autoc; i++)
-  //if (isnan_(autoc_pointer[i]->vals[863])) printf (" i %d isnan 3a\n");
     for (i = 0; i < AUTOCTERMS; i++)
     {
       nextstepcalc[i] = CHECKAUTOCWAIT + AUTOCINT * AUTOCSTEPSCALAR + autoc_checkstep[i] * AUTOCSTEPSCALAR + (burndone * burninsteps);
@@ -695,8 +529,6 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
       else
         maxpos[i] = (autoc_checkstep[i] / AUTOCINT) - 1;
       assert(maxpos[i] >= 0 && maxpos[i] < AUTOCNEXTARRAYLENGTH);
-      //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
-        //IM_err(IMERR_MISCELLANEOUS6,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  4 i %d nextstepcalc[i]  %d step %d",i, nextstepcalc[i],step);
     }
   }
   else
@@ -708,15 +540,11 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
         if (!autoc_vals_recorded)
         {
          set_autoc_vals (autoc_vals, currentid);
-         //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
-              //IM_err(IMERR_MISCELLANEOUS7,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  5 i %d nextstepcalc[i]  %d step %d",i, nextstepcalc[i],step);
          autoc_vals_recorded = 1;
         }
         if (currentid == HEADNODE) for (j = 0; j < num_autoc; j++)
         {
           fillautoc (&autoc_pointer[j][i], nextposcalc[i], autoc_vals[j]);  // record values 
-          //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
-            //IM_err(IMERR_MISCELLANEOUS8,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  6 j %d step %d",j,step);
         }
         nextposcalc[i]++;
         if (nextposcalc[i] > maxpos[i])
@@ -729,9 +557,6 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
       if (!autoc_vals_recorded)
       {
         set_autoc_vals (autoc_vals, currentid);
-    //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
-      //IM_err(IMERR_MISCELLANEOUS9,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  7 step %d",step);
-
       }
 
       for (i = 0; i < AUTOCTERMS; i++)
@@ -740,8 +565,6 @@ checkautoc (int start_autocorrelations, int burndone, int burninsteps, int curre
         for (j = 0; j < num_autoc; j++)
         {
           autoc_pointer[j][i].vals[nextpossave[i]] = autoc_vals[j];
-          //if (isnan_(L[nloci-1].g_rec->v->ac[0].vals[0])) 
-            //IM_err(IMERR_MISCELLANEOUS10,"  isnan_(L[nloci-1].g_rec->v->ac[0].vals[0]  8 j % step %d",j,step);
         }
         nextpossave[i]++;
         if (nextpossave[i] > maxpos[i])

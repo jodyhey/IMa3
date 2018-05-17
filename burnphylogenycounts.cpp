@@ -53,8 +53,6 @@ void recordburntopology(void)
   {
     burnpoptopologycounts[C[z]->poptreenum * NUMPCOUNTARRAYS ] += 1;
     burnpoptopologycounts[numpoptopologies * NUMPCOUNTARRAYS ] += 1;
-    //*(burnpoptopologycounts  + C[z]->poptreenum) += 1;
-    //*(burnpoptopologycounts  + numpoptopologies) += 1;
   }
 }
 

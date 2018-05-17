@@ -2,9 +2,7 @@
 /*
 build a list of all possible population tree strings
 
-MAXPOPS_PHYLOGENYESTIMATION  should be 7   (as of 5_31_2016) 
-works for up to npops=7,  or if there is a ghost population, then npops=8
-for larger numbers the list of possbilities just gets too large. 
+MAXPOPS_PHYLOGENYESTIMATION is 9, but this includes the ghost,  max without a ghost is 8
 
 uses a lot of strings of fixed length to keep dynamic memory stuff down. 
 */
@@ -29,10 +27,13 @@ int makesubsets(SET nset, SET *subsets);
 void stringfromset(SET set,char *str);
 void findreplace(char *ss,char *oldtext,char *newtext);
 void addoutgroup(char s[]);  // also extern in readdata.cpp
-void compstrings(char a[], char b[]);
+void compswapstrings(char a[], char b[]);
 void makenewnode(nodearray nodelist, char *left, char * right, int nextnodenum);
 void addnode(char **a,nodearray nodes,int nodeslength,int nextnodenum, int *treecount,int addghost);
 int compnodes (const void * a, const void * b);
+int forpriorxsort_comp (const void * a, const void * b);  // used for qsort, sorting forpriorxsort on the basis of length of ->nodestr
+int comp_p_stringlength (const void * stacka, const void * stackb);   // for sorting strings by length, uses pointers to the strings  
+int compstringlength (const void * a, const void * b) ;
 void findpopsinnode(char *ns,char *popsinnodestr);
 void getinternalnodes(char *tstr, char nodes[][20]);
 
@@ -94,8 +95,6 @@ void stringfromset(SET set,char *str)
   }
 } //stringfromset
 
-
-
 /* find oldtext in ss and replace it with newtext
    works for strings of max fixed length of POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION 
    replaces the old string with the new one */
@@ -144,7 +143,7 @@ void addoutgroup(char s[])
 
   j = (int) strlen(s);
   
-  while (s[j] != ':')
+  while (s[j] != ')')
   {
     j-= 1;
   }
@@ -161,12 +160,12 @@ void addoutgroup(char s[])
     findreplace(&s[0],olds,news);
     k -= 1;
   }
-  sprintf(builds,"(%s,%d):%d",s,outgroupnum,2*outgroupnum);
+  sprintf(builds,"(%s,%d)%d",s,outgroupnum,2*outgroupnum);
   strcpy(s,builds);
 }
 
 /* compares two node strings and swap if needed */ 
-void compstrings(char a[], char b[])
+void compswapstrings(char a[], char b[])
 {
   int ia,ib;
   char hold[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
@@ -209,7 +208,7 @@ void makenewnode(nodearray nodelist, char *left, char * right, int nextnodenum)
     strcpy(nodelist[i],nodelist[i+1]);
     i+=1;
   } while (nodelist[i][0] != '\0');
-  sprintf(newnode,"(%s,%s):%d",left,right,nextnodenum);
+  sprintf(newnode,"(%s,%s)%d",left,right,nextnodenum);
   strcpy(nodelist[i-1],newnode);
 
   /*int temp[MAXTREEPOPS];
@@ -232,7 +231,7 @@ void addnode(char **a,nodearray nodes,int nodeslength,int nextnodenum, int *tree
     {
       strcpy(pairs[k][0],nodes[i]);
       strcpy(pairs[k][1],nodes[j]);
-      compstrings(pairs[k][0],pairs[k][1]);
+      compswapstrings(pairs[k][0],pairs[k][1]);
       k += 1;
     }
   numpairs = k;
@@ -271,6 +270,31 @@ void addnode(char **a,nodearray nodes,int nodeslength,int nextnodenum, int *tree
 int compnodes (const void * a, const void * b)  // used for qsort in findpopsinnode, sort from low to high 
 {
 	return ( *(int*)a - *(int*)b );
+}
+
+int forpriorxsort_comp (const void * a, const void * b)  // used for qsort, sorting forpriorxsort on the basis of length of ->nodestr
+{
+  forpriorxsort *fA = (forpriorxsort *)a;
+  forpriorxsort *fB = (forpriorxsort *)b;
+  size_t lA = strlen(fA->nodestr);
+  size_t lB = strlen(fB->nodestr);
+  return (lA > lB) - (lA < lB);
+}
+
+int comp_p_stringlength (const void * stacka, const void * stackb)   // for sorting strings by length ,  uses pointers to strings
+{
+    const char *a=*(const char**) stacka;
+    const char *b=*(const char**) stackb;
+    size_t fa = strlen(a);
+    size_t fb = strlen(b);
+    return (fa > fb) - (fa < fb);
+}
+
+int compstringlength (const void * a, const void * b) // for sorting strings by length 
+{ 
+    size_t fa = strlen((const char *)a);
+    size_t fb = strlen((const char *)b);
+    return (fa > fb) - (fa < fb);
 }
 
 /* take a string containing a node from a tree and return a pointer to a string of sorted (low to hi) array of integers for each 
@@ -495,7 +519,6 @@ void freepoptreestringarrays(void)
   int i;
   for (i = 0; i < numpoptopologies; i++)
   {
-    //printf("%s\n",alltreestrings[i]);
     XFREE(alltreestrings[i]);
   }
   XFREE(alltreestrings);
@@ -613,13 +636,10 @@ void printnewickstring(FILE * outto, char *ps, double *tvals, int ghostintree)
       while (pcount != 1)
       {
         pcount -= (cp[0] == '(');
-        if (cp[0] == ')')
-        {
-          pcount += 1;
-        }
+        pcount += (cp[0] == ')');
         cp += 1;
       }
-      cp +=1; // skip past ':' to node number
+      //cp +=1; // skip past ':' to node number
       k = atoi(cp) - tinc;  // the position of the t value of the down node
       t = 0.0;
       for (i=0;i<= k;i++)
@@ -803,13 +823,12 @@ int fornodeppsort_comp (const void * a, const void * b)  // used for qsort, sort
 
 
 /* for printing full table of population tree posteriors,  simple */
-/* why is this in this file */ 
-void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed,int uniformprior )
+void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed)
 {
   int i,j, totaltreecount = 0;
   double ppcp;
   char poptreetabletitle[100];
-  double temp1 = 1.0;
+  char temppriorstring[8];
 
   for (i=0;i<numpoptopologies;i++)
     totaltreecount += poptopologycounts[i];
@@ -832,9 +851,12 @@ void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreest
         ppcp = 0.0;
       else
         ppcp = fa[j].ppcp;
-      if (uniformprior==0)
-        temp1 = exp(topologypriors[i]);
-      FP "%s\t%.6f\t%d\t%d\t%.6f\t%.7f\n",alltreestrings[i],temp1,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
+      if (usetopologypriors)
+        //temp1 = exp(topologypriors[i]);
+        sprintf(temppriorstring,"%.5g",exp(topologypriors[i]));
+      else
+        sprintf(temppriorstring,"1.0");
+      FP "%s\t%s\t%d\t%d\t%.6f\t%.7f\n",alltreestrings[i],temppriorstring,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
     }
     FP "\n");
   }
@@ -850,9 +872,11 @@ void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreest
         ppcp = 0.0;
       else
         ppcp = fa[j].ppcp;
-      if (uniformprior==0)
-        temp1 = exp(topologypriors[i]);
-      FP "%s\t%s\t%.6f\t%d\t%d\t%.6f\t%.7f\n",alltreestrings_noghost[i],alltreestrings[i],temp1,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
+      if (usetopologypriors)
+        sprintf(temppriorstring,"%.5g",exp(topologypriors[i]));
+      else
+        sprintf(temppriorstring,"1.0");
+      FP "%s\t%s\t%s\t%d\t%d\t%.6f\t%.7f\n",alltreestrings_noghost[i],alltreestrings[i],temppriorstring,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
     }
     FP "\n");
   }
@@ -913,7 +937,111 @@ void init_RF_nodeinfo(void)
         d += (found==0);
       }
       RFtreedis[k] = d;
-      //printf("%d ",d);
     }
   }
 }   //init_RF_nodeinfo(void)
+
+/* take the string of -x terms that were on the command line  (and put in a single string by scancommandline())
+  this string is formatted with one space between each value,  e.g:  "-x 0 1 0.5 -x 2 3 7 10.0" 
+  return a sorted array of a simple structure that contains:
+    nodestr: string containing all the populations numbers in a clade (sorted and comma delimited in order low to hi)  e.g. "0,1,4,7,"  
+    priorxval:  double with the prior value 
+  array is sorted on the length of the strings 
+  xstring is the string put together in scancommandline() from the 1 or more -x  commands.  
+  */
+void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
+{
+  int xi, i, j,k;
+  int holdd[MAXPOPS];
+  char tempf[10], tempi[2];
+  char temps[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
+  int ts,inc;
+  char *c, *fe;
+  double tempd;
+
+  c = &xstring[0];
+  i = 0;
+  xi = 0;
+  while (*(c+i) != '\0')
+  {
+    if (isspace(*(c+i)))
+      i += 1;
+    else
+    {
+      if (*(c+i)=='-')
+      {
+        assert (toupper(*(c+1))=='X');
+        i += 2; // skip x and space after it
+        k = 0;
+      }
+      else
+      {
+        assert(isdigit(*(c+i)));
+        tempd = strtod((c+i),&fe);
+        if (ceilf(tempd) != tempd) // check to see if value is floating  point
+        {
+          i = fe - c; // reposition i to end of floating point value 
+          priorxarray[xi].priorxval = tempd;
+          qsort(holdd,k, sizeof(int), compnodes);
+          holdd[k] = -1;
+          ts = 0;
+          j = 0;
+          do
+          {
+            ts += sprintf(&temps[ts],"%d,",holdd[j]);
+            j += 1;
+          }while (holdd[j] >= 0);
+          strcpy(priorxarray[xi].nodestr,temps);
+          xi++;
+          k = 0;
+        }
+        else
+        {
+          strncpy(tempi,(c+i),1);
+          holdd[k] = atoi(tempi);
+          k++; 
+          i++;
+        }
+      }
+    }
+  }
+  if (xi > 1)
+  {
+     qsort(priorxarray, xi, sizeof( forpriorxsort), forpriorxsort_comp);
+  }
+  assert (xi == numtopologypriors);
+} // makepriorxclades
+
+
+/* gets the internal nodes of the treestring,  sorts on string length
+  and then looks for matches between the prior and these nodes  
+  returns the log of the prior */ 
+
+double calctopologyprior(char *treestring, forpriorxsort  *priorxarray)
+{
+  int npopsa, numnodes;
+  char tree_nodes[MAXPOPS_PHYLOGENYESTIMATION-2][20];
+  int xi, ti,xxi;
+  double p = 0.0;
+  
+  npopsa = (modeloptions[ADDGHOSTPOP]==1) ? npops-1 : npops;
+  numnodes = npopsa - 2;
+  getinternalnodes(treestring, tree_nodes);
+  qsort(tree_nodes, numnodes, 20 * sizeof(char), compstringlength);
+  xi = 0;
+  ti = 0;
+  for (ti = 0;ti < numnodes; ti++)
+  {
+    while (strlen(tree_nodes[ti]) > strlen(priorxarray[xi].nodestr)  && xi < numtopologypriors)
+      xi++;
+    xxi = xi;
+    while (strlen(tree_nodes[ti]) == strlen(priorxarray[xxi].nodestr)  && xxi < numtopologypriors)
+    {
+      if (strcmp(tree_nodes[ti],priorxarray[xxi].nodestr) == 0)
+        p += log(priorxarray[xxi].priorxval);
+      xxi++;
+    }
+  }
+  return p;
+
+} //calctopologyprior

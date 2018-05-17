@@ -56,6 +56,7 @@ calc_popmig (int thetai, int mi, double x, int prob_or_like)
         b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);  // b is a log of lowergama
         a = lowergamma (cc + mc, mmax * (fm + fc / x));      // a is a log of lowergama 
       } 
+      // was playing around with doing lowergamma as the default,  got same #'s 
 /*     if (cc + mc > 0)   // was playing around with doing lowergamma as the default,  got same #'s 
       {
         b = lowergamma (cc + mc, 2 * (fc + fm * x) / qmax);  // b is a log of lowergama
@@ -345,7 +346,6 @@ marginpopmig (int mi, int firsttree, int lasttree, double x, int thetai)
             temp1 = temp2 = 0.0;
           }
 
-          //temp2 = log (exp (uppergamma (cc + mc, 2 * (fc + fm * x) / qmax)) - exp (uppergamma (cc + mc, mmax * (fm + fc / x))));
         }
       }
     }
@@ -472,7 +472,6 @@ marginalopt_popmig (int firsttree, int lasttree, double *mlval, double *peakloc,
   replace use of mnbrak with function calls over POPMIG_MARGINBINS to find an interval with 
   a peak.  This is quite crude */
     ax = MINPARAMVAL;
-    //maxf = 1e100;
     maxf = JUSTSOMEBIGDOUBLE;
     maxj = -1;
     for (j = 0;j< POPMIG_MARGINBINS;j++)

@@ -20,7 +20,7 @@ struct popedge poptreehold[2*MAXPOPS-1];
 static struct genealogy_weights *holdgweight_array;
 static struct genealogy_weights holdallgweight;
 static struct probcalc holdallpcalc;
-static double **topologypoppairpriors; // holds log of prior for each possible pair of sampled sister populations
+//static double **topologypoppairpriors; // holds log of prior for each possible pair of sampled sister populations
 
 
 /******* local prototypes ********/
@@ -655,38 +655,20 @@ void copyimigpriors(int ci, int mode)
 
 /******* global functions ********/
 
+#define MAXTOPOLOGYPRIORTERMS 50
 void
 init_change_poptree(char topologypriorinfostring[])
 {
   int ci,i,j,k,m,npopsa;
   double p;
   char *c,*stringvalpos[(MAXPOPS_PHYLOGENYESTIMATION-1)*MAXPOPS_PHYLOGENYESTIMATION/2];
+  forpriorxsort *priorxarray;
+  int xi;
   init_holdgweight_array_for_hg();
   for (ci=0;ci<numchainspp;ci++)
   {
-  /* set slide distance terms,  these are values to be multiple times the T prior to get the standard deviation of the slide
-    target update rate is 0.2,  adjustor is 1.1,  
-    starting valuue is 0.01,  with min of 0.00005 and max of 0.5
-    these just seem to work
-    did compare results with and without constant changing of these values,  and they seem about the same*/
-    /*for (i=0;i<numchainstotal;i++) // used to put unique value in for chain, for debugging
-    {
-      if (beta[ci]==allbetas[i])
-        break;
-    }
-    setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.1,0.0001,0.5,beta[ci],100); */
-    // updatescalarinfo, width, adjustval,min,max,target,numattemptscheck
-    //setupdatescalarinfo(&C[ci]->branchslideinfo,0.1,1.1,0.0001,0.5,0.4,100); // lowered savmin because update rate is sometimes too low 8/29/2016
-    //setupdatescalarinfo(&C[ci]->branchslideinfo,0.5,1.1,0.001,0.5,0.35,100); // lowered savmin because update rate is sometimes too low 8/29/2016
-    
-    //IMa3I
-    //setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.0,0.01,0.1,0.4,100);// should not update 
-    //IMa3M
-    //setupdatescalarinfo(&C[ci]->branchslideinfo,0.001,1.0,0.01,0.1,0.4,100);// should not update fix to 0.001
-
-    //  11/15/2017  was not updating the branchslidescalar for some reason // notes from 5/3/2017 said it was not a good way 
-    //so just using a setting that will not update because the adjustval is fixed at 1.0 
-    setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.0,0.01,0.1,0.4,100);// should not update 
+    //not happy with using updates to branchslidescalar.  Use a setting that will not update because the adjustval is fixed at 1.0 
+    setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.0,0.01,0.1,0.4,100);
     
     if ((C[ci]->ancplist = static_cast<int **> (malloc (numtreepops * sizeof (*C[ci]->ancplist)))) == NULL)
       IM_err (IMERR_MEM, "  ancplist malloc did not work.   numtreepops %d, step %d",  numtreepops, step);
@@ -700,84 +682,29 @@ init_change_poptree(char topologypriorinfostring[])
   if (strlen(topologypriorinfostring) > 0)
   {
     usetopologypriors = 1;
-    topologypoppairpriors = static_cast<double **> (malloc (npops * sizeof(double *)));
-    for (i = 0;  i < npops; i++) 
-    {
-      topologypoppairpriors[i] = static_cast<double *> (malloc (npops* sizeof (double)));
-    }
-    topologypriors = static_cast<double *> (malloc (numpoptopologies* sizeof (double)));
-    for (i=0;i<npops;i++) for (j=0;j<npops;j++) 
-      topologypoppairpriors[i][j] = 0.0;
-    c = &topologypriorinfostring[0];
-    i = k = 0;
-    while (*(c+i) != '\0')
-    {
-      if (isspace(*(c+i)))
-        i += 1;
-      else
-      {
-        stringvalpos[k] = (c+i);
-        k += 1;
-        while (isspace(*(c+i)) == 0)
-          i += 1;
-      }
-    }
-    m = 0;
-    do
-    {
-      scanfval = sscanf (stringvalpos[m], "%d", &i);
-      scanfval = sscanf (stringvalpos[m+1], "%d", &j);
-      scanfval = sscanf (stringvalpos[m+2], "%lf", &p);
-      m += 3;
-      p = log(p);
-      topologypoppairpriors[i][j] = p;
-      topologypoppairpriors[j][i] = p;
+    assert(numtopologypriors > 0);
 
-    } while (m<k);
+    priorxarray = static_cast<forpriorxsort *> (malloc (numtopologypriors * sizeof (forpriorxsort)));
+
+    makepriorxclades(&topologypriorinfostring[0],priorxarray);
   }
   else
     usetopologypriors = 0;
-  /*if (modeloptions[ADDGHOSTPOP]==1)
-    npopsa = npops-1;
-  else
-    npopsa = npops; */
-
   npopsa = (modeloptions[ADDGHOSTPOP]==1) ? npops-1 : npops;
-  if (usetopologypriors != 0)
+  if (usetopologypriors)
   {
+    topologypriors = static_cast<double *> (malloc (numpoptopologies* sizeof (double)));
     for (k=0;k<numpoptopologies;k++)
     {
-      p = 0.0;
-      c = &alltreestrings[k][0];
-      while (*c)
-      {
-        if (isdigit(*c))
-        {
-          i = atoi(c);  // atoi() works on c and everything after that looks like an integer up to the first char that does not 
-          if (i== 2*(npopsa-1))  // at root node
-            goto atend;
-          if (isdigit(*(c + 1))) // for #'s with 2 digits
-            c += 1;
-          if (*(c+1)==',' && isdigit(*(c+2)))
-          {
-            c += 2;
-            j = atoi(c); 
-            p += topologypoppairpriors[i][j];
-            if (isdigit(*(c + 1))) // for #'s with 2 digits
-              c += 1;
-          }
-        }
-        c += 1; // move one space
-      }
-    atend:
-      topologypriors[k] = p;
+      if (modeloptions[ADDGHOSTPOP]==1)
+        topologypriors[k] = calctopologyprior(&alltreestrings_noghost[k][0],priorxarray);
+      else
+        topologypriors[k] = calctopologyprior(&alltreestrings[k][0],priorxarray);
     }
+    XFREE(priorxarray);
   }
-  /*if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
-  {
-    holdpriors = static_cast<double *> (malloc (nummigrateparams * sizeof (double)));
-  } */
-    
+  
+
 } /* init_change_poptree */
 
 void
@@ -798,14 +725,15 @@ free_change_poptree(void)
     }
   }
   if (usetopologypriors)
-  {
     XFREE(topologypriors);
+  /*if (usetopologypriors)
+  {
     for (j = 0; j < npops; j++) 
     {
       XFREE(topologypoppairpriors[j]);
     }
     XFREE(topologypoppairpriors);
-  }
+  } */
   /*if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {
     XFREE(holdpriors);
@@ -824,7 +752,6 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
   double holdt[MAXPERIODS],newt[MAXPERIODS];
   double roottime;
   double oldslidestdv,newslidestdv,slidedist,holdslidedist;
-  double topologypriorratio = 0.0;
   double metropolishastingsratio;
   double priorratio,proposalratio;
   int accp;
@@ -836,7 +763,7 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
   double newpriorp, oldpriorp, propose_old_given_new, propose_new_given_old;
   double slideweightnum = 0.0, slideweightdenom = 0.0;
   int roottimechanges = 0;
-  double mpriorratio,qpriorratio;
+  double mpriorratio,qpriorratio,topologypriorratio;
   double scaletemp[7] = {0.0003,0.001,0.003,0.01,0.03,0.1,0.3};// series of update widths, roughly uniform on log scale  
   static int scalei;
   SET holddescendantpops[MAXTREEPOPS];
@@ -1055,8 +982,6 @@ checkpoptree(ci,1);
       set_iparam_poptreeterms (ci);
       assert (C[ci]->poptreenum >= 0 && C[ci]->poptreenum < numpoptopologies);
       poptopologyproposedlist[C[ci]->poptreenum] += 1;
-      if (usetopologypriors)
-        topologypriorratio = topologypriors[C[ci]->poptreenum] - topologypriors[oldtreenum];
       mpriorratio = qpriorratio = 0.0;
       if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
       {
@@ -1140,19 +1065,21 @@ checkpoptree(ci,1);
     }
     newpriorp = C[ci]->allpcalc.probg + C[ci]->allpcalc.probhgg;
     oldpriorp = holdallpcalc.probg + holdallpcalc.probhgg;
-    propose_old_given_new = slideweightnum;
-    propose_new_given_old = slideweightdenom;
-    if (usetopologypriors)
-    {
-       newpriorp += topologypriors[C[ci]->poptreenum];
-       oldpriorp += topologypriors[oldtreenum];
-    }
     priorratio  = newpriorp - oldpriorp;
-    proposalratio = propose_old_given_new - propose_new_given_old;
     if (*topolchange)
     {
-      priorratio += mpriorratio + qpriorratio;
+      if (usetopologypriors)
+      {
+        topologypriorratio = topologypriors[C[ci]->poptreenum] - topologypriors[oldtreenum];
+        priorratio += topologypriorratio + mpriorratio + qpriorratio;
+      }
+      else
+        priorratio += mpriorratio + qpriorratio;
+
     }
+    propose_old_given_new = slideweightnum;
+    propose_new_given_old = slideweightdenom;
+    proposalratio = propose_old_given_new - propose_new_given_old;
 
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
     /* under thermodynamic integration, only ratios of likelihoods get raised to beta. 
@@ -1261,6 +1188,5 @@ checkpoptree(ci,0);
 #endif //TURNONCHECKS
   // resetupdatescalarer(&C[ci]->branchslideinfo);
   } /* reject the update */
-//printf("step %d chain %d treenum %d accp %d uni %.4lf\n",step,ci,C[ci]->poptreenum,accp,uniform());
   return accp;
 }

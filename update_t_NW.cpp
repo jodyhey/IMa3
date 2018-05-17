@@ -659,7 +659,6 @@ update_mig_tNW (int li, struct edge *gtree, int period)
           if (k==2)
             minfo[j].cm2_b[i] = minfo[j].upb[i];
           else
-            //minfo[j].cm2_b[i] = gtree[ei].mig[k-3].mp;
             minfo[j].cm2_b[i] = gtree[ei].mig[k-2].mp;
         }
         else
@@ -973,13 +972,9 @@ rejectjump:
     copy_all_gtree (0);
     copy_treeinfo (&C[ci]->allgweight, &holdallgweight_t_NW);
     copy_probcalc (&C[ci]->allpcalc, &holdallpcalc_t_NW);
-  
-//initialize_integrate_tree_prob (ci,&C[ci]->allgweight,&C[ci]->allpcalc);
-
     for (li = 0; li < nloci; li++)
     {
       copy_treeinfo (&C[ci]->G[li].gweight, &holdgweight_t_NW[li]);
-      //      assert(fabs(C[ci]->G[li].gtree[  C[ci]->G[li].gtree[C[ci]->G[li].root].up[0]].time - C[ci]->G[li].roottime) < 1e-8);   
 #ifdef TURNONCHECKS
   //checkprobs(ci,li);
 #endif //TURNONCHECKS

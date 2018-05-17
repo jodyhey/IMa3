@@ -544,24 +544,6 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
       }
     }
   }
-  /* interval output of detailed chain info - used for debugging 
-  int j;
-  int ci,li,i,temp;
-  FP  "\nchain#\tallbeta\tbetachain#\t#Swaps\tswaprate\tpdg\tprobhgg\tprobg\tsumP\t#mig\ttree#\n");
-
-  for (ci=0;ci<numchainstotal-1;ci++)
-  {
-    for (i=0;i<numchainstotal;i++)
-      if (allbetas[ci] == beta[i])
-        break;
-    for (j=0;j<numchainstotal;j++)
-      if (allbetas[ci+1] == beta[j])
-        break;
-    temp = 0;
-    for (li=0;li<nloci;li++)
-      temp += C[i]->G[li].mignum;
-    FP  "%d\t%.4f\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%d\t%d\n",ci,allbetas[ci],i,tempbasedswapcount[ci][ci + 1],tempbasedswapcount[ci][ci + 1] / (float) tempbasedswapcount[ci + 1][ci], C[i]->allpcalc.pdg,C[i]->allpcalc.probhgg,C[i]->allpcalc.probg,(C[i]->allpcalc.pdg+C[i]->allpcalc.probhgg+C[i]->allpcalc.probg),temp,C[i]->poptreenum);
-  }*/
 }                               /* printrunbasics */
 
 
@@ -1518,23 +1500,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 // STR ancestral allele states 
 // A_rec not used as of sometime in 2010, A gets enough updates when updating genealogy
-//8/26/2011  turn this printing section off, as it only ever prints zeros when A updating is not used 
-    /*
-    for (i = 0, li = 0; li < nloci; li++)
-      for (j = 0; j < L[li].nlinked; j++)
-      {
-        if (L[li].umodel[j] == STEPWISE)
-        {
-          reclist[i] = &L[li].A_rec[j];
-          i++;
-        }
-      }
-      
-    if (i > 0)
-    {
-      printacceptancerates (outto, i, reclist,
-                            "Update Rates (chain 0) -- STR Genealogy Allele States");
-    } */
+
     #ifdef XMLOUTPUT
     xstack.pop();
     #endif
@@ -1734,11 +1700,6 @@ void savegenealogyfile (char genealogyinfosavefilename[], FILE * genealogyinfosa
   }
   for (j = *lastgenealogysavedvalue; j < genealogysamples; j++)
   {
-    // save everything as a float  - round integers later, when they get used
-    //std::cout << "What is going on here???";
-//	for (i = 0; i < gsampinflength; i++) {
-//		std::cout << gsampinf[0][i] << "\n";
-//	}
     for (i = 0; i < gsampinflength; i++)
       fprintf (genealogyinfosavefile, "%.6f\t", (float) gsampinf[j][i]);
     if (hiddenoptions[HIDDENGENEALOGY] && hiddenoptions[GSAMPINFOEXTRA] == 1)
@@ -1925,8 +1886,8 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   int hii;
   int counthipcp;
   int numnotproposed = 0;
-  int uniformprior = (strlen(topologypriorinfostring) == 0);
-  double temp1 = 1.0;
+  //double temp1 = 1.0;
+  char temppriorstring[8];
   int *set1counts,*set2counts, setl;
   int numpprint;
 
@@ -2037,14 +1998,14 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   FP "\n");
   FP "Priors\n");
   FP "------\n");
-  if (uniformprior)
+  if (usetopologypriors == 0)
     FP " Uniform prior assumed for population tree topologies\n");
   else
     FP " Sister population priors specified on command line: %s\n",topologypriorinfostring);
   FP "\n");
   FP "Summary\n");
   FP "-------\n");
-  if (uniformprior)
+  if (usetopologypriors == 0)
   {
     FP " Uniform prior assumed for population tree topologies\n");
   }
@@ -2065,7 +2026,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   {
     FP " Tree topology with highest estimated posterior probability: %s\n",fatssarray[0].treestrnoghost);
     FP "     -estimated posterior probability: %.6f\n",fatssarray[0].freqall);
-    if (uniformprior == 0)
+    if (usetopologypriors)
       FP "     -prior probability: %.6f\n",exp(topologypriors[fatssarray[0].origi]));
     FP "     -Newick string without ghost (unit branch lengths):\n       ");
     printnewickstring(outfile,fatssarray[0].treestrnoghost,NULL,0);
@@ -2092,11 +2053,14 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
-     if (uniformprior == 0)
-        temp1 = exp(topologypriors[fatssarray[i].origi]);
-      FP "%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      if (usetopologypriors)
+        //temp1 = exp(topologypriors[fatssarray[i].origi]);
+        sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+      else
+        sprintf(temppriorstring,"1.0");
+      FP "%s\t%s\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
       #ifdef XMLOUTPUT
-      ss << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      ss << fatssarray[i].treestr << "  " << temppriorstring << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
       TiXmlText *t = new TiXmlText(ss.str().c_str());
       TiXmlElement *row = new TiXmlElement("Row");
       row->LinkEndChild(t);
@@ -2115,11 +2079,14 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     #endif
     for (i=0;i<numpoptopologies;i++) if (fatssarray[i].count > 0)
     {
-      if (uniformprior == 0)
-        temp1 = exp(topologypriors[fatssarray[i].origi]);
-      FP "%s\t%s\t%.4f\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
+      if (usetopologypriors)
+        //temp1 = exp(topologypriors[fatssarray[i].origi]);
+        sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+      else
+        sprintf(temppriorstring,"1.0");
+      FP "%s\t%s\t%s\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
       #ifdef XMLOUTPUT
-      ss << fatssarray[i].treestrnoghost << "  " << fatssarray[i].treestr << "  " << temp1 << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
+      ss << fatssarray[i].treestrnoghost << "  " << fatssarray[i].treestr << "  " << temppriorstring << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
       TiXmlText *t = new TiXmlText(ss.str().c_str());
       TiXmlElement *row = new TiXmlElement("Row");
       row->LinkEndChild(t);
@@ -2130,7 +2097,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     FP "\n");
   }
   if (npops - modeloptions[ADDGHOSTPOP] <= 6)
-    printallpoptreesamples(outfile,poptopologycounts,fatssarray,poptopologyproposedlist_rec,uniformprior);
+    printallpoptreesamples(outfile,poptopologycounts,fatssarray,poptopologyproposedlist_rec);
   else
     FP "Full Population Tree Sample Counts and Frequencies (%d entries) - not printed\n\n",numpoptopologies);
 
@@ -2150,9 +2117,12 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   FP "Tree\tpriorprob\tcount\tfreq_ALL\tppcp\n");
   for (i=0;i<numpprint;i++)
   {
-    if (uniformprior == 0)
-      temp1 = exp(topologypriors[fatssarray[i].origi]);
-    FP "%s\t%.4f\t%d\t%.6f\t%.7f\n",fatssarray[i].treestr,temp1,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].ppcp);
+    if (usetopologypriors)
+      //temp1 = exp(topologypriors[fatssarray[i].origi]);
+      sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+    else
+      sprintf(temppriorstring,"1.0");
+    FP "%s\t%s\t%d\t%.6f\t%.7f\n",fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].ppcp);
   }
   FP "\n");
   
@@ -2258,8 +2228,6 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
     numcurve += numpopsizeparams;
     dohypercurves = 1;
   }
-  //if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])// 
-   // numcurve += numpopsizeparams;
   if (runmode == Gmode3 || runmode == LOADGmode4 || runmode == HGmode6)
   {
     if (outputoptions[NOPOPMIGPARAMHIST] == 0 && hiddenoptions[PRINT2NMASCIICURVES] == 1)

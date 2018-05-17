@@ -448,7 +448,6 @@ savegsampinf_debug_ti_addinfo (float *g, int z, char *a)
   {
     gsamp_hg = gsamp_tp + numsplittimes;
     g[gsamp_hg] = (float) C[z]->allpcalc.probhgg;
-    //g[gsamp_hg] = (float) C[z]->G[0].hgprob;
     gsamp_cmmhg = gsamp_hg +1;
     g[gsamp_cmmhg] = 0.0;
     for (li=0;li<nloci;li++)

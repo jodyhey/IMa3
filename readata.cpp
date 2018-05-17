@@ -14,17 +14,17 @@ static int infilelines,infiletoplines;
 double pi[MAXLOCI][4];          // used here and in initialize.c
 
 const char *defaultpoptreestrings[11] = 
-    {"",
-    "0",
-    "(0,1):2",
-    "(2,(0,1):3):4",
-    "(3,(2,(0,1):4):5):6",
-    "(4,(3,(2,(0,1):5):6):7):8",
-    "(5,(4,(3,(2,(0,1):6):7):8):9):10",
-    "(6,(5,(4,(3,(2,(0,1):7):8):9):10):11):12",
-    "(7,(6,(5,(4,(3,(2,(0,1):8):9):10):11):12):13):14",
-    "(8,(7,(6,(5,(4,(3,(2,(0,1):9):10):11):12):13):14):15):16",
-    "(9,(8,(7,(6,(5,(4,(3,(2,(0,1):10):11):12):13):14):15):16):17):18"};
+  {"",
+  "0",
+  "(0,1)2",
+  "(2,(0,1)3)4",
+  "(3,(2,(0,1)4)5)6",
+  "(4,(3,(2,(0,1)5)6)7)8",
+  "(5,(4,(3,(2,(0,1)6)7)8)9)10",
+  "(6,(5,(4,(3,(2,(0,1)7)8)9)10)11)12",
+  "(7,(6,(5,(4,(3,(2,(0,1)8)9)10)11)12)13)14",
+  "(8,(7,(6,(5,(4,(3,(2,(0,1)9)10)11)12)13)14)15)16",
+  "(9,(8,(7,(6,(5,(4,(3,(2,(0,1)10)11)12)13)14)15)16)17)18"};				
 
 
 /* prototypes of local functions*/
@@ -41,6 +41,7 @@ static void parse_locus_info (int li, int *uinext, char *cc, int *fpstri,char fp
 static void skip_datafile_toplines (FILE * infile);
 
 /* For IS model, identify and count variable sites */
+
 int
 findsegsites (FILE * infile, int li, int numbases, int initseg[],
               int MODEL, int **numsitesIS)
@@ -733,15 +734,11 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
       if (cc && cc[0] == '(')   /* look for a mutation rate range in parentheses e.g. (0.03,0.05)  */
       {
         cc++;
-        scanfval = sscanf (cc, "%lf",
-                //                &(L[li].u[ui].uperyear.pr.min));
-                &(L[li].uperyear_prior[ui].min));
+        scanfval = sscanf (cc, "%lf", &(L[li].uperyear_prior[ui].min));
         while (cc[0] != ',')
           cc++;
         cc++;
-        scanfval = sscanf (cc, "%lf",
-                //                &(L[li].u[ui].uperyear.pr.max));
-                &(L[li].uperyear_prior[ui].max));
+        scanfval = sscanf (cc, "%lf", &(L[li].uperyear_prior[ui].max));
         while (cc[0] != ')')
           cc++;
         while (!isdigit (cc[0]) && cc[0] != '\0')
@@ -797,23 +794,27 @@ skip_datafile_toplines (FILE * infile)
   char textline[DATAFILEMAXLINELENGTH + 1];
   for (int i=0;i<infiletoplines;i++)
     fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
- /* char ch;
-  fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
-  ch = (char) getc (infile);
-  while (ch == '#')
-  {
-    fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
-    ch = (char) getc (infile);
-  }
-  ungetc (ch, infile);
-  fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
-  fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
-  fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile);
-  fgetval = fgets (textline, DATAFILEMAXLINELENGTH, infile); */
   return;
 }                               //skip_datafile_toplines
 
+
+
 /*** GLOBAL STUFF *****/
+
+void stripcolons(char *treestring)
+{
+  int i, j;
+  char treetemp[POPTREESTRINGLENGTHMAX];
+  for (i=0,j=0;i < strlen(treestring);i++) if (treestring[i] != ':')
+  {
+    treetemp[j] = treestring[i];
+    j++;
+  }
+  treetemp[j] = '\0';
+  strcpy(treestring,treetemp);
+} // stripcolons
+
+
 void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
 {
   char textline[DATAFILEMAXLINELENGTH + 1];
@@ -906,6 +907,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
   else
   {
     poptreestring_given = 1;
+    stripcolons(startpoptreestring);
   }
   infilelines += poptreestring_given;
   if (poptreestring_given && modeloptions[POPTREETOPOLOGYUPDATE]==1)
@@ -919,7 +921,7 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
       if (modeloptions[ADDGHOSTPOP])
       {
         //char temppoptreestring[POPTREESTRINGLENGTHMAX]; should not need to declare again
-        strcpy(temppoptreestring,startpoptreestring);
+        strcpy(temppoptreestring,startpoptreestring);  // redundant,  could delete this
         addoutgroup(temppoptreestring);
         rewrite(temppoptreestring);
         SP "    Input File Tree rewritten with standard ordering and ghost population outgroup: %s\n",temppoptreestring);
@@ -934,7 +936,8 @@ void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[])
       SP "Population Tree rewritten with standard ordering: %s\n",startpoptreestring);
     if (modeloptions[ADDGHOSTPOP])
     {
-      add_ghost_to_popstring (startpoptreestring);
+      //add_ghost_to_popstring (startpoptreestring);
+      addoutgroup(startpoptreestring);
       SP "Population Tree with Ghost Population: %s\n", startpoptreestring);
     }
   }

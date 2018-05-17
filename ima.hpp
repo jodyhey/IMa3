@@ -66,7 +66,9 @@
 #include <mpi.h>
 #endif
 
-#define XMLOUTPUT
+/* use XMLOUTPUT when running in IMgui */ 
+
+//#define XMLOUTPUT
 
 #ifdef XMLOUTPUT
 #include "tinyxml.h"
@@ -203,7 +205,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define MINNUMCHAINSPERPROCESSOR 2 // changed to 2 after some testing on 10/4/2017  4  // must have at least 4 for swaps within chains
 #define MINNUMCHAINS  4
 #define MAXPOPS 9 // 10     set this back to 9 , have not tested it with this many        // MAXPOPS cannot exceed 10 because the treestring functions assume populations and nodes are represented by single integers
-#define MAXPOPS_PHYLOGENYESTIMATION 9  // actually 8,  but 9 prevents a crash  (with ghost it becomes 9) for larger numbers the list of possble trees just gets too large. 
+#define MAXPOPS_PHYLOGENYESTIMATION 9  // actually 8,  but 9 prevents a crash  (with ghost 8 becomes 9) for larger numbers the list of possble trees just gets too large. 
 #define MAXPERIODS (MAXPOPS+1)
 #define MAXTREEPOPS  (2*MAXPOPS - 1)
 #define MAXUPPOPS    2           /* added for hidden genealogy stuff.  maximum number of populations that can come together in the tree at one time */
@@ -244,7 +246,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define COMPAREFORCEREJECTION -1e100  // crude but should deal with floating point comparison i.e. (FORCEREJECTIONCONSTANT < COMPAREFORCEREJECTION) ==1
 #define REJECTMIGRATIONPROPOSAL  -1000000000.0      // a very low value, indicates failure of migration proposal because too many were proposed
 #define NUMTARRAYBINS  100      // number of bins for multidimensional peak estimation of splitting times
-#define ARBCHAIN 0   // used as a chain index for those cases when any chain will do because they are all the same for the info referred to 
+#define ARBCHAIN 0   // used as a chain index for an arbitrary chain, for those cases when any chain will do because they are all the same for the info referred to 
 #define HEADNODE 0 //the headnode is the cpu that does writing of output files
 #define BURNTRENDSTARTDELAYDEFAULT  10000
 #define GENERATIONTIMEDEFAULT   1
@@ -434,7 +436,7 @@ typedef unsigned int SET;
       /*returns the lowest member of the set, as a set 
          can be used in conjuntion with setdiff to reduce sets an item at a time */
 
-/*  for counting # of elements in a SET,  must copy this somewhere 
+/*  for counting # of elements in a SET,  copied into allstrings.cpp
 int cardinality(SET x){
 	int count = 0;
 	while (x != EMPTYSET) {
@@ -748,6 +750,7 @@ enum
   
   IMERR_SWCHECK = 38,
 
+  IMERR_RANDOM = 40,
   IMERR_LOWERGAMMA = 41,
   IMERR_UPPERGAMMA = 42,
   IMERR_LOGDIFF = 43,
@@ -816,7 +819,11 @@ typedef struct  // used in  sort_and_print_alltreestrings()
   double pp;
 }  fornodeppsort;
 
-
+typedef struct // used in sort_and_print_alltreestrings()  in update_poptree.cpp and in alltreestrings.cpp
+{
+  char nodestr[20];
+  double priorxval;
+} forpriorxsort;
 
 struct topolseq // holds the entire sampled sequences of tree numbers and Robinson Foulds distances (from tree 0).  Kept only on cpu with rank 0.
 {
@@ -882,8 +889,6 @@ struct pnodetime
   int ptreepos;
   double time; 
 };
-
-//typedef struct hkyinfo im_hkyinfo;
 
 /*Main data structures: edge, locus, parameter */
 /* an edge is a branch in the genealogy
@@ -1431,6 +1436,7 @@ gextern char popnames[MAXPOPS][NAMELENGTH];
 gextern char *poptreenewickstring;
 gextern double *topologypriors;  // holds log of prior for each topology
 gextern int usetopologypriors;
+gextern int numtopologypriors; 
 gextern double *popsizeprior_fromfile;
 gextern double **mprior_fromfile;
 gextern int poptopologiessampled;
@@ -1499,8 +1505,10 @@ double calcppcp(char **na,char *tstr, int *nc, int totaltreecount,int nunique);
 int foralltreestringsort_comp (const void * a, const void * b);
 int foralltreestringsort_compppcp (const void * a, const void * b);
 int fornodeppsort_comp (const void * a, const void * b);
-void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed, int uniformprior );
+void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreestringsort *fa, int *poptreeproposed);
 void init_RF_nodeinfo(void);
+void makepriorxclades(char *xstring, forpriorxsort *priorxarray);
+double calctopologyprior(char *treestring,forpriorxsort  *priorxarray);
 /**** GLOBAL FUNCTIONS IN build_gtree.cpp ****/
 void makeHKY (int ci, int li, int nosimmigration);
 void makeIS (int ci, int li, int nosimmigration);
@@ -1509,7 +1517,7 @@ void makeSW (int ci, int li, int nosimmigration);
 
 /**** GLOBAL FUNCTIONS IN build_poptree.cpp ****/
 void testtreewrite (char poptreestring[]);
-void add_ghost_to_popstring (char poptreestring[]);
+//void add_ghost_to_popstring (char poptreestring[]);
 void setup_poptree (int ci, char poptreestring[]);
 void reset_poptree (int ci, char poptreestring[]);
 void set_poptree_update_record(void);
@@ -1581,6 +1589,7 @@ void print_means_variances_correlations (FILE * outfile);
 void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *poptopologyproposedlist_rec, char *topologypriorinfostring); /* for printing population tree posteriors,  sorts and prints */
 
 /**** GLOBAL FUNCTIONS IN readata.cpp ****/
+void stripcolons(char *treestring);
 void read_datafile_top_lines (char infilename[], int *fpstri, char fpstr[]);
 void readdata (char infilename[], int *fpstri,
                char fpstr[], int **numsitesIS, int currentid);
@@ -1746,7 +1755,6 @@ void gser (double *gamser, int a, double x, double *gln);
 void checktreestring (char *t);
 int put_spaces_in_filepaths(char *pathstr);
 void convertToUpperCase(char *sPtr);
-/* double expint(int n, double x); */
 double expint (int n, double x, int *islog);
 double uppergamma (int a, double x);
 double lowergamma (int a, double x);

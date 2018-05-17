@@ -2,20 +2,6 @@
 #undef GLOBVARS
 #include "ima.hpp"
 
-/* 10/3/09  work in progress
-  adding code for reading a file that contains priors of parameters */ 
-
-/* format of the prior file 
-
-a title line 
-then one or more lines beginning with # 
-
-then popstring
-then popstring with popsize priors
-then popstring with t priors
-then migration prior matrix 
-
-*/
 
 static int ancestralpopnums[2*MAXPOPS - 1]; 
 static double *pp;
@@ -75,7 +61,7 @@ readprior_parenth0 (void)
     {
       if (*ne == ')')
       {
-        ne += 2;
+        ne += 1;
         itemp = strtol (ne, &ne, 10);
         ancestralpopnums[npops + psetlist[nextlistspot - 1]] = itemp;
         nextlistspot--;
@@ -125,6 +111,7 @@ readprior_parenth (int mode, int tempcurrent, int startparenth)
       /*itemp = atoi (treestringspot);
       treestringspot++; */
       itemp = strtol(treestringspot,&ne,10);							// read the id of population
+      //treestringspot++;
       treestringspot=ne;
       treestringspot++; /* skip colon */
       val = strtod(treestringspot,&ne);		 // read time or size of population
@@ -160,9 +147,10 @@ readprior_parenth (int mode, int tempcurrent, int startparenth)
     }
   } while (*treestringspot != ')');
   treestringspot++;             /* skip parentheses and colon*/
-  if (*treestringspot == ':')
+  //if (*treestringspot == ':')
+  if (isdigit(*treestringspot))
   {
-    treestringspot++;
+    //treestringspot++;
     itemp = strtol(treestringspot,&ne,10); // read the id of population
     treestringspot=ne;
     treestringspot++; /* skip colon */
@@ -222,7 +210,6 @@ readprior_poptreeread (int mode, char *poptreestring)
     {
       temppoptree[i].b = 0;
       temppoptree[i].numup = 0;
-      /*temppoptree[i].up = static_cast<int *> (malloc (2 * sizeof (int))); */ /* changed to fixed array for hidden genealogy work */
       for (j = 0; j < 2; j++)
         temppoptree[i].up[j] = -1;
       temppoptree[i].down = UNDEFINEDINT;
@@ -230,7 +217,6 @@ readprior_poptreeread (int mode, char *poptreestring)
     for (; i < numtreepops; i++)
     {
       temppoptree[i].numup = 0;
-/*      temppoptree[i].up = static_cast<int *> (malloc (2 * sizeof (int))); */ /* changed to fixed array for hidden genealogy work */
       for (j = 0; j < 2; j++)
         temppoptree[i].up[j] = -1;
       temppoptree[i].down = UNDEFINEDINT;
@@ -288,8 +274,6 @@ void readpriorfile_hold(char priorfilename[],double *popsizepriorvals, double **
        }
 	  }
 
-  /*for (i=0; i < numtreepops; i++)
-    XFREE(temppoptree[i].up); */ /* changed to fixed array for hidden genealogy work */
   XFREE(temppoptree);
   XFREE(priortextline);
   fclose(priorfile);

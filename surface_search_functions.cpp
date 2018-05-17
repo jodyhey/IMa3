@@ -5,10 +5,6 @@
 #include "ima.hpp"              // may not really be needed in this particular file
 
 /*********** LOCAL STUFF **********/
-// these 3 defines don't seem to get used 
-//#define NRANSI
-//#define NR_END 1
-//#define FREE_ARG char*
 
 /* local function prototypes */
 

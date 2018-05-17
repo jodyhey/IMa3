@@ -5,8 +5,6 @@
 //#include "utilities.hpp" moved stuff out of here and deleted it
 
 /*********** LOCAL STUFF **********/
-//double loghalffact[50 * ABSMIGMAX];   //leftover from assignment stuff, required xtrabbits
-//int BITNUMBERTRUE[256];
 unsigned long *iseed;
 
 /* local function prototypes */
@@ -38,7 +36,6 @@ unsigned long getKnownRandom(void);
 #endif /* RANDOM_NUMBERS_FROM_FILE */
 
 // stuff called by indexx() - sorting an index,  from NR 
-//#define NRANSI
 #define NR_END 1l
 #define FREE_ARG char*
 int *
@@ -154,7 +151,7 @@ static const char *simerrmsg[] = {
   /* 37 */ "",
   /* 38 */ "likelihoods do not add up for stepwise model",
   /* 39 */ "",
-  /* 40 */ "",
+  /* 40 */ "random number error ",
   /* 41 */ "error in lowergamma function",
   /* 42 */ "error in uppergamma function",
   /* 43 */ "error using LogDiff macro,  difference is non-positive",
@@ -306,8 +303,6 @@ unsigned long getKnownRandom(void)
     {
       IM_err (IMERR_CREATEFILEFAIL, "Error opening randNums file");
     }
-	  	//if (( ranNum = fopen(ranNumFile, "r")) == NULL )
-			//assert (0);
 	  	if (( fgets(line, MAXLINE,  ranNum)) == NULL)
 		  	assert (0);
 	  	/* skip the beginning comment lines started with # */
@@ -471,11 +466,7 @@ void randomsorted(double a, double b, int n, double r[])
   sum +=  expo(1.0);
   for (i=0;i<n ;i++)
   {
-	r[i] = (r[i] * ((b-a)/sum)) + a;
-    //r[i]/= sum;
-    //r[i] *= (b-a);
-    //r[i] += a;
-
+	   r[i] = (r[i] * ((b-a)/sum)) + a;
   }
 }
 
@@ -594,6 +585,8 @@ poisson (double param, int condition,int cmm)
     if (cmm > MIGMAX)
       return -1; // update must be rejected
     break;
+  default:
+    IM_err (IMERR_RANDOM, " random number error.   condition in poisson() %d", condition);
   }
   if (param < MINPP && condition == 1)  /* i.e. need an odd number but the parameter is a small value */
   {
@@ -676,6 +669,8 @@ poisson (double param, int condition,int cmm)
     case 3:
       stop = (i != 1);
       break;
+    default:
+      IM_err (IMERR_RANDOM, " random number error.   condition in poisson() %d", condition);
     }
     stop = stop && (cmm + i) <= MIGMAX;
   } while (!stop); 
@@ -1222,8 +1217,6 @@ This is a unnormalized function.   Modified from numerical recipes gammap() in t
   if (x < (a + 1.0))
   {
 
-    //gser(&gamser,a,x,&gln);
-    //p = gln + log(gamser);
     gserlog (&gamser, a, x, &gln);
     p = gln + gamser;
   }
@@ -1443,34 +1436,9 @@ void
 setlogfact (void)
 {
   int i;
-  //UByteP a;   leftover from assignment stuff, required xtrabbits
-  // int bitj;   leftover from assignment stuff, required xtrabbits
-  //int ic;
   logfact[0] = 0;
   for (i = 1; i <= LOGFACTMAX-1; i++)
     logfact[i] = ((double) logfact[i - 1]) + log ((double) i);
-  /*
-  for (i = 0; i < 50 * ABSMIGMAX; i++)
-  {
-    loghalffact[i] = M_LNPI / 2
-      + logfact[2 * i + 2] - logfact[i + 1] - (2 * i + 2) * M_LN2;
-  }
-  a = (UByteP) malloc (sizeof (unsigned char));    //leftover from assignment stuff, required xtrabbits
-  for (ic = 0; ic < 256; ic++)
-  {
-    BitZero (a, 1);
-    a[0] = (unsigned char) ic;
-    BITNUMBERTRUE[ic] = 0;
-    for (i = 0; i < 8; i++)
-    {
-      if (BitIsTrue (a, i))
-      {
-        BITNUMBERTRUE[ic] += 1;
-      }
-    }
-  }
-  XFREE (a);
-  a = NULL; */
 }
 
 void
@@ -2063,11 +2031,11 @@ struct dictionary_node_kr *dictionary_install(char *name, double val,struct dict
 /*********** end of dictionary code modified from Kernigan & Ritchie 2nd ed sec 6.6 **********/
 
 /* 
-  metropolishastingsdecide() returns 0 (reject) or 1 (accept) the update
+  metropolishastingsdecide() returns 0 (reject) or 1 (accept the update)
   uses the logarithm of the metropolishastings ratio
    if logmhratio is out of bounds, reject
-   othercriteria allows for various other things to also be true
-   othercriteria is 0 or 1,  if 0 reject
+   int othercriteria allows for the calling function to impose another criterion
+   othercriteria is 0 or 1,  if 1 used logmhratio, if 0 reject regardless of logmratio
  */
 int metropolishastingsdecide(double logmhratio,int othercriteria)
 {

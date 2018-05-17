@@ -513,8 +513,6 @@ changet_RYhg (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rub
     //propose_new_given_old = propose_old_given_new = 0.0;
     checkdetailedbalance(newlikelihood,oldlikelihood,newpriorp,oldpriorp,propose_old_given_new, propose_new_given_old,beta[ci]);
 #endif //TURNONCHECKS
-  //priorratio = ( C[ci]->allpcalc.probg - holdallpcalc_t_RY_hg.probg) +  (C[ci]->allpcalc.probhgg - holdallpcalc_t_RY_hg.probhgg);
-  //proposalratio = (ecd + emd) * log (t_d_hterm) + (ecu + emu) * log (t_u_hterm);
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
   if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
@@ -659,7 +657,6 @@ checkpoptree(ci,0);
           }
         }
       }
-//        assert(fabs(C[ci]->G[li].gtree[  C[ci]->G[li].gtree[C[ci]->G[li].root].up[0]].time - C[ci]->G[li].roottime) < 1e-8);    
       G->roottime = gtree[gtree[G->root].up[0]].time;// 4/7/2017  roottime was not being reset with rejection,  a bug 
     }
 

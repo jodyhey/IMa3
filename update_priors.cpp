@@ -142,8 +142,6 @@ int update_migration_prior_intree(int ci, int mi) // 0<mi<nummigrateparams
   }
   else
   {
-//if (mii+dir == 0)   
-  //printf("reject \n");
     if (modeloptions[EXPOMIGRATIONPRIOR])
       C[ci]->imig[mi].pr.expomean = holdpr.expomean;
     else
@@ -197,10 +195,8 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
       if (found == 0) // attempt update, poppairs[currenti] is not in the current tree 
       {
         if (dir==0)
-          //oldpriorval = C[ci]->mltorhpriors[currenti];
           oldpriorval = getvalue(poppairs[currenti],C[ci]->mltorhpriors);  // mltorhpriors are for dir==0
         else
-          //oldpriorval = C[ci]->mrtolhpriors[currenti];
           oldpriorval = getvalue(poppairs[currenti],C[ci]->mrtolhpriors); // mrtolhpriors are for dir==1
 
         if (modeloptions[EXPOMIGRATIONPRIOR])
@@ -209,17 +205,6 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
           newpriorval = getnewpriorval(expo_m_mean,oldpriorval,1);
           proposalratio = 0.0;
           priorratio = (oldpriorval-newpriorval)/expo_m_mean;
-          /*if (hiddenoptions[PRIORRATIOHEATINGON] == 0)   // calculating marginal likelihood does not seem to work when updating population tree  - not sure why 9/13/2016
-          {
-            metropolishastingsratio = exp(priorratio + proposalratio);
-          }
-          else
-          {
-            metropolishastingsratio = exp(beta[ci] * priorratio + proposalratio);
-          }
-          U = uniform (); 
-          //U = 2;
-          if (U <= DMIN(1.0, metropolishastingsratio)) */
           if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
           {
             metropolishastingsratio = priorratio + proposalratio;
@@ -234,10 +219,8 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
             struct dictionary_node_kr *temp;
             if (dir==0)
               temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mltorhpriors); // mltorhpriors are for dir==0
-              //C[ci]->mltorhpriors[currenti] = newpriorval;
             else
               temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mrtolhpriors); // mrtolhpriors are for dir==1
-              //C[ci]->mrtolhpriors[currenti] = newpriorval;
           }
         }
         else  // uniform, accept all updates 
@@ -245,10 +228,8 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
           struct dictionary_node_kr *temp;
           if (dir == 0)
             temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mltorhpriors);
-            //C[ci]->mltorhpriors[currenti] = getnewpriorval(m_max,oldpriorval,1);
           else
             temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mrtolhpriors);
-            //C[ci]->mrtolhpriors[currenti] = getnewpriorval(m_max,oldpriorval,1);
           accp += 1; 
         }
         i += 1;
@@ -282,9 +263,7 @@ int update_popsize_prior_intree(int ci, int qi)
   newmpriorval = getnewpriorval(q_max,holdpr.max,0);
   C[ci]->itheta[qi].pr.max = newmpriorval;
   priorratio = log(holdpr.max/newmpriorval);  // i.e. log((1/newpriorval)/(1/holdpr.max))
- // proposalratio = 0.0; // with uniform hyperprior 
-
-    // initialize_integrate_tree_prob is overkill because most priors have not changed
+     // initialize_integrate_tree_prob is overkill because most priors have not changed
   // could write a new function that just does integrations for the terms with new priors 
   initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   priorratio += C[ci]->allpcalc.probg - localholdallpcalc.probg;
@@ -387,9 +366,7 @@ void init_hyperprior_arrays(int ci)
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {
-    //C[ci]->mltorhpriors = static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
     C[ci]->mltorhpriors = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
-    //C[ci]->mrtolhpriors = static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
     C[ci]->mrtolhpriors = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
     for (i=0;i<hashsize;i++)
     {
@@ -409,7 +386,6 @@ void free_hyperprior_arrays(int ci)
     for (i = 0; i < numdistinctpopulationpairs[npops]; i++)
       XFREE(poppairs[i] );
     XFREE(poppairs);
-    //XFREE(hashedpairpos);
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {

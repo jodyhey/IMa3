@@ -989,7 +989,10 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
   {
     aa "chainnumber",0,1,&dummy);
     if (modeloptions[POPTREETOPOLOGYUPDATE]==1)
+    {
       aa "poptreestring",4,(int) strlen(C[ci]->chainpoptreestring),&C[ci]->chainpoptreestring);
+      stripcolons(C[ci]->chainpoptreestring);  // 5/16/2018 in case reading on older mcf file that used old treestring format 
+    }
     //beta
     if (numchainstotal >  1)
     {

@@ -15,7 +15,6 @@ extern double pi[MAXLOCI][4];
   //extern double urrlow[2 * MAXLOCI][2 * MAXLOCI], urrhi[2 * MAXLOCI][2 * MAXLOCI];        // used mostly in update_mc_params.c
 
 static double **uvals;
-//static char startpoptreestring[POPTREESTRINGLENGTHMAX]; moved to ima.hpp 
 //static double geomeanvar; JH  4/14/2017  not used
 static int **numsitesIS;        // maxpops * maxloci   temporarily holds the number of polymorphic sites in loci with infinite sites model
 static double uval_preliminary_sum;
@@ -42,9 +41,6 @@ static void setup_iparams (int ci);
 /* 8/26/2011 */
 void fillm_times_rec(int j, int i, int pi, int pj);
 static void init_migration_counts (void);
-//static void fillmrec(int j, int i, int pi, int pj);
-//static void init_migration_counts_times (void);
-
 static void init_mutation_scalar_rec (int li);
 static void fixmutationratescalars(void);
 static void start_setup_L (char infilename[], int *fpstri, char fpstr[], int currentid);
@@ -431,10 +427,8 @@ void set_iparam_poptreeterms(int ci)
                     C[ci]->imig[mi].pr.max = -1.0;
                     if (C[ci]->imig[mi].dir == 0)
                       C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
-                      //C[ci]->imig[mi].pr.expomean = C[ci]->mltorhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]];
                     else
                       C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
-                      //C[ci]->imig[mi].pr.expomean = C[ci]->mrtolhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]];
                   }
                   else
                   {
@@ -442,16 +436,12 @@ void set_iparam_poptreeterms(int ci)
                     C[ci]->imig[mi].pr.expomean =  -1.0;
                     if (C[ci]->imig[mi].dir == 0)
                       C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
-                      //C[ci]->imig[mi].pr.max = C[ci]->mltorhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]]; 
                     else
                       C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
-                        //C[ci]->imig[mi].pr.max = C[ci]->mrtolhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]]; 
-//printf("step %d chain %d treenum %d dir %d  mi %d descstr %s prior %.4lf\n",step,ci,C[ci]->poptreenum, dir,mi,C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.max);
                   }
                 }
                 if (hiddenoptions[HIDDENGENEALOGY]&& hiddenoptions[GSAMPINFOEXTRA])
                 {
-                  //sprintf (C[ci]->imig[mi].str, "%d>%d", k, C[ci]->plist[k][j], C[ci]->plist[k][i]); // bug,  why is k here?
                   sprintf (C[ci]->imig[mi].str, "%d>%d", C[ci]->plist[k][j], C[ci]->plist[k][i]);
                 }
               }
@@ -511,10 +501,8 @@ void set_iparam_poptreeterms(int ci)
                       C[ci]->imig[mi].pr.max = -1.0;
                       if (C[ci]->imig[mi].dir == 0)
                         C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
-                        //C[ci]->imig[mi].pr.expomean = C[ci]->mltorhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]];
                       else
                         C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
-                        //C[ci]->imig[mi].pr.expomean = C[ci]->mrtolhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]];
                     }
                     else // uniform migration prior
                     {
@@ -522,10 +510,8 @@ void set_iparam_poptreeterms(int ci)
                       C[ci]->imig[mi].pr.expomean  = -1.0;
                       if (C[ci]->imig[mi].dir == 0)
                         C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
-                        //C[ci]->imig[mi].pr.max = C[ci]->mltorhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]]; 
                       else
                         C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
-                        //C[ci]->imig[mi].pr.max = C[ci]->mrtolhpriors[hashedpairpos[pairhash(C[ci]->imig[mi].descstr)]]; 
                     }
                   }
                  }
@@ -686,8 +672,6 @@ setup_iparams (int ci)
 {
   int i, j, k, ii, jj, mi, mcheck;
 
-
-  // numpopsizeparams = numtreepops;  this is now done in getmaramnums()   // every distinct population gets a parameter
   if (calcoptions[LOADPRIORSFROMFILE])
   {
     for (i = 0; i < numpopsizeparams; i++)
@@ -761,10 +745,6 @@ setup_iparams (int ci)
                 if (!modeloptions[ONEMIGRATIONPARAMETER])
                 {
                   mi++;
-                  /*C[ci]->imig[mi].pr.max = mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]];
-                  C[ci]->imig[mi].pr.min = 0.0;
-                  if (C[ci]->imig[mi].pr.max <= MINPARAMVAL)
-                        IM_err(IMERR_PRIORFILEVALS,"migration rate set too low from %d to %d",i,j); */
                   if (modeloptions[EXPOMIGRATIONPRIOR])
                   {
                     C[ci]->imig[mi].pr.expomean = mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]];
@@ -786,10 +766,6 @@ setup_iparams (int ci)
                   if (!modeloptions[ONEMIGRATIONPARAMETER])
                   {
                     mi++;
-                  /*  C[ci]->imig[mi].pr.max = mprior_fromfile[C[ci]->plist[k][j]][C[ci]->plist[k][i]];
-                    C[ci]->imig[mi].pr.min = 0.0;
-                    if (C[ci]->imig[mi].pr.max <= MINPARAMVAL)
-                        IM_err(IMERR_PRIORFILEVALS,"migration rate set too low from %d to %d",i,j); */
                     if (modeloptions[EXPOMIGRATIONPRIOR])
                     {
                       C[ci]->imig[mi].pr.expomean = mprior_fromfile[C[ci]->plist[k][j]][C[ci]->plist[k][i]];
@@ -825,8 +801,6 @@ setup_iparams (int ci)
             struct dictionary_node_kr *temp;
             temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mltorhpriors);
             temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mrtolhpriors);
-            //C[ci]->mltorhpriors[i] = uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean); // use hyperprior_expo_m_mean as max for now,  even if it is exponential
-            //C[ci]->mrtolhpriors[i] = uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean);
           }
           else
           {
@@ -834,8 +808,6 @@ setup_iparams (int ci)
             struct dictionary_node_kr *temp;
             temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mltorhpriors);
             temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mrtolhpriors);
-            //C[ci]->mltorhpriors[i] = uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max); 
-            //C[ci]->mrtolhpriors[i] = uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max);
           }
         }
         C[ci]->qhpriors[0] = -1.0; // does not get used because indexes are SET values and 0 is NULL set . 
@@ -999,9 +971,6 @@ setuinfo (double summut)   // called only for chain 0 because mutation rate info
       L[li].uii[ui] = i;
       i++;
     }
-
-
-
 
   if (hiddenoptions[NOMUTATIONSCALARUPATES] == 1) // fix them all to be 1 and then do not update them
   {
@@ -1364,19 +1333,6 @@ void fillm_times_rec(int j, int i, int pi, int pj)
   migration_counts[j][i].plotrange.min = 0;
 }
 
-/*void fillmrec(int j, int i, int pi, int pj)
-{
-  char stemp[6];
-  sprintf(stemp,"%d>%d",pi,pj);
-  strcpy (migration_counts_times[j][i].str, stemp);
-  strcat (migration_counts_times[j][i].str, "_t");
-  migration_counts_times[j][i].plotrange = T[numsplittimes - 1].pr; // same range as for splitting times
-  strcpy (migration_counts_times[j][i+1].str,stemp);
-  strcat (migration_counts_times[j][i+1].str, "_#");
-  migration_counts_times[j][i+1].plotrange.max = (double) GRIDSIZE - 1;       // used for counts so the grid position is the count #
-  migration_counts_times[j][i+1].plotrange.min = 0;
-}*/
-
 void
 init_migration_counts (void)  
 {
@@ -1442,10 +1398,6 @@ init_migration_counts_hold (void)   // only for cold chain  // delete ?
   int z = whichiscoldchain();
   mrows = nloci + (nloci > 1); 
   nummigdirs = 2*(npops-1)*(npops-1);
-  /*if (modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS])
-    nummigdirs = 2*nummigrateparams;  
-  else
-    nummigdirs = nummigrateparams;   */ 
   migration_counts = static_cast<value_record **> (malloc (mrows * sizeof (struct value_record *)));
   for (j = 0; j < mrows; j++)
     migration_counts[j] = static_cast<value_record *>
@@ -1742,21 +1694,6 @@ start_setup_L (char infilename[], int *fpstri, char fpstr[], int currentid)
     lastperiodnumber++;
     numsplittimes++;
    }
-  /* no need for this stuff,  not used anywhere 
-  gi_largestngenes = 0;
-  gi_largestnumsites = 0;
-  for (li = 0; li < nloci; li++)
-  {
-    if (gi_largestngenes < L[li].numgenes)
-    {
-      gi_largestngenes = L[li].numgenes;
-    }
-    if (gi_largestnumsites < L[li].numsites)
-    {
-      gi_largestnumsites = L[li].numsites;
-    }
-  } */
-
  return;
 }                               //start_setup_L
 
@@ -2193,8 +2130,6 @@ setup_T ()
       T[i].pr.max = tperiodpriors[i];
       T[i].pr.min = 0;
     }
-    //T[lastperiodnumber].pr.max = TIMEMAX;
-    //T[lastperiodnumber].pr.min = 0.0;
     for (i = 0; i < lastperiodnumber; i++)
     {
       sprintf (T[i].str, "t%d", i);
@@ -2515,8 +2450,6 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
     init_migration_counts ();
   add_priorinfo_to_output(priorfilename,fpstri, fpstr);
   init_autoc_pointers ();
-//if (isnan_( L[0].g_rec->v->ac[2].vals[863])) printf (" isnan 1a\n");
-
   /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
   if (calcoptions[CALCMARGINALLIKELIHOOD])
     initmarginlikecalc();

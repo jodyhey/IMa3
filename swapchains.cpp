@@ -47,15 +47,6 @@ swapweight (int ci, int cj)
   {
     if (modeloptions[EXPOMIGRATIONPRIOR])
     {
-      /*for (i=0,tempi = 0.0,tempj = 0.0;i<nummigrateparampairs;i++)
-      {
-        // can use either C[ci]->imig[2*i].descstr or C[ci]->imig[2*i+1].descstr, as they shoudl be the same 
-        assert(strcmp(C[ci]->imig[2*i].descstr,C[ci]->imig[2*i+1].descstr) ==0);
-        tempi += getval(C[ci]->imig[2*i].descstr,C[ci]->mrtolhpriors);
-        tempj += getval(C[cj]->imig[2*i].descstr,C[cj]->mrtolhpriors);
-        tempi += getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
-        tempj += getval(C[cj]->imig[2*i].descstr,C[cj]->mltorhpriors);
-      } */
       for (i=0,tempi = 0.0,tempj = 0.0;i<nummigrateparams;i++)
       {
         tempi += C[ci]->imig[i].pr.expomean;
@@ -65,15 +56,6 @@ swapweight (int ci, int cj)
     }
     else
     {
-      /*for (i=0,tempi = 1.0,tempj = 1.0;i<nummigrateparampairs;i++)
-      {
-        // can use either C[ci]->imig[2*i].descstr or C[ci]->imig[2*i+1].descstr, as they shoudl be the same 
-        assert(strcmp(C[ci]->imig[2*i].descstr,C[ci]->imig[2*i+1].descstr) ==0);
-        tempi *= getval(C[ci]->imig[2*i].descstr,C[ci]->mrtolhpriors);
-        tempj *= getval(C[cj]->imig[2*i].descstr,C[cj]->mrtolhpriors);
-        tempi *= getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
-        tempj *= getval(C[cj]->imig[2*i].descstr,C[cj]->mltorhpriors);
-      } */
       for (i=0,tempi = 1.0,tempj = 1.0;i<nummigrateparams;i++)
       {
         tempi *= C[ci]->imig[i].pr.max;
@@ -115,7 +97,6 @@ swapweight (int ci, int cj)
       } 
     }
     priorratio += sumj - sumi;
-    //w = exp ((beta[ci] - beta[cj]) * (likelihoodratio + priorratio));
     w =  ((beta[ci] - beta[cj]) * (likelihoodratio + priorratio));
 #ifdef TURNONCHECKS
   checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, sumi,sumj, beta[ci],beta[cj]);
@@ -227,11 +208,6 @@ void clearswapinfo(void)  // does not appear to be used
       swapcount_rec[ci][cj] = 0;
     }
   }
-  /*for (ci=0;ci<numchainspp;ci++) 
-  {
-    C[ci]->branchslideinfo.alltries = C[ci]->branchslideinfo.allaccp = 0;
-    C[ci]->branchslideinfo.recenttries = C[ci]->branchslideinfo.recentaccp = 0;
-  } */
 }
 
 
@@ -677,26 +653,6 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
           rc = MPI_Send(C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
         } 
-        /*if (areWeA)  
-        {
-           rc = MPI_Send(C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
-           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-        }
-        else
-        {
-          rc = MPI_Send(C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
-          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-        }
-        if (areWeA)  
-        {
-          rc = MPI_Recv(holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
-          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-        }
-        else
-        {
-          rc = MPI_Recv(holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
-          if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-        } */
       }
       assert (holdpoptreestringA != 0 && holdpoptreestringB != 0);
       treematch = strcmp(holdpoptreestringA,holdpoptreestringB)==0; // 1 if they match.  
@@ -956,10 +912,8 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
     if (i==1)
       swapattempts = vai;
     if (i==2)
-      //betai = vai;
       ci = vai;
     if (i==3)
-      //betaj = vai;
       cj = vai;
   }
   for (i = 0, swap0ok = 0,swapok = 0; i < swapattempts; i++)
@@ -985,15 +939,6 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       {
         betaj = cmin + (int) (uniform () * crange);
       } while (betai == betaj || betaj < 0 || betaj >= numchainstotal);  // 2nd random chain index different from first,  but not too far away */
-/*      ci = randposint(numchainspp);
-      do
-      {
-        cj = randposint(numchainspp);
-      }while (ci == cj);  */
-      /*
-        the positions in the allbetas array are known. 
-        find the correspoding indices for chains that are swapping beta values
-      */
 	    for (ci = 0; ci < numchainstotal; ci++) 
       {
 		    if (allbetas[betai] == beta[ci]){
@@ -1008,30 +953,9 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       }
       assert(betai == C[ci]->currallbetapos);
       assert(betaj == C[cj]->currallbetapos); 
-      /*betai = C[ci]->currallbetapos;
-      betaj = C[cj]->currallbetapos; */
-
 	  }
     else
     {
-      /*
-        the two indices for the chains that are swapping betas are known,  i.e. ci and cj
-        find the corresponding positions in the allbetas array
-       */
-      /*for (betai = 0; betai < numchainstotal; betai++) 
-      {
-		    if (allbetas[betai] == beta[ci]){
-			    break;
-		    }
-	    }
-	    for (betaj = 0; betaj < numchainstotal; betaj++) 
-      {
-		    if (allbetas[betaj] == beta[cj]){
-			    break;
-		    }
-      }
-      assert(betai == C[ci]->currallbetapos);
-      assert(betaj == C[cj]->currallbetapos); */
       betai = C[ci]->currallbetapos;
       betaj = C[cj]->currallbetapos;
     }
@@ -1045,16 +969,7 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
    {
 		  swapcount[betai][betaj]++;
 	  }	
-    /*if (ci < cj)
-    {
-      swapcount[cj][ci]++;
-    }
-    else
-    {
-      swapcount[ci][cj]++;
-    } */
     metropolishastingsratio = swapweight (ci, cj);
-    //if (metropolishastingsratio >= 1.0 || metropolishastingsratio > uniform ())
     if (metropolishastingsdecide(metropolishastingsratio,1))
     {
 		  swapbetas(ci, cj);
@@ -1088,7 +1003,6 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
         if (beta[ci] == 1.0 || beta[cj] == 1.0)
         {
           chain0topolswaps +=1;
-          //printf("1 ");
         }
       }
       else
@@ -1108,7 +1022,6 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
     pcheck(ci,13);
     pcheck(cj,14);
     #endif
-//printf(" ci %d cj %d mh %.4lf uni %.4lf\n",ci,cj,metropolishastingsratio,uniform());
  }
   //return swap0ok;
 #ifdef TURNONCHECKS
@@ -1137,21 +1050,6 @@ printchaininfo (FILE * outto, int heatmode, double hval1,
 
     fprintf(outto, "\nHeated Chain Swapping\n");
     fprintf(outto,   "---------------------\n");
- /* switch (heatmode)
-
-  /*{
-  case HLINEAR:
-    if (outto != NULL)  fprintf(outto, " Linear Increment  term: %.4f\n", hval1);
-    break;
-  case HGEOMETRIC:
-    if (outto != NULL)  fprintf(outto, " Geometric Increment  term1: %.4f term2: %.4f\n",
-             hval1, hval2);
-    break;
-  case HEVEN:
-    if (outto != NULL)  fprintf(outto, "\n");
-  }
-  if (outto != NULL)  fprintf(outto,
-           "-----------------------------------------------------------------------------\n"); */
   }
 
 #ifdef MPI_ENABLED
