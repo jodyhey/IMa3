@@ -51,7 +51,7 @@ int cardinality(SET x)  // returns count of items in the set
 	 return(count);
 } 
 /* fills up subsets[] with all possible subsets of nset */
-int makesubsets(SET nset, SET *subsets)
+int makesubsets(SET nset, SET *subsets, int numsubsets)
 {
   int i,j;
   SET newset;
@@ -73,6 +73,7 @@ int makesubsets(SET nset, SET *subsets)
     for (j=0;j<lslen;j++)
     {
       newset = SETADD(subsets[j],memlist[i]);
+      assert ((lslen+j) < numsubsets);
       subsets[lslen+j] = newset;
     }
     last += j;
@@ -431,7 +432,7 @@ int fillmigratepairs(void)
   int i,ii,j,k,numsubsets;
   SET *subsets,**subsetsbyk,fullset,seta,comp;
   int countbyk[MAXPOPS] = {0};
-  char checkstr[MAXPOPS+1],strseta[MAXPOPS],strcomp[MAXPOPS]; // 1_19_2018 fixed bug added 1 to checkstr length,  is this enough? 
+  char checkstr[MAXPOPS_PHYLOGENYESTIMATION+2],strseta[MAXPOPS_PHYLOGENYESTIMATION+2],strcomp[MAXPOPS_PHYLOGENYESTIMATION+2]; // 1_19_2018 fixed bug added 1 to checkstr length,  is this enough? no, add 2 
   int numcompsubsets,countpairstrings,found;
 
   numsubsets = 1 << npops;  // 2^npops
@@ -439,7 +440,7 @@ int fillmigratepairs(void)
   fullset = EMPTYSET;
   for (i=0;i<npops;i++)
     fullset = SETADD(fullset,i);
-  int checknum = makesubsets(fullset,subsets);
+  int checknum = makesubsets(fullset,subsets,numsubsets);
   assert(checknum==numsubsets);
   subsetsbyk = static_cast<SET **> (malloc ((npops) * sizeof (SET *)));
   for (k=0;k<npops;k++)
@@ -459,7 +460,8 @@ int fillmigratepairs(void)
       seta = subsetsbyk[k][i];
       stringfromset(seta,strseta);
       comp = SETDIFF(fullset,seta);
-      numcompsubsets = makesubsets(comp,subsets);
+      numcompsubsets = makesubsets(comp,subsets,numsubsets);
+      assert (numcompsubsets == (1 << cardinality(comp)));
       for (j=1;j<numcompsubsets;j++)
       {
         stringfromset(subsets[j],strcomp);
@@ -476,6 +478,8 @@ int fillmigratepairs(void)
           }
         if (found == 0)
         {
+          assert (countpairstrings < numdistinctpopulationpairs[npops]);
+          assert (strlen(checkstr) < MAXPOPS_PHYLOGENYESTIMATION + 2);
           sprintf(poppairs[countpairstrings],"%s",checkstr);
           //hashedpairpos[pairhash(poppairs[countpairstrings])] = countpairstrings;
 
