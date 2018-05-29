@@ -432,7 +432,7 @@ int fillmigratepairs(void)
   int i,ii,j,k,numsubsets;
   SET *subsets,**subsetsbyk,fullset,seta,comp;
   int countbyk[MAXPOPS] = {0};
-  char checkstr[MAXPOPS_PHYLOGENYESTIMATION+2],strseta[MAXPOPS_PHYLOGENYESTIMATION+2],strcomp[MAXPOPS_PHYLOGENYESTIMATION+2]; // 1_19_2018 fixed bug added 1 to checkstr length,  is this enough? no, add 2 
+  char checkstr[MAXPOPS_PHYLOGENYESTIMATION+2],strseta[MAXPOPS_PHYLOGENYESTIMATION+2],strcomp[MAXPOPS_PHYLOGENYESTIMATION+2]; // 5/18/2018 fixed bug added 1 more to lengths
   int numcompsubsets,countpairstrings,found;
 
   numsubsets = 1 << npops;  // 2^npops
@@ -959,8 +959,8 @@ void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
   int holdd[MAXPOPS];
   char tempf[10], tempi[2];
   char temps[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
-  int ts,inc;
-  char *c, *fe;
+  int ts,inc,isfloat;
+  char *c, *fe, *dp, *ep;
   double tempd;
 
   c = &xstring[0];
@@ -981,8 +981,13 @@ void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
       else
       {
         assert(isdigit(*(c+i)));
-        tempd = strtod((c+i),&fe);
-        if (ceilf(tempd) != tempd) // check to see if value is floating  point
+        tempd = strtod((c+i),&fe);  
+        dp = strchr((c+i),'.');
+        ep = strchr((c+i),'e');
+        isfloat = (dp != NULL && dp <= fe) ||  (ep != NULL && ep <= fe);
+        // if dp != NULL and dp <= fe then decimal found in next number
+        // if ep != NULL and ep <= fe then e notation found in next number 
+        if (isfloat) // check to see if value is floating  point
         {
           i = fe - c; // reposition i to end of floating point value 
           priorxarray[xi].priorxval = tempd;

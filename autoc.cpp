@@ -82,10 +82,12 @@ double
 calcautoc (struct autoc a)
 {
   double ac;
+  /* there is a bug that sometimes causes a negative value to go to SQR and generate Nan*/
   ac =  (a.cov.s2 - (a.cov.s * a.cov.ss) / a.cov.n) / sqrt ((a.var[0].s2 - SQR (a.var[0].s) / a.cov.n) * (a.var[1].s2 - SQR (a.var[1].s) / a.cov.n));
   if (isnan_(ac))
   {
-    IM_err(IMERR_MISCELLANEOUS," autocorrelation calculation returned NaN. var0s %.4lf var0s2 %.4lf var1s %.4lf var1s2 %.4lf covn %d",a.var[0].s,a.var[0].s2,a.var[1].s,a.var[0].s2,a.cov.n);
+    return 0.0;
+    //IM_err(IMERR_MISCELLANEOUS," autocorrelation calculation returned NaN. var0s %.4lf var0s2 %.4lf var1s %.4lf var1s2 %.4lf covn %d",a.var[0].s,a.var[0].s2,a.var[1].s,a.var[0].s2,a.cov.n);
   }
   return ac;
 }

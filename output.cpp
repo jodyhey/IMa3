@@ -2027,7 +2027,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     FP " Tree topology with highest estimated posterior probability: %s\n",fatssarray[0].treestrnoghost);
     FP "     -estimated posterior probability: %.6f\n",fatssarray[0].freqall);
     if (usetopologypriors)
-      FP "     -prior probability: %.6f\n",exp(topologypriors[fatssarray[0].origi]));
+      FP "     -prior probability: %.6g\n",exp(topologypriors[fatssarray[0].origi]));
     FP "     -Newick string without ghost (unit branch lengths):\n       ");
     printnewickstring(outfile,fatssarray[0].treestrnoghost,NULL,0);
     FP "\n");
