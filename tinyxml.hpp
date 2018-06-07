@@ -1,3 +1,4 @@
+/* jh renamed to tinyxml.hpp to keep consistent with other headers in the IMa3 project */
 /*
 www.sourceforge.net/projects/tinyxml
 Original code by Lee Thomason (www.grinninglizard.com)
@@ -49,7 +50,7 @@ distribution.
 	#include <sstream>
 	#define TIXML_STRING		std::string
 #else
-	#include "tinystr.h"
+	#include "tinystr.hpp"
 	#define TIXML_STRING		TiXmlString
 #endif
 

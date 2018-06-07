@@ -1,3 +1,4 @@
+/* jh renamed to tinystr.hpp to keep consistent with other headers in the IMa3 project */
 /*
 www.sourceforge.net/projects/tinyxml
 
