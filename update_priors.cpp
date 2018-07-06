@@ -43,8 +43,8 @@ double getnewpriorval(double hyperparam, double oldval,int morq)  //morq == 1 if
 		  else if (newval < 0.0)
 				  newval =  - newval;
 	} 
-  if (newval < MINPRIORFROMHYPERPRIOR)
-    return MINPRIORFROMHYPERPRIOR; 
+  if (newval < MINVALFROMHYPERPRIOR)
+    return MINVALFROMHYPERPRIOR; 
   assert (newval > 0);
   return newval;  
 }  /* getnewpriorval */
@@ -127,17 +127,17 @@ int update_migration_prior_intree(int ci, int mi) // 0<mi<nummigrateparams
     {
       struct dictionary_node_kr *temp;
       if (C[ci]->imig[mi].dir==0)
-        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.expomean,C[ci]->mltorhpriors);
+        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.expomean,C[ci]->mltorhyperparams);
       else
-        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.expomean,C[ci]->mrtolhpriors);
+        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.expomean,C[ci]->mrtolhyperparams);
     }
     else
     {
       struct dictionary_node_kr *temp;
       if (C[ci]->imig[mi].dir==0)
-        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.max,C[ci]->mltorhpriors);
+        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.max,C[ci]->mltorhyperparams);
       else
-        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.max,C[ci]->mrtolhpriors);
+        temp = dictionary_install(C[ci]->imig[mi].descstr,C[ci]->imig[mi].pr.max,C[ci]->mrtolhyperparams);
     }
   }
   else
@@ -195,9 +195,9 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
       if (found == 0) // attempt update, poppairs[currenti] is not in the current tree 
       {
         if (dir==0)
-          oldpriorval = getvalue(poppairs[currenti],C[ci]->mltorhpriors);  // mltorhpriors are for dir==0
+          oldpriorval = getvalue(poppairs[currenti],C[ci]->mltorhyperparams);  // mltorhyperparams are for dir==0
         else
-          oldpriorval = getvalue(poppairs[currenti],C[ci]->mrtolhpriors); // mrtolhpriors are for dir==1
+          oldpriorval = getvalue(poppairs[currenti],C[ci]->mrtolhyperparams); // mrtolhyperparams are for dir==1
 
         if (modeloptions[EXPOMIGRATIONPRIOR])
           // hastings ratio when hyperprior_expo_m_mean is the mean of the exponential hyperprior 
@@ -218,18 +218,18 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
             accp += 1;
             struct dictionary_node_kr *temp;
             if (dir==0)
-              temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mltorhpriors); // mltorhpriors are for dir==0
+              temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mltorhyperparams); // mltorhyperparams are for dir==0
             else
-              temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mrtolhpriors); // mrtolhpriors are for dir==1
+              temp = dictionary_install(poppairs[currenti],newpriorval,C[ci]->mrtolhyperparams); // mrtolhyperparams are for dir==1
           }
         }
         else  // uniform, accept all updates 
         {
           struct dictionary_node_kr *temp;
           if (dir == 0)
-            temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mltorhpriors);
+            temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mltorhyperparams);
           else
-            temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mrtolhpriors);
+            temp = dictionary_install(poppairs[currenti],getnewpriorval(m_max,oldpriorval,1),C[ci]->mrtolhyperparams);
           accp += 1; 
         }
         i += 1;
@@ -279,7 +279,7 @@ int update_popsize_prior_intree(int ci, int qi)
   if (metropolishastingsdecide(metropolishastingsratio,1))
   {
     accp = 1;
-    C[ci]->qhpriors[C[ci]->descendantpops[qi]]= C[ci]->itheta[qi].pr.max;
+    C[ci]->qhyperparams[C[ci]->descendantpops[qi]]= C[ci]->itheta[qi].pr.max;
   }
   else
   {
@@ -327,8 +327,8 @@ we can try to update half of these each time we come through
     }
     if (found == 0) // attempt update
     {
-      oldpriorval = C[ci]->qhpriors[currenti];
-      C[ci]->qhpriors[currenti] = getnewpriorval(q_max,oldpriorval,0);
+      oldpriorval = C[ci]->qhyperparams[currenti];
+      C[ci]->qhyperparams[currenti] = getnewpriorval(q_max,oldpriorval,0);
       accp += 1;
       i += 1;
     }
@@ -366,15 +366,15 @@ void init_hyperprior_arrays(int ci)
   }
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
   {
-    C[ci]->mltorhpriors = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
-    C[ci]->mrtolhpriors = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
+    C[ci]->mltorhyperparams = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
+    C[ci]->mrtolhyperparams = static_cast<struct dictionary_node_kr **> (malloc (hashsize* sizeof (struct dictionary_node_kr *)));
     for (i=0;i<hashsize;i++)
     {
-      C[ci]->mltorhpriors[i] = 0;
-      C[ci]->mrtolhpriors[i] = 0;
+      C[ci]->mltorhyperparams[i] = 0;
+      C[ci]->mrtolhyperparams[i] = 0;
     }
 
-    C[ci]->qhpriors = static_cast<double *> (malloc (numpopsets * sizeof (double)));
+    C[ci]->qhyperparams = static_cast<double *> (malloc (numpopsets * sizeof (double)));
   }
 }
 
@@ -391,11 +391,11 @@ void free_hyperprior_arrays(int ci)
   {
     for (i=0;i<hashsize;i++)
     {
-      freekrlinkedlist(C[ci]->mrtolhpriors[i]);
-      freekrlinkedlist(C[ci]->mltorhpriors[i]);
+      freekrlinkedlist(C[ci]->mrtolhyperparams[i]);
+      freekrlinkedlist(C[ci]->mltorhyperparams[i]);
     }
-    XFREE(C[ci]->mltorhpriors);
-    XFREE(C[ci]->mrtolhpriors);
-    XFREE(C[ci]->qhpriors);
+    XFREE(C[ci]->mltorhyperparams);
+    XFREE(C[ci]->mrtolhyperparams);
+    XFREE(C[ci]->qhyperparams);
   }
 }

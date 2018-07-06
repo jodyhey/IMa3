@@ -1401,16 +1401,16 @@ void checkgenealogyweights(int ci) // check that sums of weights equal the overa
       if (modeloptions[EXPOMIGRATIONPRIOR]==1)
       {
         if (C[ci]->imig[i].dir==0)
-          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors)); 
+          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhyperparams)); 
         else
-          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors)); 
+          assert(C[ci]->imig[i].pr.expomean ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhyperparams)); 
       }
       else
       {
         if (C[ci]->imig[i].dir==0)
-          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhpriors)); 
+          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mltorhyperparams)); 
         else
-          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhpriors)); 
+          assert(C[ci]->imig[i].pr.max ==getvalue(C[ci]->imig[i].descstr, C[ci]->mrtolhyperparams)); 
       }
     }
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]==1) for (i = 0; i < nummigrateparampairs; i++)

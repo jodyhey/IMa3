@@ -244,20 +244,23 @@ autoc_pointer: order of values
 	T[j].v
 	g_rec->v
 
-if no MPI and #cpu > 1, then always true that z >= 0 && currentid == HEADNODE
+ set_autoc_vals  
+  for a value for which the autocorrelation is calculated
+    there will be only 1 value across the run at any point in time, and that is the one associated with the cold chain
 
-if MPI,  then there are 4 conditions:
-  if z >= 0 && currentid == HEADNODE
-    assign  pautoc_vals[i]
-  if (z < 0 && currentid == HEADNODE)
-    receive and then assign pautoc_vals[i]
-  if (z >= 0 && currentid != 0) 
-    send 
-  if (z < 0 and currentid != HEADNODE)
-    do nothing 
+    this function returns a pointer but the values are meaningless unless it is the Headnode 
+
+  if no MPI and #cpu > 1, then always true that z >= 0 && currentid == HEADNODE
+
+  if numprocesses > 0:
+    if z>=0 && currentid == HEADNODE: copy value to pautoc_vals
+    if z >= 0 && currentid != HEADNODE: send value to pautocrec
+    if z < 0 && currentid == HEADNODE: receive value to pautocrec
+    else pautoc_vals is not relevant and holds nothing of value 
+
+
+  call this kind of operation PASS_TO_HEADNODE_TO_SAVE
 */
-  
-/* pautoc_vals will have nonsense values if z < 0 and currentid != HEADNODE  */
 void
 set_autoc_vals (double *pautoc_vals, int currentid)
 {

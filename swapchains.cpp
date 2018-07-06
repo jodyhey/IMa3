@@ -65,8 +65,8 @@ swapweight (int ci, int cj)
       // now do popsize terms
       for (i=0,tempi = 1.0,tempj = 1.0;i<numpopsizeparams;i++)
       {
-        tempi *= C[ci]->qhpriors[(int) C[ci]->descendantpops[i]];
-        tempj *= C[cj]->qhpriors[(int) C[cj]->descendantpops[i]];
+        tempi *= C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]];
+        tempj *= C[cj]->qhyperparams[(int) C[cj]->descendantpops[i]];
       }
       priorratio += log(tempi/tempj); 
     }
@@ -140,7 +140,7 @@ calcpartialswapweight (int ci, double *likelihood, double *prior)
     // now do popsize terms
     for (i=0,tempp = 1.0;i<numpopsizeparams;i++)
     {
-      tempp *= C[ci]->qhpriors[(int) C[ci]->descendantpops[i]];
+      tempp *= C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]];
     }
     priorsum -= log(tempp);  // divide by the product of the theta priors 
   }
@@ -440,6 +440,7 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
                 or neither could be the current node 
         if so,  send the node number to HEADNODE 
         After step 3 the HEADNODE knows which two nodes have the chains corresponding to the picked indices in allbetas[]
+        These passages of node numbers to the Headnode are PASS_TO_HEADNODE_TO_SAVE  operations
         
   STEP 4. broadcast from HEADNODE to others the node numbers for the beta values 
         After step 4,  all nodes know the node numbers corresponding to the picked beta values 
@@ -456,10 +457,12 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
 					     send/receive from node for B info on RY and NW updating 
 					     send/receive from node for B info on beta vals and allbetapos and likelihoods and priors
 					     increment swapcount below diagonal
+          Do a series of SEND_RECV_SWAP operations
 				    if current node is the node for B (STEP 5.2.B )
 					     calc likelihood and prior using calcpartialswapweight() for chain  B 
 					     send/receive from node for A info on RY and NW updating 
 					     send/receive from node for A info on beta vals and allbetapos and likelihoods and priors			
+          Do a series of SEND_RECV_SWAP operations
 			
 			     if current node is the node for A (STEP 5.3 )  (use node for A for actual metropolis hastings)
 				      increment attempts
@@ -637,19 +640,15 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
       {
          if (areWeA) // 1_26_2018  break these send/recv up 
         {
-         // rc = MPI_Send(&C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
            rc = MPI_Send(C[whichElementA]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-          //rc = MPI_Recv(&holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 24923, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           rc = MPI_Recv(holdpoptreestringB, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForB, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
         }
         else
         {
-          //rc = MPI_Recv(&holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           rc = MPI_Recv(holdpoptreestringA, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD, &status);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
-          //rc = MPI_Send(&C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 24923, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           rc = MPI_Send(C[whichElementB]->chainpoptreestring, POPTREESTRINGLENGTHMAX, MPI_CHAR, procIdForA, 26123, MPI_COMM_WORLD);// the corresponding MPI_Receive puts this in holdpoptreestringA[]
           if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
         } 

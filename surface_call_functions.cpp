@@ -418,7 +418,7 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
   }
   migtest = static_cast<double *> (malloc (nummigrateparams * sizeof (double)));
   FP "\n=========================================\n");
-  FP "Marginal Peak Locations and Probabilities\n");
+  FP "MARGINAL PEAK LOCATIONS AND PROBABILITIES\n");
   FP "=========================================\n");
   FP "  peak locations are estimated using a peak finding algorithm, which may\n");
   FP "  fail if the curve has multiple peaks. All peaks can also be found, and\n"); 

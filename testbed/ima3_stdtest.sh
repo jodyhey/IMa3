@@ -1,4 +1,11 @@
-./IMa3_stdtest -help  > ./IMa3test_0.out 
+rm *.out
+rm *.out
+rm *.mcf.*
+rm *.ti
+rm *.mpt
+rm *.xml
+rm *.out.old
+./IMa3_stdtest -help  > ./ima3_test_0.out 
 ./IMa3_stdtest -i ima3test3pop4loci.u -o ima3_test_1.out -q1 -m0.1 -t1 -b100000 -L5000 -d200 -r1 -c0 -p4
 ./IMa3_stdtest -i ima3test3pop4loci.u -o ima3_test_2.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -r1 -p4
 ./IMa3_stdtest -i ima3test3pop4loci.u -o ima3_test_3.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p23567 -r1245
@@ -25,6 +32,7 @@
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_24.out  -q10 -m1 -t1.5 -b100000 -L5000  -j012
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_25.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_26.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0123
+./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_26x.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0123 -x 0 1 1e2 -x 2 3 0.1
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_27.out  -q10 -m1 -t1.5 -b100000 -L5000  -j23
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_28.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn8  -ha0.95 -hb0.9 -jhd
 ./IMa3_stdtest -i ima3test4pop2loci.u  -o ima3_test_29.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r37 -hn8 -ha0.95 -hb0.9 -fima3_test_28.out -jhd
@@ -40,3 +48,4 @@ mpirun -n 4 IMa3_stdtest -i ima3test3pop4loci.u -o ima3_test_38.out -q10 -m1 -t1
 mpirun -n 4 IMa3_stdtest -i ima3test3pop4loci.u -o ima3_test_39.out -q10 -m1 -t1.5 -b100000 -L5000 -d200 -c1  -p3567 -r245 -r3 -fima3_test_38.out.mcf   -hn24 -ha0.97 -jhd
 mpirun -n 4 IMa3_stdtest -i ima3test4pop2loci.u -o ima3_test_40.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn20 -ha0.97 -c4
 mpirun -n 4 IMa3_stdtest -i ima3test4pop2loci.u -o ima3_test_41.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r37 -hn20 -ha0.97 -c4 -fima3_test_40.out 
+mpirun -n 4 IMa3_stdtest -i ima3test4pop2loci.u -o ima3_test_40x.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn20 -ha0.97 -c4 -x 0 1 1e2 -x 2 3 0.1

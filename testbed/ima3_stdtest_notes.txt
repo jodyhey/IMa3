@@ -1,3 +1,8 @@
+Most current stuff is in README.txt
+
+
+older notes
+-----------
 See also ima3_testbed_table.xlsc 
 
 testbed is run in windows using ima3_stdtest.bat

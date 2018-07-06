@@ -366,6 +366,8 @@ checkoutfileclosed (FILE ** outfile, char outfilename[])
 
 /* prints to outfile it its not NULL, which should only be true if it is the head node - cpu 0
   also gathers topologycounts to cpu 0 from other cpus */ 
+
+/* do PASS_TO_HEADNODE operation for poptreenum */
 void
 printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int burninsteps_old,int runsteps_old, int mcmcrecords_old,int genealogysamples_old,
                 int recordint, int mcmcrecords, int savegenealogyint,double hilike,double hiprob)
@@ -891,19 +893,27 @@ void printacceptancerates (FILE * outto, int numrec,
 }                               /* printacceptancerates() */
 
                            
-/* To print acceptance rates:
-	reclist[] is an array of pointers to struct chainstate_record_updates_and_values
-	set values of reclist[] to those structures for which you want to print acceptance rates
-	call printacceptancerates ()
-	*/
+/*
+  if numprocesses > 1  then callprintacceptancerates () repeatedly executes
+  what we can call an UPINF_REDUCE operation:
+    current node upinf values are stored in y,z
+    MPI_Reduce Sum to add these all up in y_rec and z_rec on the head node 
+    On the Headnode copy y_rec and z_rec in to upinf
+    On the Headnode call   printacceptancerates ()
+    On the Headnode copy original upinf values in y,z back into upinf values 
+*/
 
 void callprintacceptancerates (FILE * outto, int currentid)
 {
   int i, j, li;
-  // length of this array must be fairly long, although it is technically possible to have MAXLOCI * MAXLINKED records,  but very unlikely
+  /* 	reclist[] is an array of pointers to struct chainstate_record_updates_and_values
+	     set values of reclist[] to those structures for which you want to print acceptance rates
+	     call printacceptancerates () 
+      length of this array must be fairly long, although it is technically possible to have MAXLOCI * MAXLINKED records,  but very unlikely */
   struct chainstate_record_updates_and_values *reclist[MAXLOCI + MAXLINKED];
   struct chainstate_record_updates_and_values *reclist_saved[MAXLOCI + MAXLINKED];
   int rc = 0; //AS: return code for MPI C bindings
+  /* y1, z1 hold values for current cpu.  These are summed using MPI_Reduce into y_rec and z_rec on the Headnode */ 
   double *y1 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
   double *y_rec = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
   double *z1 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
@@ -945,7 +955,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
   }
 #endif //MPI_ENABLED
 
-  double *y2 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
+  double *y2 = static_cast<double *> (malloc (numsplittimes * sizeof (double))); // not clear why we can't just reuse y1 and z1 
   double *z2 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
 
 /* NW update MPI_REDUCE */
@@ -990,6 +1000,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 #ifdef MPI_ENABLED
   if (currentid == HEADNODE && numprocesses > 1 && doRYupdate) 
+    //copy original values back onto correct tries and accp 
   {
     for (int j = 0; j < numsplittimes; j++) 
     {
@@ -1003,6 +1014,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 
 #ifdef MPI_ENABLED
   if (doNWupdate && currentid == HEADNODE && numprocesses > 1)
+    //copy original values back onto correct tries and accp 
   {
     for (int j  = 0; j < numsplittimes; j++) 
     {
@@ -1616,6 +1628,8 @@ void printcurrentvals (FILE * outto)
 
 
 /* used for when there are multiple cpus,  only prints tvalues */ 
+
+/* do PASS_TO_HEADNODE operation for  C[z]->tvals[i] */
 void printcurrent_tvals (FILE * outto,int  currentid)
 {
   int i;
@@ -2169,12 +2183,12 @@ void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot)
   {
     if (nurates > 1 && runoptions[LOADRUN] == 0 && domutationscalarupdate)
     {
-      for (li = 0; li < nloci; li++)
-        for (ui = 0; ui < L[li].nlinked; ui++)
+      for (li = 0; li < nloci; li++) 
+        for (ui = 0; ui < L[li].nlinked; ui++) if (L[li].u_rec[ui].v->do_trend)  // added 6/1/2018 
           asciitrend (outtofile, L[li].u_rec[ui].v, trenddoublepoint, trendspot);
     }
     for (li = 0; li < nloci; li++)
-      if (L[li].model == HKY && runoptions[LOADRUN] == 0  && domutationscalarupdate)
+      if (L[li].model == HKY && runoptions[LOADRUN] == 0  && domutationscalarupdate && L[li].kappa_rec->v->do_trend)  // added do_trend condition 6/1/2018 
         asciitrend (outtofile, L[li].kappa_rec->v, trenddoublepoint, trendspot);
   }
 

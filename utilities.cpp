@@ -174,7 +174,7 @@ static const char *simerrmsg[] = {
   /* 60 */  "problem calculating migration path probability when updating genealogy",
   /* 61 */  "",
   /* 62 */  "some problem with prior, or likelihood",
-  /* 63 */  "",
+  /* 63 */  "incorrect specification of tree topology prior ",
   /* 64 */  "",
   /* 65 */  "",
   /* 66 */  "",

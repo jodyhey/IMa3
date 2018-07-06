@@ -1,3 +1,45 @@
+NOTE:  the most current version of this and all testbed files are in E:\genemod\ML-MCMC\SEAI\IMa3\testbed
+DO NOT use older versions of testbed files from old directories. 
+THIS IS also true for the linux version IMa3_stdtest.sh
+
+
+7/5/2018
+
+added to main output file a table of estimate locations near the top 
+
+reran testbed, looked ok
+
+6/5/2018
+
+made some changes:
+	stop printing mutation scalar trend plots
+	changed the way -x works and when it is used
+		user can now specify any priors on clades
+		also start with a sample of trees from the prior
+
+add command line to stdtest1.bat 
+	ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_26x.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0123 -x 0 1 1e2 -x 2 3 0.1
+
+add command line to stdtest2.bat 
+	mpiexec -n 4 ima3_stdtest -i ima3test4pop2loci.u -o ima3_test_40x.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013 -r7 -hn20 -ha0.97 -c4 -x 0 1 1e2 -x 2 3 0.1
+
+update 	ima3_stdtest.sh
+
+run in E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\6_5_2018
+
+
+
+5/18/2018
+
+made an ubuntu 18.04 (WSL) version 
+	runs in  ~/IMa3/run/stdtest/
+	uses   ima3_stdtest.sh
+	
+	ran it and copied all files to 
+		E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\ubuntu_5_18_2018
+	so can compare ubuntu runs in the future 
+	
+	
 5/16/2018
 
 changed treestring format to do without colons
@@ -7,6 +49,11 @@ this means changing the way prior files are written and read
 so make a new version of ima3_priorfile_3pops.txt  without colons after parentheses
 
 compare with 5/9/2018 set 
+
+looks good 5/16/2018 is new standard 
+
+copied all the standard files into 
+E:\genemod\ML-MCMC\SEAI\IMa3\testbed
 
 
 

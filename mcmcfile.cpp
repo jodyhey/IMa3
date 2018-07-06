@@ -65,9 +65,12 @@ extern void fillancplist (int ci);
 extern double *thermosum,*thermosum_rec;
 extern int numdistinctpopulationpairs[]; // = {0,0,1,6,25,90,301,966,3025}; /* number of distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */
 
+
+/* local prototoypes */
 static void awrite (FILE * mcffile, const char *name, int atype, int iu, void *a);
 static void aread (FILE * mcffile, const char *name, int atype, int iucheck, void *a);
 static void init_p (void);
+static int findallbetasindex(double beta);
 void write_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chainstate_record_updates_and_values *x);
 void read_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chainstate_record_updates_and_values *x);
 void write_struct_chainstate_record_updates_and_values(FILE *mcffile,struct chainstate_record_updates_and_values *x);
@@ -235,6 +238,7 @@ aread (FILE * mcffile, const char *name, int atype, int iucheck, void *a)
   return;
 }                               /* arrayread */
 
+/* after mcf's have been partly read,  some things need to be initiallized */
 void
 init_p (void)
 {
@@ -323,7 +327,7 @@ init_p (void)
   }
 }                               // init_p
 
-int findallbetasci(double beta)
+int findallbetasindex(double beta)
 {
   int i;
   for (i=0;i<numchainstotal;i++)
@@ -728,7 +732,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     //beta
     if (numchainstotal >  1)
     {
-      i = findallbetasci(beta[ci]);
+      i = findallbetasindex(beta[ci]);
       aa "allbetaci",0,1,&i);
       aa "currallbetapos",0,1,&C[ci]->currallbetapos);
       assert(i==C[ci]->currallbetapos); // i should be redundant once started using currallbetapos
@@ -752,16 +756,16 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     // hyperpriors
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     {
-      /* mltorhpriors and mrtolpriors are each a dictionary, must copy to a list of doubles */ 
+      /* mltorhyperparams and mrtolpriors are each a dictionary, must copy to a list of doubles */ 
       double *temppriors =  static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
-        temppriors[i] = getvalue(poppairs[i],C[ci]->mltorhpriors);
-      aa "mltorhpriors",3,numdistinctpopulationpairs[npops],temppriors);
+        temppriors[i] = getvalue(poppairs[i],C[ci]->mltorhyperparams);
+      aa "mltorhyperparams",3,numdistinctpopulationpairs[npops],temppriors);
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
-        temppriors[i] = getvalue(poppairs[i],C[ci]->mrtolhpriors);
-      aa "mrtolhpriors",3,numdistinctpopulationpairs[npops],temppriors);
+        temppriors[i] = getvalue(poppairs[i],C[ci]->mrtolhyperparams);
+      aa "mrtolhyperparams",3,numdistinctpopulationpairs[npops],temppriors);
       XFREE(temppriors); 
-      aa "qhpriors",3,numpopsets,C[ci]->qhpriors);
+      aa "qhyperparams",3,numpopsets,C[ci]->qhyperparams);
     }
     //mutation scalars 
     for (li = 0; li < nloci; li++)
@@ -1028,17 +1032,17 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
     // hyperpriors
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     {
-      /* mltorhpriors and mrtolpriors are each a dictionary, must first put priors in a list of doubles */ 
+      /* mltorhyperparams and mrtolpriors are each a dictionary, must first put priors in a list of doubles */ 
       double *temppriors =  static_cast<double *> (malloc (numdistinctpopulationpairs[npops] * sizeof (double)));
-      aa "mltorhpriors",3,numdistinctpopulationpairs[npops],temppriors);
+      aa "mltorhyperparams",3,numdistinctpopulationpairs[npops],temppriors);
       struct dictionary_node_kr *temp;
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
-        temp = dictionary_install(poppairs[i],temppriors[i],C[ci]->mltorhpriors);
-      aa "mrtolhpriors",3,numdistinctpopulationpairs[npops],temppriors);
+        temp = dictionary_install(poppairs[i],temppriors[i],C[ci]->mltorhyperparams);
+      aa "mrtolhyperparams",3,numdistinctpopulationpairs[npops],temppriors);
       for (i=0;i<numdistinctpopulationpairs[npops];i++)
-        temp = dictionary_install(poppairs[i],temppriors[i],C[ci]->mrtolhpriors);
+        temp = dictionary_install(poppairs[i],temppriors[i],C[ci]->mrtolhyperparams);
       XFREE(temppriors);
-      aa "qhpriors",3,numpopsets,C[ci]->qhpriors);
+      aa "qhyperparams",3,numpopsets,C[ci]->qhyperparams);
     }
     //mutation scalars 
     for (li = 0; li < nloci; li++)

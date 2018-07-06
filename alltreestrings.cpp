@@ -1008,6 +1008,8 @@ void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
         {
           strncpy(tempi,(c+i),1);
           holdd[k] = atoi(tempi);
+          if (holdd[k] >= npops || holdd[k] < 0)
+            IM_err(IMERR_TOPOLOGYPRIORPROBLEM, " %d is not a sampled population",holdd[k]);
           k++; 
           i++;
         }

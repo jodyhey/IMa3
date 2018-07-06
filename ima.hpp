@@ -66,15 +66,6 @@
 #include <mpi.h>
 #endif
 
-/* use XMLOUTPUT when running in IMgui */ 
-
-//#define XMLOUTPUT
-
-#ifdef XMLOUTPUT
-#include "tinyxml.h"
-#include "tinystr.h"
-
-#endif
 
 #define IMA3RELEASEVERSION  "0.0"  // update only when a release is made 
 //#define IMA3RELEASE   // uncomment  if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
@@ -87,18 +78,30 @@
 #define INDEVELOPMENT 
 #endif
 
-//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
 #undef RANDOM_NUMBERS_FROM_FILE
 #else
 #define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
+#define XMLOUTPUT
 #endif
 
 #ifndef RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #undef STDTEST
 #endif
+
+
+/* use XMLOUTPUT when running in IMgui */ 
+
+//#define XMLOUTPUT
+
+#ifdef XMLOUTPUT
+#include "tinyxml.hpp"
+#include "tinystr.hpp"
+#endif
+
 
 /* #define RANDOM_NUMBERS_FROM_FILE   coded by Janeen, used to be called SANITY_TEST
  * for testing only. Usually used on testbed.  Avoids use of random number generator to make things more repeatable. 
@@ -213,7 +216,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define TIMEMAX 1000000.0       // no branch can have a bottom time greater than this
 #define MINPARAMVAL 0.0000001   //0.0001      // smallest parameter value for parameters that are in the MCMC
 #define LOGFACTMAX  100001   // large number for logarithm of factorial,  needed in various contexts,  but must be big to handle large sample sizes if they come up
-#define MINPRIORFROMHYPERPRIOR 0.0001  // only used for selecting new hyperpriorvalue, as values to close to 0 cause integration problems. 
+#define MINVALFROMHYPERPRIOR 0.0001  // only used for selecting new hyperpriorvalue, as values to close to 0 cause integration problems. 
 #define MINPOPSFORDISTANCE 6 // minimum number of npops for which to use topology distance value rather than just topology number 
 /* 
   MIGMAX is the maximum number of migration events on an edge. 
@@ -458,7 +461,7 @@ these modes are only referenced in the code and are not used in output
 
 they pertain to 4 variables:
 sampling phylogenies vs not:    0,1  versus 2,3,4,5,6,
-sample priors from hyperprior vs not:  0,2,5  versus  1,3,4,6 
+sample hyperparameters from hyperprior vs not:  0,2,5  versus  1,3,4,6 
 use hidden genealogy with fixed topology vs not: 5,6 vs 0,1,2,3,4 
 load genealogies vs not:   4 vs 0,1,2,3,5,6
 
@@ -468,10 +471,10 @@ load genealogies vs not:   4 vs 0,1,2,3,5,6
 enum{
 POPTREEHYPERPRIORmode0 = 0,  //sample poptree topology, sample priors given hyperprior   -j03     
 POPTREEmode1 = 1,  //sample poptree topology         -j0
-GHYPERPRIORmode2 = 2,   // topology is given, sample priors given hyperprior,    -j3
+GHYPERPRIORmode2 = 2,   // topology is given, sample hyperparameters given hyperprior,    -j3
 Gmode3 = 3,  //topology is given, sample genealogies, aka M mode   no model options (no -j)
 LOADGmode4	= 4, //topology is given, load genealogies, aka L mode  -r0   (no -j) 
-HGHYPERPRIORmode5 = 5, //topology is given, sample  priors given hyperprior, use hidden genealogy -jh2 -j3
+HGHYPERPRIORmode5 = 5, //topology is given, sample  hyperparameters given hyperprior, use hidden genealogy -jh2 -j3
 HGmode6 = 6, //topology is given, sample genealogies, use hidden genealogies - like mode 3 with with hidden genealogies  -jh2  (no -j) 
 NUMRUNMODES = 7};
 
@@ -766,6 +769,7 @@ enum
   IMERR_ASN = 57,
   IMERR_MIGPATHPROB = 60,
   IMERR_MISCPROBPROBLEM = 62,
+  IMERR_TOPOLOGYPRIORPROBLEM = 63,
   IMERR_CHAINNUM = 70,
   IMERR_MISCELLANEOUS = 72
   /* some more for debugging, must also check simerrmsg[] in utilities.cpp
@@ -1315,14 +1319,14 @@ struct chain
       // descendantpops[numtreepops-1] is always the full SET of sampled populations 
 
   // popsize parameter allocations if modeloptions[POPSIZEANDMIGRATEHYPERPRIOR] 
-    double *qhpriors; //  length 2^n, index position is the set of subpopulations with that prior
-	   // make a SET of subpopulations, subpopset,   then qpriors[ (int) subpopset] gives the prior
+    double *qhyperparams; //  length 2^n, index position is the set of subpopulations with that hyerparameter
+	   // make a SET of subpopulations, subpopset,   then qpriors[ (int) subpopset] gives the hyerparameter
   	 // position 0 cast as a set is the null set,  so this will not be used 
    	// position 2^npops - 1   cast as a set is the full set, used for the ancestral pop
 
   //migration parameter allocations if using hyperprior
-    struct dictionary_node_kr **mltorhpriors; // used for imig[i].dir == 0  (i.e. md.from is on left side of imig[i].descstr)
-    struct dictionary_node_kr **mrtolhpriors; // used for imig[i].dir == 1  (i.e. md.to is on left side of imig[i].descstr)
+    struct dictionary_node_kr **mltorhyperparams; // used for imig[i].dir == 0  (i.e. md.from is on left side of imig[i].descstr)
+    struct dictionary_node_kr **mrtolhyperparams; // used for imig[i].dir == 1  (i.e. md.to is on left side of imig[i].descstr)
    
 };
 
@@ -1481,7 +1485,7 @@ void callprintautoctable (FILE * outto/*, int step*/);
 
 /**** GLOBAL FUNCTIONS IN update_poptree.cpp ****/
 
-void init_change_poptree(char topologypriorinfostring[]);
+void init_topologypriors(char topologypriorinfostring[], int *treesfromprior);
 void free_change_poptree(void);
 int change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachange, int *tmrcachange, int topologychangeallowed);
 

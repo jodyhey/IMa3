@@ -54,12 +54,13 @@ static void setup_qprior_recording();
 static void finish_setup_L (void);
 static void reportparamcounts(int *fpstri, char fpstr[]);
 /* changes made to include hidden genealogies */
-static void start_setup_poptree(char *ps);
+static void start_setup_poptree(char *ps,char topologypriorinfostring[]);
 static void finish_setup_poptree();
 
 /* some extern prototypes */
 extern void fillplist (int ci);
 extern void fillancplist (int ci);
+extern void init_holdgweight_array_for_hg(void);
 /******** LOCAL FUNCTIONS ************/
 
 int
@@ -357,7 +358,7 @@ void set_iparam_poptreeterms(int ci)
     {
       for (i=npops;i<numpopsizeparams;i++)
       {
-        C[ci]->itheta[i].pr.max = C[ci]->qhpriors[(int) C[ci]->descendantpops[i]];
+        C[ci]->itheta[i].pr.max = C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]];
       }
     }
   }
@@ -426,18 +427,18 @@ void set_iparam_poptreeterms(int ci)
                     C[ci]->imig[mi].pr.min =  -1.0;
                     C[ci]->imig[mi].pr.max = -1.0;
                     if (C[ci]->imig[mi].dir == 0)
-                      C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
+                      C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhyperparams);
                     else
-                      C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
+                      C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhyperparams);
                   }
                   else
                   {
                     C[ci]->imig[mi].pr.min  = 0.0;
                     C[ci]->imig[mi].pr.expomean =  -1.0;
                     if (C[ci]->imig[mi].dir == 0)
-                      C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
+                      C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhyperparams);
                     else
-                      C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
+                      C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhyperparams);
                   }
                 }
                 if (hiddenoptions[HIDDENGENEALOGY]&& hiddenoptions[GSAMPINFOEXTRA])
@@ -500,18 +501,18 @@ void set_iparam_poptreeterms(int ci)
                       C[ci]->imig[mi].pr.min = -1.0;
                       C[ci]->imig[mi].pr.max = -1.0;
                       if (C[ci]->imig[mi].dir == 0)
-                        C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
+                        C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhyperparams);
                       else
-                        C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
+                        C[ci]->imig[mi].pr.expomean = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhyperparams);
                     }
                     else // uniform migration prior
                     {
                       C[ci]->imig[mi].pr.min  = 0.0;
                       C[ci]->imig[mi].pr.expomean  = -1.0;
                       if (C[ci]->imig[mi].dir == 0)
-                        C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhpriors);
+                        C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mltorhyperparams);
                       else
-                        C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhpriors);
+                        C[ci]->imig[mi].pr.max = getvalue(C[ci]->imig[mi].descstr,C[ci]->mrtolhyperparams);
                     }
                   }
                  }
@@ -799,20 +800,20 @@ setup_iparams (int ci)
           {
             //fill the dictionaries,  keys are poppair strings,  values are priors
             struct dictionary_node_kr *temp;
-            temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mltorhpriors);
-            temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mrtolhpriors);
+            temp = dictionary_install(poppairs[i],uniforminterval(MINVALFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mltorhyperparams);
+            temp = dictionary_install(poppairs[i],uniforminterval(MINVALFROMHYPERPRIOR,hyperprior_expo_m_mean),C[ci]->mrtolhyperparams);
           }
           else
           {
             //fill the dictionaries,  keys are poppair strings,  values are priors
             struct dictionary_node_kr *temp;
-            temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mltorhpriors);
-            temp = dictionary_install(poppairs[i],uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mrtolhpriors);
+            temp = dictionary_install(poppairs[i],uniforminterval(MINVALFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mltorhyperparams);
+            temp = dictionary_install(poppairs[i],uniforminterval(MINVALFROMHYPERPRIOR,hyperprior_uniform_m_max),C[ci]->mrtolhyperparams);
           }
         }
-        C[ci]->qhpriors[0] = -1.0; // does not get used because indexes are SET values and 0 is NULL set . 
+        C[ci]->qhyperparams[0] = -1.0; // does not get used because indexes are SET values and 0 is NULL set . 
         for (i=1;i<numpopsets;i++)
-          C[ci]->qhpriors[i] = uniforminterval(MINPRIORFROMHYPERPRIOR,hyperprior_uniform_q_max);
+          C[ci]->qhyperparams[i] = uniforminterval(MINVALFROMHYPERPRIOR,hyperprior_uniform_q_max);
       }
     }
     else
@@ -1301,7 +1302,7 @@ init_g_rec (int li)
   L[li].g_rec->v->plotrange.min = 0;
   L[li].g_rec->v->do_autoc = 1;
   L[li].g_rec->v->do_xyplot = outputoptions[PRINTTMRCA];
-  L[li].g_rec->v->do_trend = 1;
+  L[li].g_rec->v->do_trend = 0;  // 5/30/2018  change this to 0.  Was not actually printing the g_rec trends anyway
   L[li].g_rec->v->plotrescale = 1.0;
   L[li].g_rec->v->do_logplot = 0;
   
@@ -1507,7 +1508,7 @@ init_mutation_scalar_rec (int li)
       L[li].u_rec[ui].v[i].plotrescale = uscale;
       L[li].u_rec[ui].v[i].do_logplot = 1;
       L[li].u_rec[ui].v[i].do_autoc = 0;
-      L[li].u_rec[ui].v[i].do_trend = 1;
+      L[li].u_rec[ui].v[i].do_trend = 0;  // 5/30/2018  change to 0,  mutation scalars always mix fine,  and these plots take up lots of space 
       L[li].u_rec[ui].v[i].plotrange = L[li].u_rec[ui].pr;
       init_value_record (&L[li].u_rec[ui].v[i], 0);
     }
@@ -1727,23 +1728,30 @@ start_setup_C (void)
   }
 }                               // start_setup_C
 
-void start_setup_poptree(char *ps)
+void start_setup_poptree(char *ps,char topologypriorinfostring[])
 {
   int ci,i;
+  int *pickedfromprior;
+  if (strlen(topologypriorinfostring) > 0)
+  {
+      usetopologypriors = 1;
+      pickedfromprior = static_cast<int *> (malloc (numchainspp * sizeof (int)));
+      init_topologypriors(topologypriorinfostring,pickedfromprior);
+  }
+  else
+    usetopologypriors = 0;
   for (ci=0;ci<numchainspp;ci++)
   {
     if (modeloptions[POPTREETOPOLOGYUPDATE] == 0)
       setup_poptree (ci, ps);
     else
     {
-      i = randposint(numpoptopologies); // pick a random tree 
-  /* JH note - tried having an update in which topology was never updated within a chain,  but only updated by swapping in chains
-  and then at the beginning all tree numbers were used evenly across chains.   Tried it to see if bugs were in the tree 
-  updating code.  Dumb idea. Did not work.  This forces a uniform distribution of trees among chains,  and the different 
-  chains no longer share the same state space.  */
+       if (strlen(topologypriorinfostring) > 0)
+         i = pickedfromprior[ci];
+       else
+        i = randposint(numpoptopologies); // pick a random tree 
       poptopologyproposedlist[i] += 1;
       setup_poptree (ci, alltreestrings[i]); 
-        
     }
     if ((C[ci]->plist = static_cast<int **> (malloc (npops * sizeof (*C[ci]->plist)))) == NULL)
       IM_err (IMERR_MEM, "  plist malloc did not work.   npops %d, step %d",
@@ -1761,26 +1769,37 @@ void start_setup_poptree(char *ps)
     fillplist (ci);
     set_tvalues (ci);
   }
+  if (usetopologypriors)
+    XFREE(pickedfromprior);
 
-  //if (modeloptions[POPTREETOPOLOGYUPDATE]==1)  
-    if (hiddenoptions[HIDDENGENEALOGY]==1)  // fixed 5_3_2017
+//if (modeloptions[POPTREETOPOLOGYUPDATE]==1)  
+  if (hiddenoptions[HIDDENGENEALOGY]==1)  // fixed 5_3_2017
     set_poptree_update_record();
 }
 
-void finish_setup_poptree(char topologypriorinfostring[])
+void finish_setup_poptree()
 {
-  int ci;
+  int ci,i;
 
   if (hiddenoptions[HIDDENGENEALOGY]==1)
   {
-    init_change_poptree(topologypriorinfostring);
-  }
-  for (ci=0;ci<numchainspp;ci++)
-  {
-    if (hiddenoptions[HIDDENGENEALOGY]==1)
+    init_holdgweight_array_for_hg();
+    for (ci=0;ci<numchainspp;ci++)
     {
+      //not happy with using updates to branchslidescalar.  Use a setting that will not update because the adjustval is fixed at 1.0 
+      setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.0,0.01,0.1,0.4,100);
+    
+      if ((C[ci]->ancplist = static_cast<int **> (malloc (numtreepops * sizeof (*C[ci]->ancplist)))) == NULL)
+        IM_err (IMERR_MEM, "  ancplist malloc did not work.   numtreepops %d, step %d",  numtreepops, step);
+      for (i = 0; i < numtreepops; i++)
+      {
+        if ((C[ci]->ancplist[i] =
+            static_cast<int *> (malloc (npops * sizeof (*C[ci]->ancplist[i])))) == NULL)
+          IM_err (IMERR_MEM, "  ancplist malloc did not work.   npops - i  %d, step %d",     npops - i, step);
+      }
       fillancplist (ci);
     }
+
   }
 }
 
@@ -2415,7 +2434,8 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
       poptopologysequence.maxlength = POPTOPOLOGYSEQUENCELENGTH;
     }
   start_setup_C ();
-  start_setup_poptree(&startpoptreestring[0]);
+  //start_setup_poptree(&startpoptreestring[0],&topologypriorinfostring[0]);
+  start_setup_poptree(startpoptreestring,topologypriorinfostring);
   getparamnums();
   if (nummigrateparams == 0 && hiddenoptions[HIDDENGENEALOGY]==1)
     IM_err (IMERR_MIGRATIONPRIOR0, " Migration must be included in model when using hidden genealogies (e.g. with population topology updating)");
@@ -2433,7 +2453,7 @@ setup (char infilename[], int *fpstri, char fpstr[], char priorfilename[],char t
     setup_migprior_recording();
     setup_qprior_recording();
   }
-  finish_setup_poptree(topologypriorinfostring);
+  finish_setup_poptree();
   finish_setup_C (currentid);
   reportparamcounts(fpstri, fpstr);
   finish_setup_L ();            // somethings in L need info from T , free up numsitesIS and uvals

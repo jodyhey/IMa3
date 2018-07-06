@@ -11,6 +11,12 @@ extern void poptreewrite (int ci, char *buildstr);
 extern void orderupnodes(struct popedge *poptree);
 
 /*********** local to this file  ***************/
+
+struct topolpriorsortstrut{
+  int ti;
+  double p; 
+};
+
 struct popedge poptreehold[2*MAXPOPS-1];
 #define SLIDESTDVMAX 0.2   // not sure what's best, copied from update_ptree.cpp
 #define SLIDESTDVMIN 0.001  // not sure what's best, copied from update_ptree.cpp
@@ -33,9 +39,10 @@ static void poptreeslider (struct popedge *ptree, int slidingedge, int *sis,
                     double *timepoint, double *slidedist);
 static void poptreesliderlimited (struct popedge *ptree, int slidingedge, int *sis,
                     double *timepoint, double *slidedist,double *upperiodtimelimit,double *dnperiodtimelimit);
-static void init_holdgweight_array_for_hg(void);
+void init_holdgweight_array_for_hg(void);
 static void free_holdgweight_array_for_hg (void);
 static void copyimigpriors(int ci, int mode);
+static int comptopolsort(const void * a, const void * b);
 
 /******* local functions ********/
 
@@ -651,61 +658,72 @@ void copyimigpriors(int ci, int mode)
   }
 } /*copyimigpriors */
 
+int comptopolsort(const void * a, const void * b)
+{
 
+  const struct topolpriorsortstrut *tpA = (topolpriorsortstrut *)a;
+  const struct topolpriorsortstrut *tpB = (topolpriorsortstrut *)b;
+  if ( tpA->p < tpB->p )
+    return -1;
+  else if ( tpA->p > tpB->p )
+    return 1;
+  else
+    return 0;
+}
 
 /******* global functions ********/
 
 #define MAXTOPOLOGYPRIORTERMS 50
+/* only get here if usetopologypriors == 1 
+   determine the topology priors
+   pick numchainspp topologies from the prior
+*/
 void
-init_change_poptree(char topologypriorinfostring[])
+init_topologypriors(char topologypriorinfostring[], int *treesfromprior)
 {
   int ci,i,j,k,m,npopsa;
-  double p;
+  double p, rv, sump,cump;
   char *c,*stringvalpos[(MAXPOPS_PHYLOGENYESTIMATION-1)*MAXPOPS_PHYLOGENYESTIMATION/2];
   forpriorxsort *priorxarray;
-  int xi;
-  init_holdgweight_array_for_hg();
-  for (ci=0;ci<numchainspp;ci++)
-  {
-    //not happy with using updates to branchslidescalar.  Use a setting that will not update because the adjustval is fixed at 1.0 
-    setupdatescalarinfo(&C[ci]->branchslideinfo,0.01,1.0,0.01,0.1,0.4,100);
-    
-    if ((C[ci]->ancplist = static_cast<int **> (malloc (numtreepops * sizeof (*C[ci]->ancplist)))) == NULL)
-      IM_err (IMERR_MEM, "  ancplist malloc did not work.   numtreepops %d, step %d",  numtreepops, step);
-    for (i = 0; i < numtreepops; i++)
-    {
-      if ((C[ci]->ancplist[i] =
-          static_cast<int *> (malloc (npops * sizeof (*C[ci]->ancplist[i])))) == NULL)
-        IM_err (IMERR_MEM, "  ancplist malloc did not work.   npops - i  %d, step %d",     npops - i, step);
-    }
-  }
-  if (strlen(topologypriorinfostring) > 0)
-  {
-    usetopologypriors = 1;
-    assert(numtopologypriors > 0);
+  struct topolpriorsortstrut *sorttemp;
+  assert(numtopologypriors > 0);
 
-    priorxarray = static_cast<forpriorxsort *> (malloc (numtopologypriors * sizeof (forpriorxsort)));
+  priorxarray = static_cast<forpriorxsort *> (malloc (numtopologypriors * sizeof (forpriorxsort)));
 
-    makepriorxclades(&topologypriorinfostring[0],priorxarray);
-  }
-  else
-    usetopologypriors = 0;
+  makepriorxclades(&topologypriorinfostring[0],priorxarray);
   npopsa = (modeloptions[ADDGHOSTPOP]==1) ? npops-1 : npops;
-  if (usetopologypriors)
+  topologypriors = static_cast<double *> (malloc (numpoptopologies* sizeof (double)));
+  sorttemp = static_cast<topolpriorsortstrut *> (malloc (numpoptopologies* sizeof (topolpriorsortstrut)));
+  sump = 0.0;
+  for (k=0;k<numpoptopologies;k++)
   {
-    topologypriors = static_cast<double *> (malloc (numpoptopologies* sizeof (double)));
-    for (k=0;k<numpoptopologies;k++)
-    {
-      if (modeloptions[ADDGHOSTPOP]==1)
-        topologypriors[k] = calctopologyprior(&alltreestrings_noghost[k][0],priorxarray);
-      else
-        topologypriors[k] = calctopologyprior(&alltreestrings[k][0],priorxarray);
-    }
-    XFREE(priorxarray);
+    if (modeloptions[ADDGHOSTPOP]==1)
+      topologypriors[k] = calctopologyprior(&alltreestrings_noghost[k][0],priorxarray);
+    else
+      topologypriors[k] = calctopologyprior(&alltreestrings[k][0],priorxarray);
+    sorttemp[k].p = exp(topologypriors[k]);
+    sump += sorttemp[k].p;
+    sorttemp[k].ti = k;
   }
-  
-
-} /* init_change_poptree */
+  XFREE(priorxarray);
+  // now sort the topologies by priors so we can pick starting topologies 
+  qsort(sorttemp,numpoptopologies,sizeof(struct topolpriorsortstrut),comptopolsort);
+  for (i = 0;i<numchainspp;i++)
+  {
+    rv = uniform();
+    cump = 0.0;
+    for (k = numpoptopologies - 1; k>= 0;k--)
+    {
+      cump += sorttemp[k].p/sump; 
+      if (cump > rv)
+      {
+        *(treesfromprior + i) = sorttemp[k].ti;
+        break;
+      }
+    }
+  }
+  XFREE(sorttemp);
+} /* init_topologypriors */
 
 void
 free_change_poptree(void)
@@ -990,16 +1008,16 @@ checkpoptree(ci,1);
           mpriorratio = 0.0;
           for (i=0;i<nummigrateparampairs;i++)
           {
-            //mpriorratio += C[ci]->mltorhpriors[holdcurrentpairpos[i]] - C[ci]->mltorhpriors[C[ci]->currentpairpos[i]];
+            //mpriorratio += C[ci]->mltorhyperparams[holdcurrentpairpos[i]] - C[ci]->mltorhyperparams[C[ci]->currentpairpos[i]];
 
             /* C[ci]->imig[2*i].descstr and C[ci]->imig[2*i+1].descstr should be the same */ 
-            //mpriorratio += holdimig[2*i].pr.expomean - getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors);
+            //mpriorratio += holdimig[2*i].pr.expomean - getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhyperparams);
             mpriorratio += holdimig[2*i].pr.expomean - C[ci]->imig[2*i].pr.expomean;
             //assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to);  md no longer used by holdimig
             //assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from);  md no longer used by holdimig
 
-            //mpriorratio += C[ci]->mrtolhpriors[holdcurrentpairpos[i]] - C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]];
-            //mpriorratio += holdimig[2*i+1].pr.expomean - getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhpriors);
+            //mpriorratio += C[ci]->mrtolhyperparams[holdcurrentpairpos[i]] - C[ci]->mrtolhyperparams[C[ci]->currentpairpos[i]];
+            //mpriorratio += holdimig[2*i+1].pr.expomean - getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhyperparams);
             mpriorratio += holdimig[2*i+1].pr.expomean - C[ci]->imig[2*i+1].pr.expomean;
 
           }
@@ -1011,11 +1029,11 @@ checkpoptree(ci,1);
           	 for (i=0;i<nummigrateparampairs;i++)
             {
               /* C[ci]->imig[2*i].descstr and C[ci]->imig[2*i+1].descstr should be the same */ 
-              //mpriorratio *= C[ci]->mltorhpriors[C[ci]->currentpairpos[i]]/C[ci]->mltorhpriors[holdcurrentpairpos[i]];
-              //mpriorratio *= getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhpriors)/holdimig[2*i].pr.max;
+              //mpriorratio *= C[ci]->mltorhyperparams[C[ci]->currentpairpos[i]]/C[ci]->mltorhyperparams[holdcurrentpairpos[i]];
+              //mpriorratio *= getval(C[ci]->imig[2*i].descstr,C[ci]->mltorhyperparams)/holdimig[2*i].pr.max;
               mpriorratio *= C[ci]->imig[2*i].pr.max/holdimig[2*i].pr.max;
-              //mpriorratio *= C[ci]->mrtolhpriors[C[ci]->currentpairpos[i]]/C[ci]->mrtolhpriors[holdcurrentpairpos[i]];
-              //mpriorratio *= getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhpriors)/holdimig[2*i+1].pr.max;
+              //mpriorratio *= C[ci]->mrtolhyperparams[C[ci]->currentpairpos[i]]/C[ci]->mrtolhyperparams[holdcurrentpairpos[i]];
+              //mpriorratio *= getval(C[ci]->imig[2*i+1].descstr,C[ci]->mrtolhyperparams)/holdimig[2*i+1].pr.max;
               mpriorratio *= C[ci]->imig[2*i+1].pr.max/holdimig[2*i+1].pr.max;
               //assert (holdimig[2*i].md.from == holdimig[2*i+1].md.to); md no longer used by holdimig
               //assert (holdimig[2*i].md.to == holdimig[2*i+1].md.from); md no longer used by holdimig
@@ -1025,7 +1043,7 @@ checkpoptree(ci,1);
         qpriorratio = 1.0;
         for (i=0;i<numtreepops;i++)
         {
-          qpriorratio *= C[ci]->qhpriors[(int) C[ci]->descendantpops[i]]/C[ci]->qhpriors[(int) holddescendantpops[i]];
+          qpriorratio *= C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]]/C[ci]->qhyperparams[(int) holddescendantpops[i]];
         }
         qpriorratio = -log(qpriorratio); 
       }

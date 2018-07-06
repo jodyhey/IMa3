@@ -1202,7 +1202,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
     prepare_prior_histograms (&numhistprint);
     if (numhistprint)
     {
-      FP "\n\nHISTOGRAM GROUP %d: PRIOR HISTOGRAMS\n", histsetcount);
+      FP "\n\nHISTOGRAM GROUP %d: HYPERPARAMETER HISTOGRAMS\n", histsetcount);
       FP "--------------------------------------------------------------------------------------------------------\n");
       FP "       curve height is an estimate of marginal posterior probability\n");
       writehistogram (outfile, numhistprint,1,"Priors");

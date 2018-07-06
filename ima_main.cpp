@@ -4,11 +4,6 @@
 #include "ima.hpp"
 #include <stack>
 
-/*  some compilation commands
-mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 
-mpicxx *.cpp -D MPI_ENABLED -D NDEBUG -O3 -o IMa3 -fpermissive
- */
-
 /********* variables local to ima_main.cpp.***********/   /*   global variables are declared in ima.hpp using gextern/extern */
 
 static char *infilename; 
@@ -126,8 +121,9 @@ void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo
 #ifdef XMLOUTPUT
 std::stack<TiXmlElement*> xstack;
 #endif
-
 int main ( int argc, char *argv[]);
+
+/********** Local functions *************/
 
 int checkrunfile(char *runfilename)
 {
@@ -1159,12 +1155,52 @@ begin_outputfile_info_string (void)
 #endif //TURNONCHECKS
 
   SP "\nJob Started: %s\n",timeinfostring);
+  SP "\nCommand line string : %s \n", command_line);
+
+  /* JH 7/5/2018  added a section (kind of crude) that lists the tables where parameter estimates are found */ 
+  SP "%s",outputbanner("locations of parameter estimates in this file"));
+  SP "This file has many tables. The following tables (titles in all caps) contain relevant parameter estimates for this run.\n");
+  if (modeloptions[POPTREETOPOLOGYUPDATE])
+  {
+    SP "  Tree Topologies: ESTIMATED POSTERIOR PROBABILITIES OF POPULATION TREE TOPOLOGIES\n");
+    SP "  Mutation Scalars: MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF PARAMETERS IN MCMC\n");
+    if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+      SP "  Hyperparameters: HYPERPARAMETER HISTOGRAMS\n");
+  }
+  else
+  {
+    if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+    {
+      SP "  Splitting times and Mutation Scalars:\n    MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF PARAMETERS IN MCMC\n");
+      SP "  Hyperparameters:\n    HYPERPARAMETER HISTOGRAMS\n");
+    }
+    else
+    {
+      SP"  Population Size and Migration Rate Terms:\n");
+      if (!modeloptions[EXPOMIGRATIONPRIOR] && calcoptions[DONTCALCLIKELIHOODMUTATION]==0)
+        SP "    MEANS, VARIANCES AND CORRELATIONS OF PARAMETERS\n");
+      if (!calcoptions[DONTCALCLIKELIHOODMUTATION])
+				    SP "    MARGINAL PEAK LOCATIONS AND PROBABILITIES\n");
+				  SP "    MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF POPULATION SIZE AND MIGRATION PARAMETERS\n");
+      if (calcoptions[FINDJOINTPOSTERIOR])
+        SP "    JOINT PEAK LOCATIONS AND POSTERIOR PROBABILITIES\n");
+      if (outputoptions[NOPOPMIGPARAMHIST] == 0 && !calcoptions[DONTCALCLIKELIHOODMUTATION])
+      {
+        SP "  2Nm Estimates:\n");
+        SP "    MARGINAL PEAK LOCATIONS AND PROBABILITIES\n");
+        SP "    POPULATION MIGRATION (2NM) POSTERIOR PROBABILITY HISTOGRAMS\n");
+      }
+      if (runoptions[LOADRUN] == 0)
+        SP "  Splitting times and Mutation Scalars:\n    MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF PARAMETERS IN MCMC\n");
+      else
+        SP "  Splitting times:\n    MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF PARAMETERS IN MCMC\n");
+    }
+  }
+  SP "\n");
   SP "%s",outputbanner("input and starting information"));
   
-
   if (calcoptions[DONTCALCLIKELIHOODMUTATION])
     SP "\n\n**NO DATA ** - Data likelihoods set to constant  posterior should equal prior \n\n");
-  SP "\nCommand line string : %s \n", command_line);
   SP "\nRun Settings:\n");
   SP "  Input filename : %s \n", infilename);
   SP "  Output filename: %s \n", outfilename);
@@ -1482,22 +1518,22 @@ void start (int argc, char *argv[], int currentid)
   {
     if (modeloptions[EXPOMIGRATIONPRIOR])
     {
-      if (mprior < MINPRIORFROMHYPERPRIOR)
-        IM_err (IMERR_HYPERPROB," Migration hyperprior value %.4lg  too low,  can't be less than %.4lg",mprior, (double) MINPRIORFROMHYPERPRIOR);
+      if (mprior < MINVALFROMHYPERPRIOR)
+        IM_err (IMERR_HYPERPROB," Migration hyperprior value %.4lg  too low,  can't be less than %.4lg",mprior, (double) MINVALFROMHYPERPRIOR);
       hyperprior_expo_m_mean = expo_m_mean = mprior;
       hyperprior_uniform_m_max = -1.0; // i.e. not in use
     }
     else
     {
-      if (mprior < MINPRIORFROMHYPERPRIOR)
-        IM_err (IMERR_HYPERPROB," Migration hyperprior value %.4lg  too low,  can't be less than %.4lg",mprior, (double) MINPRIORFROMHYPERPRIOR);
+      if (mprior < MINVALFROMHYPERPRIOR)
+        IM_err (IMERR_HYPERPROB," Migration hyperprior value %.4lg  too low,  can't be less than %.4lg",mprior, (double) MINVALFROMHYPERPRIOR);
       hyperprior_uniform_m_max = m_max = mprior;
       hyperprior_expo_m_mean = -1.0; // not in use
     }
     if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
     {
-      if (thetaprior < MINPRIORFROMHYPERPRIOR)
-        IM_err (IMERR_HYPERPROB," Population size hyperprior value %.4lg  too low,  can't be less than %.4lg",thetaprior, (double) MINPRIORFROMHYPERPRIOR);
+      if (thetaprior < MINVALFROMHYPERPRIOR)
+        IM_err (IMERR_HYPERPROB," Population size hyperprior value %.4lg  too low,  can't be less than %.4lg",thetaprior, (double) MINVALFROMHYPERPRIOR);
       hyperprior_uniform_q_max = q_max = thetaprior;
     }
   }
@@ -2668,9 +2704,27 @@ explanation for how trendline data are accumulated:
 values are added more slowly as the run proceeds.  
 - this is because the time period doubles when movespot reaches the end 
 - the values to the left of movespot have half the density (in time) of those to the right 
+
+
+
+  for MPI this is done using PASS_TO_HEADNODE_TO_SAVE operations
+  For each of these there is a call to inctrend()
+  if numprocesses > 0:
+    Then before the inctrend() there is a PASS_TO_HEADNODE_TO_SAVE operation:
+      if z>=0 && currentid == HEADNODE:  call inctrend directly
+      if z >= 0 && currentid != HEADNODE: copy value to temp variable and send to HEADNODE
+      if z < 0 && currentid == HEADNODE: receive value to temp variable and then call inctrend
+      else nothing is done
+
+  sequence of things that this goes thru 
+  lpgpd_v
+  poptreeuinfo->v
+  T[j].v
+  ?? where is  L[li].g_rec->v->do_trend  it is intialized but then not run through PASS_TO_HEADNODE_TO_SAVE  ??
+  L[li].u_rec[ui].v  
+  L[li].kappa_rec->v
 */
-//AS: adding currentid, so I can start recording values correctly on the head node
-//2/7/2014
+
 
 void trendrecord (int loadarrayj, int currentid)
 {
@@ -2736,12 +2790,7 @@ void trendrecord (int loadarrayj, int currentid)
   {
     if (runoptions[LOADRUN])
     {
-
-      if (lpgpd_v->do_trend)
-        inctrend (movespot, trendspot, lpgpd_v,
-                  gsampinf[loadarrayj][gsamp_pdgp] +
-                  gsampinf[loadarrayj][gsamp_probgp]);
-
+      if (lpgpd_v->do_trend) inctrend (movespot, trendspot, lpgpd_v, gsampinf[loadarrayj][gsamp_pdgp] + gsampinf[loadarrayj][gsamp_probgp]);
     }
     else
     {
@@ -2751,11 +2800,9 @@ void trendrecord (int loadarrayj, int currentid)
 	      if (z >= 0 && currentid == HEADNODE) 
         {
           if (hiddenoptions[HIDDENGENEALOGY] == 0)
-	          inctrend (movespot, trendspot, lpgpd_v,
-                  C[z]->allpcalc.probg + C[z]->allpcalc.pdg);
+	           inctrend (movespot, trendspot, lpgpd_v, C[z]->allpcalc.probg + C[z]->allpcalc.pdg);
           else
-            inctrend (movespot, trendspot, lpgpd_v,
-                  C[z]->allpcalc.probg + C[z]->allpcalc.pdg + C[z]->allpcalc.probhgg);
+            inctrend (movespot, trendspot, lpgpd_v, C[z]->allpcalc.probg + C[z]->allpcalc.pdg + C[z]->allpcalc.probhgg);
 	      }
 	#ifdef MPI_ENABLED
 	      if (z < 0 && currentid == HEADNODE) 
@@ -2763,8 +2810,8 @@ void trendrecord (int loadarrayj, int currentid)
 		      probrec = 0.0;
 		      int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1313, MPI_COMM_WORLD, &status);
 		      if (rc != MPI_SUCCESS) 
-          {
-			      MPI_Abort(MPI_COMM_WORLD, rc);
+        {
+			       MPI_Abort(MPI_COMM_WORLD, rc);
 		      }
 		      inctrend (movespot, trendspot, lpgpd_v, probrec);
 	      }
@@ -2774,16 +2821,16 @@ void trendrecord (int loadarrayj, int currentid)
 		          probrec = C[z]->allpcalc.probg + C[z]->allpcalc.pdg;
           else
             probrec = C[z]->allpcalc.probg + C[z]->allpcalc.pdg + C[z]->allpcalc.probhgg;
-		      int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1313, MPI_COMM_WORLD);
-		      if (rc != MPI_SUCCESS) 
+		        int rc = MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1313, MPI_COMM_WORLD);
+		        if (rc != MPI_SUCCESS) 
           {
-			      MPI_Abort(MPI_COMM_WORLD, rc);
-		      }
+			         MPI_Abort(MPI_COMM_WORLD, rc);
+		        }
 	      }
 	#endif
-	    }
-      if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_trend)
-      {
+	     }
+     if (modeloptions[POPTREETOPOLOGYUPDATE]==1 && poptreeuinfo->v->do_trend)
+     {
 	      int z = whichiscoldchain();
 	      if (z >= 0 && currentid == HEADNODE) 
         {
@@ -2798,8 +2845,8 @@ void trendrecord (int loadarrayj, int currentid)
 		      probrec = 0.0;
 		      int rc = MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 13131, MPI_COMM_WORLD, &status);
 		      if (rc != MPI_SUCCESS) 
-          {
-			      MPI_Abort(MPI_COMM_WORLD, rc);
+        {
+			       MPI_Abort(MPI_COMM_WORLD, rc);
 		      }
 		      inctrend (movespot, trendspot, poptreeuinfo->v, probrec);
 	      }
@@ -2816,36 +2863,37 @@ void trendrecord (int loadarrayj, int currentid)
 	    }
      for (j = 0; j < lastperiodnumber; j++) 
      {
-        if (T[j].v->do_trend) 
-        {
-		      int z = whichiscoldchain();
-		      if (z >= 0 && currentid == HEADNODE) 
-        {
-	         inctrend (movespot, trendspot, T[j].v, C[z]->tvals[j]);
-		      }
+       if (T[j].v->do_trend) 
+       {
+         int z = whichiscoldchain();
+		        if (z >= 0 && currentid == HEADNODE) 
+          {
+	           inctrend (movespot, trendspot, T[j].v, C[z]->tvals[j]);
+		        }
 #ifdef MPI_ENABLED
-		      if (z < 0 && currentid == HEADNODE) {
-			      probrec = 0.0;
-			      int rc =  MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1717, MPI_COMM_WORLD, &status);
-			      if (rc != MPI_SUCCESS) 
-         {
-				      MPI_Abort(MPI_COMM_WORLD, rc);
-			      }
-			      inctrend (movespot, trendspot, T[j].v, probrec);
-		      }
-		      if (z >= 0 && currentid != 0) 
-        {
-			      probrec = C[z]->tvals[j];
-			      int rc =  MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1717, MPI_COMM_WORLD);
-			      if (rc != MPI_SUCCESS) 
-         {
-				        MPI_Abort(MPI_COMM_WORLD, rc);
-			      }
-		      }
+		        if (z < 0 && currentid == HEADNODE) 
+          {
+			         probrec = 0.0;
+			         int rc =  MPI_Recv(&probrec, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1717, MPI_COMM_WORLD, &status);
+			         if (rc != MPI_SUCCESS) 
+            {
+				          MPI_Abort(MPI_COMM_WORLD, rc);
+			         }
+			         inctrend (movespot, trendspot, T[j].v, probrec);
+		        }
+		        if (z >= 0 && currentid != 0) 
+          {
+			         probrec = C[z]->tvals[j];
+			         int rc =  MPI_Send(&probrec, 1, MPI_DOUBLE, 0, 1717, MPI_COMM_WORLD);
+			         if (rc != MPI_SUCCESS) 
+            {
+				          MPI_Abort(MPI_COMM_WORLD, rc);
+			         }
+		        }
 #endif
-		    }
-	     }
-     }
+		     }
+	    }
+    }
     for (li = 0; li < nloci; li++)
     {
       if (runoptions[LOADRUN] == 0)
@@ -2874,7 +2922,7 @@ void trendrecord (int loadarrayj, int currentid)
 #endif
 		      }
 	     }
-      if (L[li].model == HKY) 
+      if (L[li].model == HKY && L[li].kappa_rec->v->do_trend) 
       {
 		      int z = whichiscoldchain();
 		      if (z >= 0 && currentid == HEADNODE) 
@@ -2914,9 +2962,9 @@ void trendrecord (int loadarrayj, int currentid)
   trenddoublepoint = movespot;
 }                               /* trendrecord */
 
-/* calculates the bin number of an xy array of a value_record that a value falls in,  increments the count in that bin */
-//AS: I need to change this for MPI version - every time I record something on the cold chain process,
-//it also has to be updated on the head node, so printing can happen correctly
+/* calculates the bin number of an xy array of a value_record that a value falls in,  increments the count in that bin 
+  should only get called when on Headnode
+*/
 
 void recordval (struct value_record *v, double val)
 {
@@ -3053,6 +3101,8 @@ void record_migrations (int z)
   } 
 }                               //record_migrations
 
+/* gather information on latest likelihood and prbabilities
+   do a PASS_TO_HEADNODE_TO_SAVE operation   */ 
 void checkhighs (int z,int currentid, int reset) 
 {
   int rc = 0; //AS: return code for MPI C bindings
@@ -3097,6 +3147,24 @@ void checkhighs (int z,int currentid, int reset)
   }
 #endif
 }                               /* checkhighs */
+
+/* 
+  if numprocesses > 1  
+    do a series of PASS_TO_HEADNODE_TO_SAVE operations
+       C[z]->G[li].roottime
+       G->uvals[ui]
+       G->kappaval
+       C[z]->tvals[j]
+       if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])
+            mval = C[z]->imig[mj].pr.expomean;
+            mval = C[z]->itheta[j].pr.max;
+      if (outputoptions[MIGRATEHIST])
+        migcount[i][k]
+      if (modeloptions[POPTREETOPOLOGYUPDATE] == 1) // add the current topology number from the cold chain to poptopologysequence
+        C[z]->poptreenum;
+  
+
+*/
 
 void record (int currentid)
 {
@@ -3981,6 +4049,8 @@ printf("printed greater than tests\n");
 #ifdef STDTEST
 printf("printed means variances correlations\n");
 #endif
+      if (modeloptions[EXPOMIGRATIONPRIOR] || (runoptions[LOADRUN] && calcoptions[FINDJOINTPOSTERIOR]))  // moved this here 6/11/2018,  it was in the loop below if (!calcoptions[DONTCALCLIKELIHOODMUTATION]) which caused a crash when using -j2 -c0 
+        eexpsum = (struct extendnum *) malloc ((size_t) ((genealogysamples + 1) * sizeof (struct extendnum)));
 /*   printoutput()  get marginal peaks*/  
     if (!calcoptions[DONTCALCLIKELIHOODMUTATION])
     {
@@ -3988,9 +4058,6 @@ printf("printed means variances correlations\n");
       holdpeakloc = static_cast<float *> (malloc (p * sizeof (float)));
       printf ("surface calculations  . . .\n");
       fflush(stdout);
-      if (modeloptions[EXPOMIGRATIONPRIOR] || (runoptions[LOADRUN] && calcoptions[FINDJOINTPOSTERIOR]))
-        eexpsum = (struct extendnum *) malloc ((size_t) ((genealogysamples + 1) * sizeof (struct extendnum)));
-
       findmarginpeaks (outfile, holdpeakloc);
 /*   printoutput()  get joint peaks*/  
       if (runmode == LOADGmode4 && calcoptions[FINDJOINTPOSTERIOR])
@@ -4032,7 +4099,7 @@ printf("printed trends\n");
 #endif
       } 
     }
-    callasciitrend (outfile,trenddoublepoint,trendspot);
+    //callasciitrend (outfile,trenddoublepoint,trendspot); 6/1/2018  comment out,  was printing duplicate trends 
 #ifdef STDTEST
 printf("printed trends\n");
 #endif
@@ -4117,7 +4184,11 @@ xstack.pop();
   return;
 }                               /* printoutput */
 
-/* this is generally just turned on when in development */ 
+/* this is generally just turned on when in development 
+
+  do  PASS_TO_HEADNODE_TO_PRINT operations for updatestr
+
+*/ 
 void output_update_scalars(int z,int currentid, char updatestr[])
 {
   static int updatestri = 0;
@@ -4159,7 +4230,6 @@ void output_update_scalars(int z,int currentid, char updatestr[])
   if (currentid ==0 && z < 0)// current process is 0, must receive updatestr
   {
 #ifdef MPI_ENABLED
-		  //rc = MPI_Recv(&updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
     rc = MPI_Recv(updatestr,1000, MPI_CHAR, MPI_ANY_SOURCE, 12377, MPI_COMM_WORLD,&status); // fixed bug  tag 123 was used again for an unrelated recv so changed to 12377
 		  if (rc !=MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,-1);
 #endif  //MPI_ENABLED 
@@ -4259,6 +4329,11 @@ void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo
   also gathers topologycounts to cpu 0 from other cpus */
 
 /*JH 4/27/2016  moved the main step condition outside of this so it would not get called so often, to save some waiting in mpi */ 
+
+/*
+  do PASS_TO_HEADNODE_TO_PRINT operation for 
+    C[z]->poptreenum
+*/
 void intervaloutput (FILE * outto, int currentid)
 {
   int rc = 0; //AS: Return code for MPI C bindings
