@@ -1201,7 +1201,7 @@ begin_outputfile_info_string (void)
   
   if (calcoptions[DONTCALCLIKELIHOODMUTATION])
     SP "\n\n**NO DATA ** - Data likelihoods set to constant  posterior should equal prior \n\n");
-  SP "\nRun Settings:\n");
+  SP "\nRun Settings:\n-------------\n");
   SP "  Input filename : %s \n", infilename);
   SP "  Output filename: %s \n", outfilename);
   if (calcoptions[LOADPRIORSFROMFILE])

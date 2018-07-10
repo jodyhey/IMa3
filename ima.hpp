@@ -41,23 +41,25 @@
 
 /*  compilation macro notes
 
-  MPI_ENABLED must be defined if compiling for MPI 
+  For parallele runs:  MPI_ENABLED must be defined if compiling for MPI 
      this definition is usually handled at the command line or in the development environment
 
-  When debugging 
+  For debugging 
       DEBUG should be defined, usually handled at the command line or in the development environment
       if DEBUG is defined,  TURNONCHECKS will also be defined, which leads to lots of things being checked and makes it quite slow 
       To run in debug mode without all the checks,  uncomment #define TURNONCHECKS
 
-  When the code is going to be run on the testbed
+  For running on the testbed
    - compile with STDTEST defined, this will cause RANDOM_NUMBERS_FROM_FILE to be defined
    -  if STDTEST is defined TURNONCHECKS will be undefined so as not to take too long if running standard tests in debug mode
 
   Whenever code has reached the point that it is a definite release version:
    - increment  IMA3RELEASEVERSION
    - uncomment  #define IMA3RELEASE
-   - put this copy of the code (with IMA3RELEASE defined)  in a safe spot, clearly labeled as release code 
-*/
+   - commit to github 
+      github will be the only place that the release version really lives
+      only commits to github that will be done will be release versions  (i.e. #define IMA3RELEASE)
+ */
 
 //#define MPI_ENABLED  // usually done in compiler settings or the command line 
 //#undef MPI_ENABLED
@@ -67,8 +69,9 @@
 #endif
 
 
-#define IMA3RELEASEVERSION  "0.0"  // update only when a release is made 
-//#define IMA3RELEASE   // uncomment  if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
+#define IMA3RELEASEVERSION  "1.0"  // update only when a release is made 
+  // version 1.0 7/9/2018
+#define IMA3RELEASE   // uncomment  if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
 
 
 #ifdef IMA3RELEASE 
@@ -78,7 +81,7 @@
 #define INDEVELOPMENT 
 #endif
 
-#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
@@ -87,11 +90,6 @@
 #define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #define XMLOUTPUT
 #endif
-
-#ifndef RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
-#undef STDTEST
-#endif
-
 
 /* use XMLOUTPUT when running in IMgui */ 
 

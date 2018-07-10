@@ -690,7 +690,7 @@ findmarginpeaks (FILE * outfile, float *holdpeakloc)
             }
             FP "\n");
           }
-          if (ii == 2 || ii == 3)
+          if (ii==2) //((ii == 2 || ii == 3) )  //JH 7/9/2018  don't print LLR test when doing 2Nm  
           {
             FP " LLRtest:");
             for (i = 0; i < nummigrateparams; i++)
