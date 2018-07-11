@@ -323,7 +323,7 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    1 Include ranges on mutation rates as priors on mutation rate scalars\n");
       printf ("    2 Joint posterior density calculations, for LLR tests of nested models, use with -r0 -w\n");
       printf ("    3 Get prior distribution terms from file (requires filename given with -g )\n");
-      printf ("    4 Calculate the marginal likelihood,  requires 100 or more chains and use of -hm e or -hm s\n");
+      printf ("    4 Calculate the marginal likelihood,  requires 100 or more chains and EVEN or SYGMOID heating models\n");
       printf ("-d  Number of steps between sampling genealogies (default 100)\n");
       printf ("-f  Name of file with saved Markov chain state generated in previous run (use with -r3)\n");
       printf ("-g  Name of file for parameter priors, default: '%s'\n",defaultpriorfilename);
