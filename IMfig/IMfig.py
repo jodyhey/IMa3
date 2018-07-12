@@ -14,6 +14,7 @@
 import math
 import sys
 import os
+import string
 ## some users won't have colormath
 try:
     from colormath.color_objects import LabColor, sRGBColor
@@ -536,7 +537,7 @@ def get_population_names (f,a,s):
     return popnamelist
 
 def get_population_tree (f,a,s):
-    ## s not used but needed for function to match general function format
+    ## s variables is not used but needed for function to match general function format
     """
          a couple possible things to read here
     """
@@ -544,7 +545,7 @@ def get_population_tree (f,a,s):
     while a.find("Population Tree") >= 0:
         if a.find("standard ordering") >= 0:
             tempstring = a.split()[-1]
-        if a.find("Ghost Population") >= 0:
+        if a.find("Ghost Population")>= 0 and gv["excludeghost"] == False:
             assert gv["useghost"]
             tempstring = a.split()[-1]
         a = f.readline().strip()
@@ -739,6 +740,58 @@ def mysplit(s,delims):
         s = s.replace(c,' ')
     return s.split()
 
+def removeghost(slist,scaledpop,scaledtime):
+    # remove 'ghost' from names
+    global numpops
+    slist[2][4] = slist[2][4][:-1]
+    npops = len(slist[2][4])
+    slist[4][4].pop(npops) # remove ghost
+    slist[4][4].pop(-1)  # remove last ancestor
+    if scaledpop != []:   # do same for scaled pops
+        scaledpop.pop(npops)
+        scaledpop.pop(-1)
+
+    # renumber ancestors
+    for i in range(npops,2*npops-1):
+    	assert slist[4][4][i][0] == 'q' + str(i+1)
+    	slist[4][4][i][0] = 'q' + str(i)
+    slist[5][4].pop(-1) # remove last splitting time parameter
+    if scaledtime != []:
+        scaledtime.pop(-1) # do the same for scaledtime
+	#remove migration parameters associated with ghost
+    ghoststr = str(npops)
+    numpops = npops
+    assert len(ghoststr)==1
+    rlist = []
+    for i,m in enumerate(slist[6][4]):
+        if m[0][2] == ghoststr or m[0][-1] == ghoststr:
+            rlist.append(i)
+    rlist.reverse()
+    for r in rlist:
+        slist[6][4].pop(r)
+    #renumber ancestors in migration parameters
+    for i,minfo in enumerate(slist[6][4]):
+        j = 0
+        newm = ''
+        m = minfo[0]
+        while True:
+            if m[j] not in string.digits:
+                newm += m[j]
+                j += 1
+            else:
+                d = m[j]
+                j += 1
+                if j < len(m) and m[j] in string.digits:
+                    d += m[j]
+                if int(d) >= int(ghoststr):
+                    newm += str(int(d)-1)
+                else:
+                    newm += str(int(d))
+            if j >= len(m):
+                break
+        slist[6][4][i][0] = newm
+    return slist,scaledpop,scaledtime
+
 def readimfile():
     """
         gets info from the input file
@@ -816,6 +869,8 @@ def readimfile():
             quit()
         if len(slist[7][4])==3:
             (scaledpop, scaledtime) = calc_scaledvals(slist)
+    if gv["excludeghost"] and  gv["useghost"]:
+        slist,scaledpop,scaledtime = removeghost(slist,scaledpop,scaledtime)
     return slist, scaledpop, scaledtime
 
 ##***********************************************************************************
@@ -1410,7 +1465,7 @@ def printpopbox(popbox,maxwide,confint,slist,plist,rootpop, poptree, ty,scaledpo
     if gv["usealtnames"]:
         namelist = gv["altpopnames"]
 ##        print (namelist)
-        if gv["useghost"] and namelist[-1].upper() != "GHOST":
+        if gv["useghost"] and gv["excludeghost"] == False and namelist[-1].upper() != "GHOST":
             assert len(namelist) < numpops
             namelist.append("Ghost")
     else:
@@ -1749,7 +1804,10 @@ def scancommandline(args):
         if tempval[0].isdigit():
             gv["moption"] = float(tempval)
         else:
-            gv["moption"] = tempval
+            if tempval[0].lower() != 's':
+                gv["moption"] = tempval[0].lower()
+            else:
+                gv["moption"] = tempval
     def nflag (tempname):
         gv["usealtnames"] = True
         gv["altnamefilename"] = tempname.strip()
@@ -1777,6 +1835,8 @@ def scancommandline(args):
             print(" maximum -w value: 20 ")
             exit()
         gv["widthscalar"] = temp
+    def zflag ():
+        gv["excludeghost"]  =  True
 
     def removewhitespace(temps):
         return "".join(temps.split())
@@ -1784,6 +1844,8 @@ def scancommandline(args):
     def cleanarglist(arglist,flags_with_values):
         """
         """
+        if arglist[-1] =='':
+            arglist.pop(-1)
         newarg = []
         if arglist[0][0] != "-":  # skip program name at beginning of list
             arglist = arglist[1:]
@@ -1834,10 +1896,10 @@ def scancommandline(args):
     cldic = {'a':aflag,'b':bflag,'c':cflag,'d':dflag,'e':eflag,'f':fflag,\
              'g':gflag,'i':iflag,'j':jflag,'k':kflag,'m':mflag,'n':nflag,'o':oflag,\
              'p':pflag, 'q':qflag,'r':rflag,'s':sflag, 't':tflag,'u':uflag,'v':vflag,'w':wflag,\
-             'x':xflag,'y':yflag}
+             'x':xflag,'y':yflag,'z':zflag}
     flags_must_use = 'i'
     flags_with_values =  "cbfgijmoptxynw"
-    flags_without_values = "adesuvkqr"
+    flags_without_values = "adesuvkqrz"
     cmdstr = " ".join(args)
     checkallflags(flags_with_values,flags_without_values,cldic)
     argv = cleanarglist(args,flags_with_values)
@@ -1906,7 +1968,7 @@ def printcommandset():
         print ( "-w : file image width,  integer multiple of 720 pixels (only if using -c) ")
     print ( "-x : adjust width of plot,  >1 means wider, <1 means narrower")
     print ( "-y : adjust height of splittimes, relative to bottom of figure, max = 1.")  ## not clear what this does  5/12/2016
-
+    print ( "-z : exclude the ghost population from the figure")
 
 
 ##*************************************************************
@@ -1927,9 +1989,10 @@ def setdefaults():
          "font":"Arial","bifont":"Arial-BoldItalic","fontsize":14,"fontfixed":False,
          "line0y":0.95,"lineINFy":0.1,"localxscale":-1,"localyscale":-1,"arrowheightadj":1,
         "maximumxpoint":756.1,"maximumypoint":576.1,"lastt_lower_y":-1,"set_lastt_lower_y":True,
-        "blue":[0,0,1],"red":[1,0,0],"black":[0,0,0],"darkgreen":[0,0.58823,0.19607],"graylevel":0.3,
+        "blue":[0,0,1],"red":[1,0,0],"black":[0,0,0],"darkgreen":[0,0.58823,0.19607],"graylevel":0.6,
         "popboxspaceadj":1.0,"moption":'s',"skipdemographicscaling":False,"rgbcolor":False,
-        "anglenames":False,"dashinterval":3,"usealtnames":False,"imagefileextension":"","altnamefilename":"","altpopnames":[],"widthscalar":-1
+        "anglenames":False,"dashinterval":3,"usealtnames":False,"imagefileextension":"","altnamefilename":"",
+        "altpopnames":[],"widthscalar":-1,"excludeghost":False
          }
 
 
@@ -1946,7 +2009,7 @@ def writeimagefile():
         im.load(scale = gv["widthscalar"])
         # print(im.format, im.size,im.mode)
     except:
-        print ("cannot read ", gv["outputfilename"])
+        print ("cannot read ", gv["outputfilename"],".  ",gv["imagefileextension"], " file not written")
         return False
     outfn = fn + gv["imagefileextension"]
     try:
@@ -1957,6 +2020,8 @@ def writeimagefile():
     im.close()
     os.remove(gv["outputfilename"])
     return True
+
+
 
 
 ##***********************************************************************************
@@ -2023,6 +2088,49 @@ def dostuff(args):
             print ("image file created")
     return
 
+def writecaption(args):
+    fn = gv["outputfilename"][0:-4] + "_caption.txt"
+    f = open(fn,'w')
+    f.write("IMfig program Copyright 2009-2018  Jody Hey\n")
+    f.write("command line string: %s\n\n"%' '.join(args))
+    s = ""
+    s += "Figure ?. A representation of an estimated Isolation with Migration model generated by the IMfig program (Hey 2010). "
+    s += "The phylogeny is depicted as a series of boxes organized hierarchically, with ancestor boxes positioned in between the corresponding descendants, and the width of boxes proportional to estimated Ne."
+    if gv["popboxcintervalboxes"]:
+        s += " 95% confidence intervals for each Ne value are shown as dashed lines to the right of the left side of the corresponding population box. "
+        if gv["popboxcintervalarrows"]:
+            s += " Gray arrows to the 95% Ne intervals are also shown extending to the left and right of the right boundary of each population box.  "
+    elif gv["popboxcintervalarrows"]:
+        s += " 95% confidence intervals for Ne values are shown as gray arrows extending to the left and right of the right boundary of each population box.  "
+    s += "Splitting times"
+    if gv["eventimes"]:
+        s += ", positioned at even intervals, "
+    s += " are depicted as solid horizontal lines, with text values on the left. "
+    if not gv["eventimes"]:
+        s += "Confidence intervals for splitting times are shown as vertical gray arrows on the left, and parallel dashed lines. "
+    if gv["moption"] != 'x':
+        s += "Migration arrows (if shown) indicate estimated 2Nm values from one population to another over the time interval when both populations exist. "
+        s += "Arrows are shown only for estimated migration rates  "
+        if gv["moption"] == 's':
+            s += "that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.05 level (* p < 0.05,** p< 0.01,*** p < 0.001). "
+        else:
+            if gv["moption"] == 'S':
+                s += " that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.01 level (** p< 0.01,*** p < 0.001). "
+            else:
+                if gv["moption"] != 'a':
+                    s += " that are above %.3f. "%gv["moption"]
+    if gv["useghost"] and gv["excludeghost"]:
+        s += " The ghost population is not shown in this figure. "
+    if gv["label_a_pops"]:
+        s += "Ancestral population numbers are shown in ancestral boxes. "
+    if gv["skipdemographicscaling"]:
+        s += " Population size (Ne) and splitting times values are scaled by the geometric mean of the mutation rates of the loci used for the analysis. "
+    s += "\n\nHey J. 2010. The Divergence of Chimpanzee Species and Subspecies as Revealed in Multipopulation Isolation-with-Migration Analyses. Mol Biol Evol 27:921-933.\n"
+    if gv["moption"].upper() == 'S':
+        s += "Nielsen R, Wakeley J. (21297244 co-authors). 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
+    f.write("%s"%s)
+    print("caption file written")
+    f.close()
 
 ##***********************************************************************************
 ##////////////// MAIN PROGRAM ///////////////////////////////////////////////////////
@@ -2044,6 +2152,7 @@ if len(sys.argv) <= 1 or sys.argv[1].upper() == "HELP" or sys.argv[1].upper() ==
     sys.exit()
 else:
     dostuff(sys.argv[1:])
+    writecaption(sys.argv[1:])
     sys.exit()
 
 
