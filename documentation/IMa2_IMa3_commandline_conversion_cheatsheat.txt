@@ -1,0 +1,54 @@
+Some command line terms have changed from IMa2 to IMa3
+
+Changed terms:
+--------------
+		IMa2									IMa3 
+-c 4 	na										calculate marginal likelihood
+-h f	heating model							na
+-h k    # of swaps								na
+-j 0    migration between sisters (IMa3 j4)		estimate population topology
+-j 1    one mig param per pair	(IMa3 j5)		ghost population added (IMa2 j3)
+-j 2	mig only between sampled (IMa3 j6)		mig follows exponential (IMa2 j6)
+-j 3	ghost population added (IMa3 j1)		use hyperpriors
+-j 4	period specific params (IMa3 j7)		migration between sisters (IMa2 j0)
+-j 5 	no migration (IMa3 j8)					one mig param per pair (IMa2 j1)
+-j 6 	mig follows exponential	(IMa3 j2)		mig only between sampled (IMa2 j2)
+-j 7	ancestor same as desc. 					period specific params (IMa2 j4)
+-j 8	one overall mig param	(IMa3 j9)		no migration (IMa2 j5)
+-j 9	one overall popsize param (IMa3 jx)		one overall mig param (IMa2 j8)
+-j x	na										one overall popsize param (IMa2 j9)
+-p 3	demographic histograms					split time divided by prior hist. (IMa2 p4)
+-p 4	split time divided by prior hist		turn off printing of 2Nm values
+-p 5	print 2Nm estimates and hist			print pairwise greater than probs (IMa2 p6)
+-p 6	print pairwise greater than probs		print hist. of # mig events (IMa2 p7)
+-p 7 	print hist. of # mig events				print joint split time estimates (IMa2 p8)
+-r 6	na										load only sampled values from mcf
+-r 7	na										load from mcf and save to mcf
+-r 8	na										use unique IMburn/run file names
+-x		na										specify population topology prior	
+	
+	
+	
+Unchanged terms:
+----------------
+-b
+-c 0 1 2 3
+-d
+-f
+-g
+-h a b n
+-i 
+-j
+-l
+-m
+-o
+-p 0 1 2 
+-q 
+-r 0 1 2 3 4 5
+-s
+-t
+-u
+-v
+-w
+-y
+-z
