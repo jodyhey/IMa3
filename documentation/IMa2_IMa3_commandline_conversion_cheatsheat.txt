@@ -17,11 +17,12 @@ Changed terms:
 -j 8	one overall mig param	(IMa3 j9)		no migration (IMa2 j5)
 -j 9	one overall popsize param (IMa3 jx)		one overall mig param (IMa2 j8)
 -j x	na										one overall popsize param (IMa2 j9)
--p 3	demographic histograms					split time divided by prior hist. (IMa2 p4)
--p 4	split time divided by prior hist		turn off printing of 2Nm values
--p 5	print 2Nm estimates and hist			print pairwise greater than probs (IMa2 p6)
--p 6	print pairwise greater than probs		print hist. of # mig events (IMa2 p7)
--p 7 	print hist. of # mig events				print joint split time estimates (IMa2 p8)
+-p 3	demographic histograms					split time divide by prior (IMa2 p4)
+-p 4	split time divide by prior (IMa3 p3)	turn off printing of 2Nm values
+-p 5	print 2Nm estimates and hist			print greater than probs (IMa2 p6)
+-p 6	print greater than probs (IMa3 p5)		histogram of # mig events (IMa2 p7)
+-p 7 	histogram of # mig events (IMa3 p6) 	joint split time estimates (IMa2 p8)
+-p 8	joint split time estimates (IMa3 p7)	na
 -r 6	na										load only sampled values from mcf
 -r 7	na										load from mcf and save to mcf
 -r 8	na										use unique IMburn/run file names
