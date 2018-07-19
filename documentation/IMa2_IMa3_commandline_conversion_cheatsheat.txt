@@ -32,7 +32,7 @@ terms in IMa2 without equivalents in IMa3:
 ------------------------------------------
 ancestor same as desc. (IMa3 j7, no equivalent command in IMa3)
 heating model (IMa2 hf,  IMa3 heating models set using -ha, -hb, see IMa3 documentation)
-# of swaps (IMa3 hk,  IMa3 swap #'s are set automatically)
+# of swaps (IMa2 hk,  IMa3 swap #'s are set automatically)
 demographic histograms (IMa2 p3,  this is turned on by default in IMa3)
 print 2Nm estimates and hist (IMa2 p5,  this is turned on by default in IMa3, turn off with -p4)
 
@@ -40,10 +40,12 @@ terms in IMa3 without equivalents in IMa2:
 ------------------------------------------
 calculate marginal likelihood (c4 in IMa3, no equivalent command in IMa2)
 estimate population topology  (j0 in IMa3, no equivalent command in IMa2)
+use hyperpriors (j3 in IMa3, no equivalent command in IMa2)
 load only sampled values from mcf (r6 in IMa3, no equivalent command in IMa2)
 load from mcf and save to mcf (r7 in IMa3, no equivalent command in IMa2)
 use unique IMburn/run file names  (r8 in IMa3, no equivalent command in IMa2)
 specify population topology prior (x in IMa3, no equivalent command in IMa2)
+
 
 	
 Unchanged terms:
