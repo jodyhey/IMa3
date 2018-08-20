@@ -711,8 +711,6 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
   struct update_rate_calc tempstruct2;
   strnl tempname;
 
-
-
   if ((mcffile = fopen (mcffilename, "w")) == NULL)
   {
     IM_err(IMERR_CREATEFILEFAIL,"Error creating mcffile: %s", mcffilename);

@@ -489,6 +489,8 @@ it is ok to have spaces between a flag and its values
         {
           burnduration = (int) (3600 * tempf);
           burndurationmode = TIMEINF;
+/* 8/20/2018 lasttime was not getting defined under some circumstances when it was needed
+  move this to start and just do it everytime no matter what
 	///AS: Should time be broadcast or should each processor have its own time?
           time (&lasttime);
 #ifdef MPI_ENABLED
@@ -498,7 +500,7 @@ it is ok to have spaces between a flag and its values
 	 	         if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
 	         }
 #endif
-
+*/
           runoptions[PRINTBURNTREND] = 1;
         }
         else
@@ -1667,6 +1669,7 @@ void start (int argc, char *argv[], int currentid)
 #endif
     if (mcffound != mcf0found)
       IM_err (IMERR_MCFREADFAIL, "not all cpus found an MCF file");
+    /* 8/20/2018  changed, move this to end of start() so lasttime is defined no matter what
     if (mcf0found)
     {
       time(&lasttime); // set lasttime, same as if the burn had just finished 
@@ -1677,7 +1680,7 @@ void start (int argc, char *argv[], int currentid)
 	 	     if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
 	     }
 #endif
-    }
+    } */
     //else  file does not exist,  do a regular run 
   }
   else
@@ -1757,6 +1760,17 @@ void start (int argc, char *argv[], int currentid)
         //  printf("mini-burn done\n");
       }
     }
+#endif
+/* lasttime was not getting defined under some circumstances when it was needed
+  moved from scan_commandline() just do it everytime no matter what */
+	///AS: Should time be broadcast or should each processor have its own time?
+  time (&lasttime);
+#ifdef MPI_ENABLED
+		if (numprocesses > 1)	
+  {
+    rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
+	 	 if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
+	 }
 #endif
 }                               /* start */
 
@@ -2462,8 +2476,6 @@ int run (int currentid)
   static int printburntrendstep = 0, burnrecordi = 1;
   int tempburndone;
   int rc = 0; //AS: return code for MPI C bindings
-  //char runfilename[] = "IMrun";
-  //char burnfilename[] = "IMburn";
   time_t timer;
   if (burndone)
   {
@@ -2498,13 +2510,13 @@ int run (int currentid)
 #endif
           if ((timer - lasttime) > chainduration)
           {
-            time (&lasttime);
+              time (&lasttime);
 #ifdef MPI_ENABLED
-		        if (numprocesses > 1)	
-          {
-            rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
-	 	         if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
-	         }
+		          if (numprocesses > 1)	
+            {
+              rc = MPI_Bcast(&lasttime, time_t_size, MPI_BYTE, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
+	 	           if (rc !=MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD,-1);
+	           }
 #endif
             if (currentid == HEADNODE)
             {
@@ -2515,7 +2527,8 @@ int run (int currentid)
 		          if (numprocesses > 1)	
             {
               rc = MPI_Bcast(&continuerun, 1, MPI_INT, 0, MPI_COMM_WORLD); // broadcast from 0 to others // all processes must reach this line
-	 	           if (rc !=MPI_SUCCESS) {
+	 	           if (rc !=MPI_SUCCESS) 
+              {
 			             MPI_Abort(MPI_COMM_WORLD,-1);
               } 
 	           }
@@ -2540,7 +2553,6 @@ int run (int currentid)
 			             MPI_Barrier(MPI_COMM_WORLD);// is this necessary ??
 		            }
 #endif 
-              
             }
           }
           return (1);
@@ -4536,12 +4548,34 @@ void commit_mpi_updatescalar(void)
 }
 
 /*
-  one cpu is the head node and handles the output  this has currentid value of 0 == HEADNODE
-  currentid has nothing to do with the where the cold chain is
-  this could be on any node 
+  MPI notes:
+    one cpu is the head node and handles the output  this has currentid value of 0 == HEADNODE
+    currentid has nothing to do with the where the cold chain is
+    this could be on any node 
 
-  the head node (i.e. cpu with currentid == HEADNODE) is used for almost all output operations (exception is mcf files - every node has one of those)
-  the head node broadcasts, sends and receives stuff from the others as needed 
+    the head node (i.e. cpu with currentid == HEADNODE) is used for almost all output operations (exception is mcf files - every node has one of those)
+    the head node broadcasts, sends and receives stuff from the others as needed 
+
+  Notes on main kinds of passages of info between nodes:
+  
+	 PASS_TO_HEADNODE_TO_SAVE:
+		  send info from one cpu,  that currently has the cold chain,  to the head node
+		  save it on the headnode
+			 e.g. in a trend, or a histogram,  
+
+	PASS_TO_HEADNODE_TO_PRINT:
+		  send info from one cpu,  that currently has the cold chain,  to the head node
+		  write it to the screen,  do not save it
+			
+	UPINF_REDUCE
+		  sum tries and acceptance counts,  from all nodes to the headnode 
+    for gathering results
+    makes no difference where cold chain is
+
+	SEND_RECV_SWAP
+		  two nodes have ordered pair of MPI_Send and MPI_Recv calls
+    used for swapping chains between cpus 
+
 */
 int main (int argc, char *argv[])
 {

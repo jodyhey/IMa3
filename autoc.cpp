@@ -258,7 +258,6 @@ autoc_pointer: order of values
     if z < 0 && currentid == HEADNODE: receive value to pautocrec
     else pautoc_vals is not relevant and holds nothing of value 
 
-
   call this kind of operation PASS_TO_HEADNODE_TO_SAVE
 */
 void

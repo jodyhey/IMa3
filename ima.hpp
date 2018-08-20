@@ -70,8 +70,9 @@
 
 
 #define IMA3RELEASEVERSION  "1.0"  // update only when a release is made 
-  // version 1.0 7/9/2018
-#define IMA3RELEASE   // uncomment  if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
+// version 1.0 7/9/2018
+// fixed a bug 8/20/2018 
+#define IMA3RELEASE   // uncomment if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
 
 
 #ifdef IMA3RELEASE 
