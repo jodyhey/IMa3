@@ -70,9 +70,8 @@
 
 
 #define IMA3RELEASEVERSION  "1.0"  // update only when a release is made 
-// version 1.0 7/9/2018
-// fixed a bug 8/20/2018 
-#define IMA3RELEASE   // uncomment if this is release code,  use sparingly with updates of IMA3RELEASEVERSION
+
+#define IMA3RELEASE   //default, gets posted with this undefined
 
 
 #ifdef IMA3RELEASE 
@@ -90,6 +89,7 @@
 #else
 #define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #define XMLOUTPUT
+#undef IMA3RELEASE
 #endif
 
 /* use XMLOUTPUT when running in IMgui */ 
