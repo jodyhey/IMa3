@@ -763,9 +763,10 @@ void getnodecounts(char **na,char *tstr,int count,int *nc, int *nunique)
    nc is a corresponding set of counts 
    nunique is the number of nodes in na
    tstr is a treestring  */
+// fixed a bug that was setting probability at 1 if no nodes were found 
 double calcppcp(char **na,char *tstr, int *nc, int totaltreecount, int nunique)
 {
-  int i,j,ni,found;
+  int i,j,ni;
   double ppcp = 1.0;
   char tree_nodes[MAXPOPS_PHYLOGENYESTIMATION-2][20];
   getinternalnodes(tstr,tree_nodes);
@@ -775,22 +776,15 @@ double calcppcp(char **na,char *tstr, int *nc, int totaltreecount, int nunique)
     ni = npops-2;
   for (i=0;i<ni;i++)
   {
-    found = 0;
     for (j=0;j< nunique;j++)
     {
       if (strcmp(na[j],tree_nodes[i])==0)
-      {
-        found = 1;
         break;
-      }
     }
-    if (found)
-    {
-      if (j < nunique)
-        ppcp *= nc[j]/ (double) totaltreecount;
-      else
-        ppcp = 0.0;
-    }
+    if (j < nunique)
+      ppcp *= nc[j]/ (double) totaltreecount;
+    else
+      ppcp = 0.0;
   }
   return ppcp;
 } //calcppcp
