@@ -24,6 +24,7 @@ try:
     check_colormath = True
 except ImportError:
     check_colormath = False
+    
 
 ## some users won't have PIL
 check_PIL = False

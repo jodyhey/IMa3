@@ -69,7 +69,9 @@
 #endif
 
 
-#define IMA3RELEASEVERSION  "1.0"  // update only when a release is made 
+#define IMA3RELEASEVERSION  "1.01"  // update only when a release is made 
+/* set to 1.01  on 1/22/2019  various bug fixes and small enhancements for catching things when reading input files 
+    zero changes to analyses */ 
 
 #define IMA3RELEASE   //default, gets posted with this undefined
 
@@ -123,7 +125,7 @@
 #define TURNONCHECKS
 #endif 
 
-#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
+//#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
 
 #ifdef STDTEST
 #undef TURNONCHECKS   // turn off debugging check when running standard tests
@@ -201,7 +203,7 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 /**********************************************/
 
 /* CONSTANTS */
-#define MAXLOCI  501            // changed to 501 on 4/1/6/2018
+#define MAXLOCI  1001      // to 1001 on 1/10/2019      // changed to 501 on 4/1/6/2018
 #define MAXGENES 1000           // maximum sample size for a locus  
 #define DEFAULTNUMCHAINS 1
 #define MINNUMCHAINSPERPROCESSOR 2 // changed to 2 after some testing on 10/4/2017  4  // must have at least 4 for swaps within chains
@@ -751,12 +753,12 @@ enum
   IMERR_INFINITESITESFAIL = 36,
   
   IMERR_SWCHECK = 38,
-
+  IMERR_LIKELIHOOD = 39,
   IMERR_RANDOM = 40,
   IMERR_LOWERGAMMA = 41,
   IMERR_UPPERGAMMA = 42,
   IMERR_LOGDIFF = 43,
-
+  
   IMERR_MULTITPRIOR = 45,
   IMERR_PRIORFILEVALS = 46,
   IMERR_MIGRATIONPRIOR0 = 47,
@@ -1210,8 +1212,8 @@ struct locus
   char name[NAMELENGTH]; // name can be longer than gNames
   int pairs[MAXGENES];
   char gNames[MAXGENES][GENENAMELENGTH+1];
-  int numgenesknown;   // 5/17/2017 don't know what this is for
-  int numgenesunknown;  // 5/17/2017 don't know what this is for 
+  //1/19/2019 int numgenesknown;   // 5/17/2017 don't know what this is for
+  //1/19/2019 int numgenesunknown;  // 5/17/2017 don't know what this is for 
     int numgenes;   // sample size,  the total number of sampled gene copies at a locus 
   int samppop[MAXPOPS];
   int numlines;

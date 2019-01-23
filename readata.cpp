@@ -26,8 +26,10 @@ const char *defaultpoptreestrings[11] =
   "(8,(7,(6,(5,(4,(3,(2,(0,1)9)10)11)12)13)14)15)16",
   "(9,(8,(7,(6,(5,(4,(3,(2,(0,1)10)11)12)13)14)15)16)17)18"};				
 
+const char bases[12] = "acgtnACGTN-";
 
 /* prototypes of local functions*/
+static  void readgName(FILE * infile,char *gName);
 static int findsegsites (FILE * infile, int li, int numbases, int initseg[],
                          int MODEL, int **numsitesIS);
 static void elimfrom (int li, int site);
@@ -40,8 +42,53 @@ static void readseqSW (FILE * infile, int li, int currentid);
 static void parse_locus_info (int li, int *uinext, char *cc, int *fpstri,char fpstr[], double *uprod);
 static void skip_datafile_toplines (FILE * infile);
 
-/* For IS model, identify and count variable sites */
+/* 1/21/2019  added this to handle reading of names better,  this is now called regardless of the mutation model */ 
+void readgName(FILE * infile,char *gName, int li,int i, int MODEL)
+{
+  int v;
+  char c;
+  for (v = 0; v < GENENAMELENGTH; v++)
+  {
+    c = fgetc (infile);
+    if (isspace(c))
+    {
+      do
+      {
+        c = fgetc (infile);
+        if (isprint (c) == 0)
+          IM_err (IMERR_GENENAME,"locus (%d) name for gene copy # %d, partial name %s", li, i, gName);
+        gName[v] = c;
+        v += 1;
+      } while (isspace(c) && v < GENENAMELENGTH);
+      if (isspace(c))
+        IM_err(IMERR_GENENAME,"gene name problem 1, locus %d, data line %d",li,i);
+      if (MODEL == INFINITESITES || MODEL == HKY) 
+      {
+        if (strchr(bases, c) == NULL)
+        {
+          IM_err(IMERR_GENENAME,"gene name problem 2, locus %d, data line %d  c %c  bases %s\n",li,i,c,bases);
+        }
+      }
+      else if (isdigit(c) == 0)
+      {
+        IM_err(IMERR_GENENAME,"gene name problem 3, locus %d, data line %d",li,i);
+      }
+      v -= 1;
+      ungetc (c, infile);
+      break;
+    }
+    else
+    {
+      if (isprint (c) == 0)
+          IM_err (IMERR_GENENAME,"locus (%d) name for gene copy # %d, partial name %s", li, i, gName);
+      gName[v] = c;
+    }
+  }
+  gName[v] = '\0';
+}  // readgName 
 
+
+/* For IS model, identify and count variable sites */
 int
 findsegsites (FILE * infile, int li, int numbases, int initseg[],
               int MODEL, int **numsitesIS)
@@ -51,6 +98,7 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
   int i, pop, j, v, totseg = 0, A;
   int b, e, firstpopline;
   int np;
+  
 
   np = npops;
 
@@ -78,9 +126,8 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
       pop++;
       b = e + 1;
       if (pop == npops)
-      {  // not clear how we get here,   
-        //assert (assignmentoptions[POPULATIONASSIGNMENT] == 1);  left as comment,  how do we gety her? 
-        e = b + L[li].numgenesunknown - 1;
+      {  
+        e = b - 1;
       }
       else
       {
@@ -90,20 +137,42 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
     }
     /* assumes that the first sequence of 10 characters that does not 
      * contain a carriage return is the species name */
+    /* first 10 columns,  but if we hit a whitespace first,  then skip the rest up to the 10th column */
     for (v = 0; v < GENENAMELENGTH; v++)
     {
-      if ((char) fgetc (infile) == '\n')
-        v = 0;
+      c = fgetc (infile);
+      if (isspace(c))
+      {
+        do
+        {
+          c = fgetc (infile);
+          v += 1;
+        } while (isspace(c) && v < GENENAMELENGTH);
+        if (isspace(c))
+          IM_err(IMERR_GENENAME,"gene name problem 4, locus %d, data line %d",li,i);
+        if (MODEL == INFINITESITES || MODEL == HKY) 
+        {
+          if (strchr(bases, c) == NULL)
+          {
+            IM_err(IMERR_GENENAME,"gene name problem 5, locus %d, data line %d  c %c  bases %s",li,i,c,bases);
+          }
+        }
+        else if (isdigit(c) == 0)
+        {
+          IM_err(IMERR_GENENAME,"gene name problem 6, locus %d, data line %d",li,i);
+        }
+        ungetc (c, infile);
+        break;
+      }
     }
-    if (MODEL == JOINT_IS_SW)   // just read through theses 
+    
+    if (MODEL == JOINT_IS_SW)   // just read through these 
     {
       for (j = 0; j < L[li].nAlinked; j++)
         scanfval = fscanf (infile, "%d", &A);
     }
     j = 0;
-    while ((c = (char) tolower ((fgetc (infile)))) != '\n'
-           && j < L[li].numbases)
-
+    while ((c = (char) tolower ((fgetc (infile)))) != '\n'   && j < L[li].numbases)
     {
       if (c != ' ')
       {
@@ -149,6 +218,11 @@ findsegsites (FILE * infile, int li, int numbases, int initseg[],
         j++;
       }
     }
+    // trap issue where end of file pointer may be at the end of the line and not read the end-of-line
+    c = fgetc (infile);
+    if (c != EOF && !isspace(c))
+      ungetc (c, infile); 
+
     firstpopline = 0;
   }
 
@@ -262,78 +336,56 @@ readseqHKY (FILE * infile, int li, int currentid)
   L[li].seq = static_cast<int **> (malloc (L[li].numgenes * (sizeof (int *))));
   for (i = 0; i < L[li].numgenes; i++)
     L[li].seq[i] = static_cast<int *> (malloc (L[li].numsites * (sizeof (int))));
-  do
+  for (i = 0; i < L[li].numgenes; i++)
   {
-    for (i = 0; i < L[li].numgenes; i++)
+    readgName(infile,&gName[0],li,i,HKY);
+    strcpy (L[li].gNames[i], gName);
+    j = 0;
+    while ((c = (char) tolower ((fgetc (infile)))) != '\n'  && j < L[li].numbases)
+
     {
-      /* assumes that the first sequence of 10 characters that does not 
-       * contain a carriage return is the species name */
-      for (v = 0; v < GENENAMELENGTH; v++)
+      if (!isspace(c))
       {
-// is this trapping of eol really necessary ??? 
-        if ((c = (char) fgetc (infile)) == '\n')
-          v = -1;
-        if (isprint (c) != 0)
+        if (i >= L[li].numgenes || j >= L[li].numsites)
         {
-          gName[v] = c;
+          IM_err(IMERR_DATAREADOVERRUN,"HKY data problem locus %d gene# %d site# %d",li,i,j);
+        }
+        if (c == 'a' || c == 'A')
+        {
+          L[li].seq[i][j] = 0;
+          pi[li][0]++;
+        }
+        else if (c == 'c' || c == 'C')
+        {
+          L[li].seq[i][j] = 1;
+          pi[li][1]++;
+        }
+        else if (c == 'g' || c == 'G')
+        {
+          L[li].seq[i][j] = 2;
+          pi[li][2]++;;
+        }
+        else if (c == 't' || c == 'u' || c == 'T' || c == 'U')
+        {
+          L[li].seq[i][j] = 3;
+          pi[li][3]++;
+        }
+        else if (c == 'n' || c == '-' || c == 'N' || c == '.')
+        {
+          L[li].seq[i][j] = -1;
         }
         else
         {
-          gName[v] = '\0';
-          IM_err (IMERR_GENENAME,
-                  "locus (%d) %d-th gene name, partial name %s", li, i,
-                  gName);
+          IM_err(IMERR_DATAERROR,"BAD BASE in locus %d species %i base %i: %c",li, i + 1, j + 1, c);
         }
-      }
-      gName[GENENAMELENGTH] = '\0';
-      strcpy (L[li].gNames[i], gName);
-
-      j = k;
-      while ((c = (char) fgetc (infile)) != '\n')
-      {
-        if (!isspace(c))
-        //if ((c != ' ') && (c != '\t'))
-        {
-          if (i >= L[li].numgenes || j >= L[li].numsites)
-          {
-            IM_err(IMERR_DATAREADOVERRUN,"HKY data problem locus %d gene# %d site# %d",li,i,j);
-          }
-          if (c == 'a' || c == 'A')
-          {
-            L[li].seq[i][j] = 0;
-            pi[li][0]++;
-          }
-          else if (c == 'c' || c == 'C')
-          {
-            L[li].seq[i][j] = 1;
-            pi[li][1]++;
-          }
-          else if (c == 'g' || c == 'G')
-          {
-            L[li].seq[i][j] = 2;
-            pi[li][2]++;;
-          }
-          else if (c == 't' || c == 'u' || c == 'T' || c == 'U')
-          {
-            L[li].seq[i][j] = 3;
-            pi[li][3]++;
-          }
-          else if (c == 'n' || c == '-' || c == 'N' || c == '.')
-          {
-            L[li].seq[i][j] = -1;
-          }
-          else
-          {
-            IM_err(IMERR_DATAERROR,"BAD BASE in locus %d species %i base %i: %c",li, i + 1, j + 1, c);
-          }
-          j++;
-          if (i == (L[li].numgenes - 1))
-            k++;
-        }
+        j++;
       }
     }
+    c = fgetc (infile);
+    if (c != EOF && !isspace(c))
+      ungetc (c, infile); 
   }
-  while (k < L[li].numsites);
+
   eliminategaps (li, currentid);
   L[li].totsites=L[li].numsites;
   sortseq (li);
@@ -408,33 +460,13 @@ readseqIS (FILE * infile, int li, int MODEL, int **numsitesIS, int currentid)
     {
       for (i = 0; i < L[li].numgenes; i++)
       {
-        /*assumes that the first sequence of 10 characters that
-         * does not contain a carriage return is the species name
-         * */
-        for (v = 0; v < GENENAMELENGTH; v++)
-        {
-          if ((c = (char) fgetc (infile)) == '\n')
-            v = -1;
-          if (isprint (c) != 0)
-          {
-            gName[v] = c;
-          }
-          else
-          {
-            gName[v] = '\0';
-            IM_err (IMERR_GENENAME,
-              "locus (%d) name for gene copy # %d, partial name %s", li, i,
-                    gName);
-          }
-        }
-        gName[GENENAMELENGTH] = '\0';
+        readgName(infile,&gName[0],li,i,MODEL);
         strcpy (L[li].gNames[i], gName);
 
         if (MODEL == JOINT_IS_SW)
         {
           for (ai = 1; ai < L[li].nlinked; ai++)
           {
-//            scanfval = fscanf (infile, "%d", &L[li].A[ai][i]);
             if (fscanf (infile, "%d", &(L[li].A[ai][i])) == 0)
               IM_err(IMERR_DATAERROR,"locus %d, data line %d, str# %d: missing str data",li,i,ai);
             if (L[li].A[ai][i] == 0)
@@ -547,26 +579,7 @@ readseqSW (FILE * infile, int li, int currentid)
     }
     else
     {
-      /* We need this for handling 10-character gene names that are followed
-       * allele numbers without any space */
-      for (v = 0; v < GENENAMELENGTH; v++)
-      {
-        if ((ch = (char) fgetc (infile)) == '\n')
-          v = -1;
-        if (isprint (ch) != 0)
-        {
-          gName[v] = ch;
-        }
-        else
-        {
-          gName[v] = '\0';
-          IM_err (IMERR_GENENAME,
-                  "locus (%d) %d-th gene name, partial name %s", li, i,
-                  gName);
-        }
-      }
-      gName[GENENAMELENGTH] = '\0';
-
+      readgName(infile,&gName[0],li,i,STEPWISE);
       strcpy (L[li].gNames[i], gName);
       for (ai = 0; ai < L[li].nAlinked; ai++)
       {
@@ -606,12 +619,16 @@ void check_locus_info(int li, char *cc)
     innum = ((innum||newnum) && isdigit(c));
     newnum = (!innum && !inname && isdigit(c));
     countnum += newnum;
-    if (!inname && countnum < npops && isalpha(c))
-      IM_err(IMERR_DATAERROR,"problem in locus information line for locus %d: possible formatting problem; or possible that a preceding locus has wrong # of data lines",li);
+    if (!inname && isalpha(c))  // has reached the locustype symbol, I H J S 
+    {
+      if (countnum !=  npops +1)
+        IM_err(IMERR_DATAERROR,"problem in locus information line for locus %d: possible formatting problem; or wrong number of integers; or possible that a preceding locus has wrong # of data lines",li);
+      break; 
+    }
     i++;
     c = cc[i];
   }
-  if (countnum < npops)
+  if (countnum < npops+1)
   {
     IM_err(IMERR_DATAERROR,"problem in locus information line for locus %d: possible formatting problem; or possible that a preceding locus has wrong # of data lines",li);
   }
@@ -626,16 +643,13 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
   scanfval = sscanf (cc, "%s", L[li].name);
   cc = nextnonspaceafterspace (cc);
   L[li].numgenes = 0;
-  L[li].numgenesknown = 0;
   for (i = 0; i < npops; i++)
   {
     scanfval = sscanf (cc, "%d", &L[li].samppop[i]);
     cc = nextnonspaceafterspace (cc);
     L[li].numgenes += L[li].samppop[i];
-    L[li].numgenesknown += L[li].samppop[i];
   }
   total_numgenes += L[li].numgenes;
-  L[li].numgenesunknown = 0;
   SP "  %d\t%s", li, L[li].name);
   for (i = 0; i < npops; i++)
   {

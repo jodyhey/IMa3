@@ -1125,10 +1125,7 @@ setup_uval (void)
   int b, e;
   double w, w2;
   double temp, uval_temp_sum, sumq;
-  int npopstemp;
-  
 
-  npopstemp = npops;
   uval_temp_sum = 0;
   for (li = 0; li < nloci; li++)
   {
@@ -1139,7 +1136,7 @@ setup_uval (void)
       sumq = 0;
       b = 0;
       e = L[li].samppop[0] - 1;
-      for (k = 0; k < npopstemp; k++)
+      for (k = 0; k < npops; k++)
       {
         if (e >= b)
         {
@@ -1157,14 +1154,17 @@ setup_uval (void)
           temp = 0;
         }
         b = e + 1;
-        if (k + 1 == npopstemp)
+        /*if (k + 1 == npops)
         {
           e = e + L[li].numgenesunknown;
         }
         else
-        {
+        { 
           e = e + L[li].samppop[k + 1];
-        }
+        } */
+        if (k < npops)
+          e = e + L[li].samppop[k + 1];
+        
         sumq += temp;
 
       }
@@ -1186,7 +1186,7 @@ setup_uval (void)
         b = 0;
         e = L[li].samppop[0] - 1;
         sumq = 0;
-        for (k = 0; k < npopstemp; k++)
+        for (k = 0; k < npops; k++)
         {
           if (e >= b)
           {
@@ -1197,16 +1197,12 @@ setup_uval (void)
             }
             if (k == npops)
             {
-              temp =
-                (double) 2 *(w2 -
-                             SQR (w) / L[li].numgenesunknown) /
-                (L[li].numgenesunknown);
+              assert(0);
+              //temp =                (double) 2 *(w2 -                             SQR (w) / L[li].numgenesunknown) /                (L[li].numgenesunknown);
             }
             else
             {
-              temp =
-                (double) 2 *(w2 -
-                             SQR (w) / L[li].samppop[k]) / (L[li].samppop[k]);
+              temp = (double) 2 *(w2 -  SQR (w) / L[li].samppop[k]) / (L[li].samppop[k]);
             }
             sumq += temp;
           }
@@ -1215,14 +1211,16 @@ setup_uval (void)
             temp = 0;
           }
           b = e + 1;
-          if (k + 1 == npopstemp)
+          /*if (k + 1 == npops)
           {
             e = e + L[li].numgenesunknown;
           }
           else
           {
             e = e + L[li].samppop[k + 1];
-          }
+          } */
+          if (k < npops)
+            e = e + L[li].samppop[k + 1];
         }
         sumq = DMAX (0.1, sumq);        // nominal low values in case of zero variation 
         uvals[li][ui] = log (sumq);
@@ -1997,7 +1995,8 @@ finish_setup_C (int currentid)
 #ifdef DEBUG
       C[ci]->G[li].hiprob = -1e20; // debugging 8/18/2016
 #endif
-
+      if (isnan_(C[ci]->G[li].pdg) || isinf_DBL(C[ci]->G[li].pdg))
+        IM_err(IMERR_LIKELIHOOD,"likelihood problem (%lg) in initialization for chain %d, locus %d",C[ci]->G[li].pdg,ci,li);
       C[ci]->allpcalc.pdg += C[ci]->G[li].pdg;
       sum_treeinfo (&(C[ci]->allgweight), &(C[ci]->G[li].gweight));
       if (hiddenoptions[HIDDENGENEALOGY]==1)  // not sure if any of this is useful,  for now fix mhg in update_hg_2_16_2017.cpp

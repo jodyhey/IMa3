@@ -3,6 +3,38 @@ DO NOT use older versions of testbed files from old directories.
 THIS IS also true for the linux version IMa3_stdtest.sh
 
 
+basic instructions:
+	all the main files are in E:\genemod\ML-MCMC\SEAI\IMa3\testbed
+
+	to do a run:
+		copy the files from E:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory
+		e.g. E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\####
+		
+		delete any previous results file in that folder
+		
+		compile a new IMa3_stdtest.exe file with STDTEST on 
+		copy IMa3_stdtest.exe to the new directory 
+		run ima3_stdtest1.bat  and ima3_stdtest2.bat
+		
+	for wsl
+		from unbuntu
+		copy the files from  E:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory 
+			e.g. E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\wsl\####
+			delete any previous results file in that folder
+		compile a new IMa3_stdtest  using make testbed
+		run ima3_stdtest.sh
+
+1/22/2019
+
+worked on handling small errors in input file format better 
+also modified ima3test3pop4loci.u  to have various small formatting errors in gene names 
+
+reran testbed compare with 8/20/2018
+also run testbed on wsl linux 
+looks ok
+
+
+
 7/5/2018
 
 added to main output file a table of estimate locations near the top 

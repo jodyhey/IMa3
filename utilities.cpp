@@ -105,7 +105,7 @@ bessi1 (double x)
 /********** GLOBAL FUNCTIONS ***********/
 
 /* Here is how to add an error message.
- * 1. Add an element to enum in utilities.h with prefix of "IMERR_XXX"
+ * 1. Add an element to enum in ima.hpp with prefix of "IMERR_XXX"
  * 2. Add the corresponding error message string to simerrmsg.
  * 3. Call function IM_err (IMERR_XXX, ...) where ... is like the way that
  *    printf function arguments are used.
@@ -150,7 +150,7 @@ static const char *simerrmsg[] = {
   /* 36 */ "data not compatible with infinite sites model",
   /* 37 */ "",
   /* 38 */ "likelihoods do not add up for stepwise model",
-  /* 39 */ "",
+  /* 39 */ "likelihood is not a valid number",
   /* 40 */ "random number error ",
   /* 41 */ "error in lowergamma function",
   /* 42 */ "error in uppergamma function",
