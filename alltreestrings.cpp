@@ -951,9 +951,9 @@ void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
 {
   int xi, i, j,k;
   int holdd[MAXPOPS];
-  char tempf[10], tempi[2];
+  char tempi[2];
   char temps[POPTREESTRINGLENGTHMAX_PHYLOGENYESTIMATION];
-  int ts,inc,isfloat;
+  int ts,isfloat;
   char *c, *fe, *dp, *ep;
   double tempd;
 
@@ -983,7 +983,7 @@ void makepriorxclades(char *xstring, forpriorxsort *priorxarray)
         // if ep != NULL and ep <= fe then e notation found in next number 
         if (isfloat) // check to see if value is floating  point
         {
-          i = fe - c; // reposition i to end of floating point value 
+          i = (int) (fe - c); // reposition i to end of floating point value 
           priorxarray[xi].priorxval = tempd;
           qsort(holdd,k, sizeof(int), compnodes);
           holdd[k] = -1;

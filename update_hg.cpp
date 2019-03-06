@@ -823,10 +823,16 @@ double getmprobedge(struct edgemiginfo *e, double mhg)
     switch (e->mpall)
     {
     case 0:
-            tempp = -log(exp(lr)-lr);
+            if (lr < 40.0) // can approximate 
+              tempp = -log(exp(lr)-lr);
+            else
+              tempp = -lr; 
             break;
     case 1: 
-            tempp = log(mhg) - log(exp(lr)-1.0);
+            if (lr < 40.0) // can approximate 
+              tempp = log(mhg) - log(exp(lr)-1.0);
+            else
+              tempp = log(mhg) - lr; 
             break;
     default:
           {
@@ -839,9 +845,20 @@ double getmprobedge(struct edgemiginfo *e, double mhg)
             else
               pathlog = (e->mpall-2) * (-log(popc))  - log(popc - 1.0);
             if (e->pop == e->fpop)
-              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-lr); 
+            {
+              if (lr < 40.0)
+                tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-lr); 
+              else
+                tempp = pathlog + e->mpall * log(mhg) -lr; 
+
+            }
             else
-              tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-1); 
+            {
+              if (lr < 40.0)
+                tempp = pathlog + e->mpall * log(mhg) -log(exp(lr)-1); 
+              else
+                tempp = pathlog + e->mpall * log(mhg) -lr; 
+            }
           }
     }
   }
@@ -1142,12 +1159,20 @@ double hgcalccoalprob(int nm[], int cpop[], int thirdlastpop[], double l[], int 
       if (cpop[ii] == fpop)
       {
         assert(nm[ii] != 1);
-        plog += nm[ii] * log(mrate) - log( exp (mrate * l[ii]) -  mrate * l[ii]);
+        if (mrate * l[ii] < 40.0) // can approximate 
+          plog += nm[ii] * log(mrate) - log( exp (mrate * l[ii]) -  mrate * l[ii]);
+        else
+          plog += nm[ii] * log(mrate) - (mrate * l[ii]);  // close approximation,  large mrate*l[ii] crashes things
+
       }
       else
       {
         assert(nm[ii] > 0);
-        plog += nm[ii] * log(mrate) - log( exp (mrate * l[ii]) -  1.0);
+        if (mrate * l[ii] < 40.0) // can approximate
+          plog += nm[ii] * log(mrate) - log( exp (mrate * l[ii]) -  1.0);
+        else
+          plog += nm[ii] * log(mrate) - (mrate * l[ii]); // close approximation,  large mrate*l[ii] crashes things
+
       }
       if (nm[ii] >= 2 )
       {

@@ -11,10 +11,6 @@ static char *loadfilebase;
 static char *outfilename; 
 static char *burnfilename;
 static char *runfilename;
-static char command_line[COMMANDLINESTRINGLENGTHMAX]; 
-static char defaultpriorfilename[14]= "imapriors.txt"; 
-static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text              
-static char genealogyinfosavefilename[FNSIZE]; 
 static char heatingterm_str[50], modeloptions_str[50], calcoptions_str[50], outputoptions_str[50],runoptions_str[50], priors_str[50], hiddenoptions_str[50];                    
 static char infile_name[FNSIZE]; 
 static char mcfreadfilename[FNSIZE]; 
@@ -24,6 +20,15 @@ static char migrationnamefilename[FNSIZE];
 static char nestedmodelfilename[FNSIZE] = {'\0'};                      
 static char oldoutfilename[FNSIZE]; 
 static char priorfilename[FNSIZE]; 
+static char defaultpriorfilename[14]= "imapriors.txt"; 
+static char genealogyinfosavefilename[FNSIZE]; 
+static FILE *genealogyinfosavefile; 
+static FILE *migplotfile; 
+static FILE *migrationnamefile; 
+static FILE *outfile; 
+
+static char command_line[COMMANDLINESTRINGLENGTHMAX]; 
+static char fpstr[FPSTRIMAXLENGTH]; // probably long enough to hold entire output file text              
 static char timeinfostring[80]; 
 static char topologypriorinfostring[COMMANDLINESTRINGLENGTHMAX] = {'\0'};                      
 static double generationtime; 
@@ -32,10 +37,7 @@ static double currlike, currprob;
 //static double hilike_rec,hiprob_rec; 
 static double hval1, hval2;                       
 static double scaleumeaninput = 0;                      
-static FILE *genealogyinfosavefile; 
-static FILE *migplotfile; 
-static FILE *migrationnamefile; 
-static FILE *outfile; 
+
 static int **migcount,*migcountdata, *migfrom, *migto;                      
 static int *fpstri; 
 static int burndone; 
@@ -197,6 +199,15 @@ free_ima_main_stuff ()
   {
     XFREE (loadfilebase);
   }
+  if (burnfilename != NULL)
+  {
+    XFREE (loadfilebase);
+  }
+  if (runfilename != NULL)
+  {
+    XFREE (loadfilebase);
+  }
+
   freeanymemory ();
 }        //free_ima_main_stuff
 
@@ -226,7 +237,7 @@ scan_commandline (int argc, char *argv[], int currentid)
    * is never used by the code:  Cp, Ep, Wp, Yp.  These variable flags
    * are being left in for completeness
    */
-  int Bp, Cp, Dp, Fp, Gp, Hmp, Hnp,Hap, Hbp, Ip, Jp, Lp, Mp, Np, Op, Pp, Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
+  int Bp, Cp, Dp, Fp, Gp, Hnp,Hap, Hbp, Ip, Jp, Lp, Mp, Np, Op, Pp, Qp, Rp, Sp, Tp, Up, Vp, Wp, Yp,Xp, Zp;
   double tempf;
 
   int samplemcmcinterval;
@@ -889,25 +900,6 @@ it is ok to have spaces between a flag and its values
     {
       IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
     }
-    /*if ( calcoptions[CALCMARGINALLIKELIHOOD] && !(heatmode == HFULL || heatmode == HEVEN))
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "wrong heating model.  -hm s  or -hm e required when calculating marginal likelihood ");
-    if ( calcoptions[CALCMARGINALLIKELIHOOD] && hiddenoptions[PRIORRATIOHEATINGON]==1)
-      IM_err (IMERR_MISCELLANEOUS, " conflict between calcoptions[CALCMARGINALLIKELIHOOD] and hiddenoptions[PRIORRATIOHEATINGON]");
-    
-    if ((numchainspp * numprocesses) < MINNUMCHAINS) 
-    {
-      IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
-    }
-    if (heatmode == HGEOMETRIC)
-    {
-      if (!Hbp || (hval2 >= 1.0|| hval2 <= 0.0) )
-        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for geometric heating model,  hb term missing or value out of rang, should be < 1 and > 0)");
-    }
-    else
-    {
-      if (heatmode == HFULL  && (!Hap || (hval1 >= 1.0|| hval1 <= 0.95) ))
-        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " for sygmoid heating model,  ha term missing or value out of rang, should be <=1 and >= 0.95)");
-    } */
   }
   /* setting  mcmc step intervals:
     regardless of sampling phylgoenies or not
@@ -2447,7 +2439,7 @@ void writeburntrendfile (int currentid)
     {
       fprintf(burntrendfile, "burn period too short to plot trends,  trend recording begins at step %d \n",burntrendstartdelay); 
     } 
-    fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %s\n",timestring(seconds));
+    fprintf (burntrendfile, "\nTime Elapsed Since Start of Run : %s\n",timestring( (time_t) seconds));
  	  fprintf (burntrendfile, "\nEnd of Burn trend output file\n");
     fclose (burntrendfile);
   }
@@ -2520,7 +2512,6 @@ int run (int currentid)
 #endif
             if (currentid == HEADNODE)
             {
-              
               continuerun = checkrunfile(runfilename);
             }
 #ifdef MPI_ENABLED
@@ -4147,7 +4138,7 @@ printf("printed ascii curves\n");
   endoutputtime = endtime;
   totaloutputseconds += difftime(endoutputtime,startoutputtime);
   endtimeinfo = localtime(&endtime);
-  seconds = difftime (endtime, starttime);
+  seconds = (long) difftime (endtime, starttime);
   if (numpriormcfruns > 0  && finaloutput)
   {
     previoustime = totaltime;
@@ -4600,7 +4591,6 @@ int main (int argc, char *argv[])
     currentid_debug = 1;
 #endif
 #endif
-
   start (argc, argv, currentid);
   if (runoptions[LOADRUN])
   {

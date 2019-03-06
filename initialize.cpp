@@ -1931,7 +1931,7 @@ finish_setup_C (int currentid)
 #endif //TURNONCHECKS
         tw = treeweight (ci, li,treeweightcallcode);
 #ifdef TURNONCHECKS
-   checkgenealogy(ci,li,0);
+    checkgenealogy(ci,li,0);
 #endif //TURNONCHECKS
         C[ci]->G[li].pdg = C[ci]->G[li].pdg_a[0] = likelihoodIS (ci, li, C[ci]->G[li].uvals[0]);
         break;
@@ -1992,6 +1992,7 @@ finish_setup_C (int currentid)
         }
         break;
       }
+    
 #ifdef DEBUG
       C[ci]->G[li].hiprob = -1e20; // debugging 8/18/2016
 #endif

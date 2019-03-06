@@ -23,6 +23,50 @@ basic instructions:
 			delete any previous results file in that folder
 		compile a new IMa3_stdtest  using make testbed
 		run ima3_stdtest.sh
+		
+	
+3/6/2019
+	did some more fixes to the code
+		now the only jobs that turn up as different from 2/24/2019 set are 22, 23, 40 and 41 
+		these are all -j013 jobs using no -jhD  or using -c4 
+		
+		jobs 7 and 8  which used no -c4 were fine 
+		
+		so the main problem seems to have been when using NOjhD and -j0 
+3/3/2019
+
+found a significant bug that distorted posteriors of topologies.  very bad
+
+on 5/9/2018 I switched the default heating scheme to not raising the prior to beta 
+	i.e. lilihood^beta + prior,   rather than  (likelihood+prior)^beta
+	this is the heating scheme required of thermodyanmic integration 
+	
+	at that point I set -jhD  to turn on the traditional heating scheme i.e. (likelihood+prior)^beta
+	
+	but I noticed that it was giving me weird tree for mus  
+	
+	
+	found the likely cause in swap_weight()
+		this should affect runs using multiple chains and that did not use -jhD 
+		runs marked -jhD should be the same 
+
+		which runs are multiple chains do not raise prior to beta? 
+
+		22  is -hn12 and -j013 and no -jhD
+
+		23 is -hn12 and -j013 and -c4  (no -jhD)
+
+		40 is -j013,  -hn20  and -c4 
+
+		41 is -j013 -hn20  and -c4  
+		
+		7, 8  used -c4 
+
+	run the code with the bug fix in 3_3_2019
+	
+	affected jobs
+	22, 41, 23, 40, 7, 8, 
+
 
 1/22/2019
 

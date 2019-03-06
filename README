@@ -1,3 +1,12 @@
+3/6/2018
+
+Fixed a bug that got into the code in late may 2018 when the default
+mode for updating with multiple heated chains was altered. 
+This causes a distortion of the distribution of the phylogeny posterior
+(i.e. when -j0 is used).  The bug was not present for the runs 
+in the IMa3 paper  (Hey et al.,2018. MBE 35:2805–2818; doi:2810.1093/molbev/msy2162)
+
+
 2/2/2018
 compiling IMa3 on linux 
 to compile a release version mpi-compatible executable (IMa3)

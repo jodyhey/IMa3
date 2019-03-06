@@ -1169,7 +1169,11 @@ This is a unnormalized function.   Modified from numerical recipes gammaq() in t
     /* JH 1/9/2018
       rarely get a bug here  when x = 0.0 
       would like to trap this without triggering error expint()
-      but what should temp be in this case?? */ 
+      but what should temp be in this case?? 
+      3/5/2019 try returning a large positive value when both a and x == 0.0
+        this seems to let the run continue,  not sure what else it is doing*/ 
+    if (x == 0.0)
+      return (1e200);
     temp = expint (1, x, &logindicator);
     if (!logindicator)
       p = log (temp);

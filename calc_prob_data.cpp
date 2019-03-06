@@ -614,7 +614,8 @@ likelihoodHKY (int ci, int li, double mutrate, double kappa, int e1, int e2,
 
 void
 calc_sumlogk (int ci, int li, double *psumlogk)
-/* basically a copy of the likelihood function, and probably overkill for what it does */
+/* basically a copy of the likelihood function, and probably overkill for what it does 
+  called once for each locus during initialization to set psumlogk, which is constant throughout the run */
 {
   int ret, node, site, up1, up2 /*, upup */;
 
@@ -718,10 +719,12 @@ calc_sumlogk (int ci, int li, double *psumlogk)
   }
   for (sum = 0.0, i = 0; i < L[li].numlines - ng; i++)
   {
-    fact = 1.0;
+    /*  changed to using logfact 2/24/2019  this was crashing when mutcount was high 
+    fact = 1.0; 
     for (j = 1; j <= mutcount[i]; j++)
       fact *= (double) j;
-    sum += log (fact);
+    sum += log (fact); */
+    sum += logfact[mutcount[i]];
   } 
   *psumlogk = sum;
   XFREE (mutcount);

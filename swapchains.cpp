@@ -32,36 +32,45 @@ void swapbetas (int ci, int cj);
 
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
+
 double
-swapweight (int ci, int cj)
+swapweight (int ci, int cj)  // 3/5/2019  fixed a bugs that arose when hiddenoptions[PRIORRATIOHEATINGON] == 0,  some of the prior ratio was being used when  
 {
   int i;
   double sumi, sumj, w;
   double likelihoodratio,priorratio;
   double tempi,tempj;
 
+  #ifdef TURNONCHECKS
+    checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, 0.0,0.0, beta[ci],beta[cj]);
+  #endif //TURNONCHECKS
   likelihoodratio = C[cj]->allpcalc.pdg - C[ci]->allpcalc.pdg;
-  priorratio = 0.0;
- // if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) JH 4/26/2018  not entirely clear what to do in this case,  as far as calculating marginal likelihood 
-  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR] == 1)
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)  // prior ratios cancel out in this case,  even with hyperparameters
+     w = (beta[ci] - beta[cj]) * likelihoodratio ;
+  else
   {
-    if (modeloptions[EXPOMIGRATIONPRIOR])
+    priorratio = 0.0;
+   // if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR]) JH 4/26/2018  not entirely clear what to do in this case,  as far as calculating marginal likelihood 
+    if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR] == 1)
     {
-      for (i=0,tempi = 0.0,tempj = 0.0;i<nummigrateparams;i++)
+      if (modeloptions[EXPOMIGRATIONPRIOR])
       {
-        tempi += C[ci]->imig[i].pr.expomean;
-        tempj += C[cj]->imig[i].pr.expomean;
+        for (i=0,tempi = 0.0,tempj = 0.0;i<nummigrateparams;i++)
+        {
+          tempi += C[ci]->imig[i].pr.expomean;
+          tempj += C[cj]->imig[i].pr.expomean;
+        }
+        priorratio  =  (tempi-tempj)/expo_m_mean; // ratio of the product of the exponential densities for the priors
       }
-      priorratio  =  (tempi-tempj)/expo_m_mean; // ratio of the product of the exponential densities for the priors
-    }
-    else
-    {
-      for (i=0,tempi = 1.0,tempj = 1.0;i<nummigrateparams;i++)
+      else
       {
-        tempi *= C[ci]->imig[i].pr.max;
-        tempj *= C[cj]->imig[i].pr.max;
+        for (i=0,tempi = 1.0,tempj = 1.0;i<nummigrateparams;i++)
+        {
+          tempi *= C[ci]->imig[i].pr.max;
+          tempj *= C[cj]->imig[i].pr.max;
+        }
+        priorratio = log(tempi/tempj); // i.e. ratio of  product of the squared migration priors 
       }
-      priorratio = log(tempi/tempj); // i.e. ratio of  product of the squared migration priors 
       // now do popsize terms
       for (i=0,tempi = 1.0,tempj = 1.0;i<numpopsizeparams;i++)
       {
@@ -70,20 +79,9 @@ swapweight (int ci, int cj)
       }
       priorratio += log(tempi/tempj); 
     }
-  }
-  else
-    priorratio = 0.0;   // demographic priors if hyperpriors not being used 
+    else
+      priorratio = 0.0;   // demographic priors if hyperpriors not being used 
 
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
-  {
-   // w = exp ((beta[ci] - beta[cj]) * likelihoodratio + priorratio);
-     w = ((beta[ci] - beta[cj]) * likelihoodratio + priorratio);
-#ifdef TURNONCHECKS
-  checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, 0.0,0.0, beta[ci],beta[cj]);
-#endif //TURNONCHECKS
-  }
-  else
-  {
     sumi = C[ci]->allpcalc.probg;
     sumj = C[cj]->allpcalc.probg;
     if (hiddenoptions[HIDDENGENEALOGY] == 1)
@@ -99,11 +97,11 @@ swapweight (int ci, int cj)
     priorratio += sumj - sumi;
     w =  ((beta[ci] - beta[cj]) * (likelihoodratio + priorratio));
 #ifdef TURNONCHECKS
-  checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, sumi,sumj, beta[ci],beta[cj]);
+    checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, sumi,sumj, beta[ci],beta[cj]);
 #endif //TURNONCHECKS
   }
   return (w);
-}  
+} //swapweight
 
 ///AS: Adding a function to only calculate the sums for a particular chain
 //this would then be shared with the swapper process/chain
@@ -114,46 +112,50 @@ calcpartialswapweight (int ci, double *likelihood, double *prior)
 	double priorsum,tempp;
 
   *likelihood = C[ci]->allpcalc.pdg;
-  priorsum = C[ci]->allpcalc.probg;
-  if (hiddenoptions[HIDDENGENEALOGY] == 1)
-    priorsum += C[ci]->allpcalc.probhgg;
-  if (usetopologypriors)
-    priorsum += topologypriors[C[ci]->poptreenum];
-  if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])  // need to include ratio of demographic priors,  but if hyperpriors are not being used then demographic priors cancel out
+  if (hiddenoptions[PRIORRATIOHEATINGON] == 1)  // need to include the prior ratio when the priors are heated, otherwise that prior for each chain cancels itself out
   {
-    if (modeloptions[EXPOMIGRATIONPRIOR])
+    priorsum = C[ci]->allpcalc.probg;
+    if (hiddenoptions[HIDDENGENEALOGY] == 1)
+      priorsum += C[ci]->allpcalc.probhgg;
+    if (usetopologypriors)
+      priorsum += topologypriors[C[ci]->poptreenum];
+    if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])  // need to include ratio of demographic priors,  but if hyperpriors are not being used then demographic priors cancel out
     {
-      for (i=0,tempp = 0.0;i<nummigrateparams;i++)
+      if (modeloptions[EXPOMIGRATIONPRIOR])
       {
-        tempp +=  C[ci]->imig[i].pr.expomean;
+        for (i=0,tempp = 0.0;i<nummigrateparams;i++)
+        {
+          tempp +=  C[ci]->imig[i].pr.expomean;
+        }
+        priorsum -= tempp/mprior; // multiple by the product of the exponential densities for the priors
       }
-      priorsum -= tempp/mprior; // multiple by the product of the exponential densities for the priors
-    }
-    else
-    {
-      for (i=0,tempp = 1.0;i<nummigrateparams;i++)
+      else
       {
-        tempp *=  C[ci]->imig[i].pr.max;
+        for (i=0,tempp = 1.0;i<nummigrateparams;i++)
+        {
+          tempp *=  C[ci]->imig[i].pr.max;
+        }
+        priorsum -= log(tempp); // i.e. divide by the product of the migration priors 
       }
-      priorsum -= log(tempp); // i.e. divide by the product of the migration priors 
+      // now do popsize terms
+      for (i=0,tempp = 1.0;i<numpopsizeparams;i++)
+      {
+        tempp *= C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]];
+      }
+      priorsum -= log(tempp);  // divide by the product of the theta priors 
     }
-    // now do popsize terms
-    for (i=0,tempp = 1.0;i<numpopsizeparams;i++)
-    {
-      tempp *= C[ci]->qhyperparams[(int) C[ci]->descendantpops[i]];
-    }
-    priorsum -= log(tempp);  // divide by the product of the theta priors 
+    *prior = priorsum;
   }
-  *prior = priorsum;
-}
-/* calcpartialswapweight() */
+  else  //hiddenoptions[PRIORRATIOHEATINGON] == 0
+    *prior = 0.0; 
+}   /* calcpartialswapweight() */
 
 double
 swapweight_bwprocesses(double likelihoodratio, double priorratio,double betai, double betaj)
 {
   double w;
   if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
-    w = ((betai - betaj) * likelihoodratio); // priorratio cancel when doing thermodynamic integration
+    w = ((betai - betaj) * likelihoodratio); // prior ratios cancel out in this case,  even with hyperparameters
   else
     w = ((betai - betaj) * (likelihoodratio + priorratio));
 	return(w);
@@ -326,9 +328,10 @@ int setswaptries(void)
     */
   int st;
   int m = 1;  // number of steps on average between times each chain is involved in an attempted swap
-  double temp;
   // 4/17/2018 JH redid setting of swaptries 
-  /*if (numprocesses > 1)
+  /*double temp;
+  
+  if (numprocesses > 1)
   {
     temp = numchainstotal/(4.0 * m);
   }

@@ -325,7 +325,7 @@ void
 readseqHKY (FILE * infile, int li, int currentid)
 {
   char gName[GENENAMELENGTH + 1];
-  int i, j, v, k = 0;
+  int i, j,  k = 0;
   char c;
   double PIstandard;
 
@@ -404,7 +404,7 @@ void
 readseqIS (FILE * infile, int li, int MODEL, int **numsitesIS, int currentid)
 {
   char gName[GENENAMELENGTH + 1];
-  int i, j, ai, v, k, sitek, sitej;
+  int i, j, ai, k, sitek, sitej;
   int *initseg;
   char c, *refseq;
 
@@ -537,10 +537,9 @@ readseqSW (FILE * infile, int li, int currentid)
 {
   int i, j, ai, tempA, numA;
   char tempname[10], *c;
-  char ch;
+
   char textline[301];
   char gName[11];
-  int v;
 
   L[li].numsites = 0;   /* cr 110907.1 init numsites to 0  */    
   /* This for-loop may be placed here out of the main for-loop below */

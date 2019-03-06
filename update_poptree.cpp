@@ -681,9 +681,8 @@ int comptopolsort(const void * a, const void * b)
 void
 init_topologypriors(char topologypriorinfostring[], int *treesfromprior)
 {
-  int ci,i,j,k,m,npopsa;
-  double p, rv, sump,cump;
-  char *c,*stringvalpos[(MAXPOPS_PHYLOGENYESTIMATION-1)*MAXPOPS_PHYLOGENYESTIMATION/2];
+  int i,k,npopsa;
+  double rv, sump,cump;
   forpriorxsort *priorxarray;
   struct topolpriorsortstrut *sorttemp;
   assert(numtopologypriors > 0);

@@ -319,7 +319,7 @@ char* outputbanner(const char *bannertext)
   char holdbanner[BANNERMAXLENGTH];
   strcpy(holdbanner,bannertext);
   char *b;
-  l = strlen(holdbanner);
+  l = (int) strlen(holdbanner);
   assert (l < BANNERMAXLENGTH - 2);
   b = bannerall;
   *b = 0;

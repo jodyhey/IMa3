@@ -69,7 +69,8 @@
 #endif
 
 
-#define IMA3RELEASEVERSION  "1.01"  // update only when a release is made 
+#define IMA3RELEASEVERSION  "1.1"  // update only when a release is made 
+/* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
 /* set to 1.01  on 1/22/2019  various bug fixes and small enhancements for catching things when reading input files 
     zero changes to analyses */ 
 
