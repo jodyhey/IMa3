@@ -33,8 +33,23 @@ void swapbetas (int ci, int cj);
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
 
+/*
+ 3/5/2019  fixed bugs that arose when prior ratio heating was off 
+ 
+ apparently there was confusion about the use of the prior under different circumstances when swapping chains
+
+ for mc^3 the full mh ratio includes the priors for both chains in both the numerator and the denominator
+
+ so if the priors are each raised to a power,  they completely cancel. 
+
+ if they are raised to powers,  then they do not
+
+ so unlike other update, in which the ratio of the priors is always present (raised to beta or not, but still present)
+ for the chain swapping update,  the priors are completely missing if the betas are not being applied to the priors
+ */
+// beta[ci] - beta[cj] ;   likelihood[cj]-likelihood[ci]  and prior[cj] - prior[ci] if it is used 
 double
-swapweight (int ci, int cj)  // 3/5/2019  fixed a bugs that arose when hiddenoptions[PRIORRATIOHEATINGON] == 0,  some of the prior ratio was being used when  
+swapweight (int ci, int cj)  
 {
   int i;
   double sumi, sumj, w;
@@ -44,8 +59,8 @@ swapweight (int ci, int cj)  // 3/5/2019  fixed a bugs that arose when hiddenopt
   #ifdef TURNONCHECKS
     checkdetailedbalance_chainswap(C[ci]->allpcalc.pdg, C[cj]->allpcalc.pdg, 0.0,0.0, beta[ci],beta[cj]);
   #endif //TURNONCHECKS
-  likelihoodratio = C[cj]->allpcalc.pdg - C[ci]->allpcalc.pdg;
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)  // prior ratios cancel out in this case,  even with hyperparameters
+  likelihoodratio = C[cj]->allpcalc.pdg - C[ci]->allpcalc.pdg;  // ci in the denominator 
+  if (hiddenoptions[PRIORRATIOHEATINGOFF])  // prior ratios cancel out in this case,  even with hyperparameters
      w = (beta[ci] - beta[cj]) * likelihoodratio ;
   else
   {
@@ -69,7 +84,7 @@ swapweight (int ci, int cj)  // 3/5/2019  fixed a bugs that arose when hiddenopt
           tempi *= C[ci]->imig[i].pr.max;
           tempj *= C[cj]->imig[i].pr.max;
         }
-        priorratio = log(tempi/tempj); // i.e. ratio of  product of the squared migration priors 
+        priorratio = log(tempi/tempj); // i.e. ratio of  product of the inverse of migration priors // i.e. log [ (1/max_cj)/(1/max_ci) ]
       }
       // now do popsize terms
       for (i=0,tempi = 1.0,tempj = 1.0;i<numpopsizeparams;i++)
@@ -105,6 +120,7 @@ swapweight (int ci, int cj)  // 3/5/2019  fixed a bugs that arose when hiddenopt
 
 ///AS: Adding a function to only calculate the sums for a particular chain
 //this would then be shared with the swapper process/chain
+// also see notes on swapweight() above 
 void
 calcpartialswapweight (int ci, double *likelihood, double *prior)
 {
@@ -112,7 +128,9 @@ calcpartialswapweight (int ci, double *likelihood, double *prior)
 	double priorsum,tempp;
 
   *likelihood = C[ci]->allpcalc.pdg;
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 1)  // need to include the prior ratio when the priors are heated, otherwise that prior for each chain cancels itself out
+  if (hiddenoptions[PRIORRATIOHEATINGOFF])  // do not include the prior ratio when the priors are not heated, in this case prior for each chain cancels itself out
+    *prior = 0.0; 
+  else  // prior ratios are heated and do not cancel out
   {
     priorsum = C[ci]->allpcalc.probg;
     if (hiddenoptions[HIDDENGENEALOGY] == 1)
@@ -146,15 +164,13 @@ calcpartialswapweight (int ci, double *likelihood, double *prior)
     }
     *prior = priorsum;
   }
-  else  //hiddenoptions[PRIORRATIOHEATINGON] == 0
-    *prior = 0.0; 
 }   /* calcpartialswapweight() */
 
 double
 swapweight_bwprocesses(double likelihoodratio, double priorratio,double betai, double betaj)
 {
   double w;
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+  if (hiddenoptions[PRIORRATIOHEATINGOFF])
     w = ((betai - betaj) * likelihoodratio); // prior ratios cancel out in this case,  even with hyperparameters
   else
     w = ((betai - betaj) * (likelihoodratio + priorratio));
@@ -886,11 +902,13 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 /* 
   swaps between chains on the same processor  
   called either from qupdate or from swapchains_bwprocesses() 
+  first value after nargs must be the # of swaptries
+    after that there could be two integers for the specific chains to be swapped
+
   if called from qupdate, it will attempt multiple swaps, each time picking two chains within swapdist positions of each other
   if called from swapchains_bwprocesses()  the two chain indices will be passed into this function 
     in this case ci and cj are the chain numbers on the current node for which betas are swapped 
-  first value after nargs must be the # of swaptries
-  after that there could be two integers for the specific chains to be swapped
+    and there will be just 1 attempt
 */
 
 int
@@ -921,7 +939,7 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
   for (i = 0, swap0ok = 0,swapok = 0; i < swapattempts; i++)
   {
 //printf("step %d attempt %d uni %.4lf",step,i,uniform());
-    if (nargs < 2)
+    if (nargs < 2)  //ci and cj are not specified 
     {
       assert (numchainspp == numchainstotal);
 			   betai = (int) (uniform() * numchainstotal);  // random chain index
@@ -941,21 +959,23 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       {
         betaj = cmin + (int) (uniform () * crange);
       } while (betai == betaj || betaj < 0 || betaj >= numchainstotal);  // 2nd random chain index different from first,  but not too far away */
-	    for (ci = 0; ci < numchainstotal; ci++) 
+	     for (ci = 0; ci < numchainstotal; ci++) 
       {
-		    if (allbetas[betai] == beta[ci]){
-			    break;
-		    }
-	    }
-	    for (cj = 0; cj < numchainstotal; cj++) 
-      {
-		    if (allbetas[betaj] == beta[cj]){
-			    break;
-		    }
+		      if (allbetas[betai] == beta[ci])
+        {
+			       break;
+		      }
+	     }
+	     for (cj = 0; cj < numchainstotal; cj++) 
+      { 
+        if (allbetas[betaj] == beta[cj])
+        {
+          break;
+        }
       }
       assert(betai == C[ci]->currallbetapos);
       assert(betaj == C[cj]->currallbetapos); 
-	  }
+	   }
     else
     {
       betai = C[ci]->currallbetapos;
@@ -964,17 +984,18 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
 	// record swaps between beta values, as they are listed in allbetas
   //   below the diagonal for attempts,  above the diagonal for successes 
     // record attempts 
-	  if (betai < betaj) 
-   {
-		  swapcount[betaj][betai]++;
-	  } else 
-   {
-		  swapcount[betai][betaj]++;
-	  }	
+    if (betai < betaj) 
+    {
+      swapcount[betaj][betai]++;
+    } 
+    else 
+    {
+      swapcount[betai][betaj]++;
+    }	
     metropolishastingsratio = swapweight (ci, cj);
     if (metropolishastingsdecide(metropolishastingsratio,1))
     {
-		  swapbetas(ci, cj);
+		    swapbetas(ci, cj);
   //TODO: These slideinfoscalers have to be swapped across processors as well
       /* turn these off   // why? 5/3/2017
       if (hiddenoptions[HIDDENGENEALOGY]==1) // also swap slide adjusters 
@@ -1009,11 +1030,11 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       }
       else
         assert(strcmp(C[ci]->chainpoptreestring,C[cj]->chainpoptreestring)==0);
-
-	
-	    if (betai < betaj) {
+	    if (betai < betaj) 
+     {
 		    swapcount[betai][betaj]++;
-	    } else {
+	    } else 
+     {
 		    swapcount[betaj][betai]++;
 	    }
       if (ci == 0 || cj == 0)
@@ -1046,7 +1067,6 @@ printchaininfo (FILE * outto, int heatmode, double hval1,
   int rc = 0; //AS: return code for MPI C bindings
   //MPI_Status status;
 #endif
-
   if (currentid == HEADNODE && outto != NULL)
   {
 
@@ -1057,7 +1077,8 @@ printchaininfo (FILE * outto, int heatmode, double hval1,
 #ifdef MPI_ENABLED
 	if (numprocesses > 1) 
   {
-	   rc = MPI_Reduce(&(swapcount[0][0]),&(swapcount_rec[0][0]), sizeofswapmatrix, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);  // would sometimes get hangs here without putting in the barrier 
+    rc = MPI_Reduce(swapcount[0],swapcount_rec[0], sizeofswapmatrix, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);  // should be the same sd  rc = MPI_Reduce(&(swapcount[0][0]),&(swapcount_rec[0][0]), sizeofswapmatrix, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 				if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	}
 #endif

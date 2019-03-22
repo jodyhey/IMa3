@@ -107,9 +107,9 @@ void move_calcmarglike_vals(void)
   if (numprocesses > 1)
   {
 #ifdef MPI_ENABLED
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(thermosum,thermosum_rec,numchainstotal, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
 /*
     rc = MPI_Reduce(thermosum2,thermosum2_rec,numchainstotal, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if (rc != MPI_SUCCESS)

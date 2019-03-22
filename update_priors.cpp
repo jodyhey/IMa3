@@ -112,7 +112,7 @@ int update_migration_prior_intree(int ci, int mi) // 0<mi<nummigrateparams
   initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   priorratio += C[ci]->allpcalc.probg - localholdallpcalc.probg;
   
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+  if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
   {
     metropolishastingsratio = priorratio + proposalratio;
   }
@@ -205,7 +205,7 @@ void update_migration_prior_not_intree(int ci, int *attempted, int *accepted)
           newpriorval = getnewpriorval(expo_m_mean,oldpriorval,1);
           proposalratio = 0.0;
           priorratio = (oldpriorval-newpriorval)/expo_m_mean;
-          if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+          if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
           {
             metropolishastingsratio = priorratio + proposalratio;
           }
@@ -268,7 +268,7 @@ int update_popsize_prior_intree(int ci, int qi)
   initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc);
   priorratio += C[ci]->allpcalc.probg - localholdallpcalc.probg;
 
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+  if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
   {
     metropolishastingsratio = priorratio;
   }

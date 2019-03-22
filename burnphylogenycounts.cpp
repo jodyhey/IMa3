@@ -63,9 +63,9 @@ void outputburntopologycounts(FILE *burnfile, int currentid)
   if (numprocesses > 1)
   {
 #ifdef MPI_ENABLED
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(burnpoptopologycounts, totalburnpoptopologycounts, asize,MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		  if (rc != MPI_SUCCESS)
-		    MPI_Abort(MPI_COMM_WORLD, rc);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 #endif
   }
   else

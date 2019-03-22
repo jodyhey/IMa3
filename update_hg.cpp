@@ -1582,7 +1582,7 @@ checkprobs(ci,li);
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
     likelihoodratio =  (newpdg - G->pdg);
     proposalratio = migweight + slideweight + Atermsum;
-    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+    if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
     {
       metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
     }

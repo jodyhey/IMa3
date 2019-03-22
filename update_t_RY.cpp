@@ -349,7 +349,7 @@ changet_RY1 (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rubb
   priorratio = (C[ci]->allpcalc.probg - holdallpcalc_t_RY.probg);
   proposalratio = (ecd + emd) * log (t_d_hterm) + (ecu + emu) * log (t_u_hterm);
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
-  if  (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+  if  (hiddenoptions[PRIORRATIOHEATINGOFF])
   {
     metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
   }

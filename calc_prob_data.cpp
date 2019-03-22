@@ -40,75 +40,80 @@ double pijt(int ci, int li, double mutrate, double t, double kappa, int from, in
     }
 
 int makefrac_rasmus(int ci, int li, int node, double mutrate, double kappa, int e1, int e2, int e3, int e4)
-    {
-     int i, j, k, up1, up2, ret=0;
-    double **fracpoint1, **fracpoint2, sum[4];
-    struct edge *gtree;
+{
+  int i, j, k, up1, up2, ret=0;
+  double **fracpoint1, **fracpoint2, sum[4];
+  struct edge *gtree;
 
-    gtree = C[ci]->G[li].gtree;
-    if (node == e1 || node ==  e2 || node ==  e3 || node ==  e4 || e1 == -1) ret=1; 
-    up1=gtree[node].up[0];
-    if (up1!=-1)
+  gtree = C[ci]->G[li].gtree;
+  if (node == e1 || node ==  e2 || node ==  e3 || node ==  e4 || e1 == -1) ret=1; 
+  up1=gtree[node].up[0];
+  if (up1!=-1)
+  {
+      up2=gtree[node].up[1];
+      i=makefrac(ci,li,up1, mutrate, kappa, e1, e2, e3, e4);
+      if (i==0) fracpoint1 = gtree[up1].hkyi.frac;
+      else {fracpoint1 = gtree[up1].hkyi.newfrac; ret=1;}
+      i=makefrac(ci,li,up2, mutrate, kappa, e1, e2, e3, e4);
+      if (i==0) fracpoint2 = gtree[up2].hkyi.frac;
+      else {fracpoint2 = gtree[up2].hkyi.newfrac; ret=1;}
+      if (ret>0)
+      {
+        if (gtree[up1].up[0]==-1 && gtree[up2].up[0]==-1)
         {
-        up2=gtree[node].up[1];
-        i=makefrac(ci,li,up1, mutrate, kappa, e1, e2, e3, e4);
-        if (i==0) fracpoint1 = gtree[up1].hkyi.frac;
-        else {fracpoint1 = gtree[up1].hkyi.newfrac; ret=1;}
-        i=makefrac(ci,li,up2, mutrate, kappa, e1, e2, e3, e4);
-        if (i==0) fracpoint2 = gtree[up2].hkyi.frac;
-        else {fracpoint2 = gtree[up2].hkyi.newfrac; ret=1;}
-        if (ret>0)
+          for (i=0; i<L[li].numsites; i++)
+            for (j=0; j<4; j++)
+              gtree[node].hkyi.newfrac[i][j]=pijt(ci,li,mutrate, gtree[up1].time, kappa, j, L[li].seq[up1][i])*pijt(ci, li,mutrate, gtree[up2].time, kappa, j, L[li].seq[up2][i]);
+        }
+        else if (gtree[up1].up[0]==-1)
+        {
+          for (i=0; i<L[li].numsites; i++)
+          {
+            for (j=0; j<4; j++)
             {
-            if (gtree[up1].up[0]==-1 && gtree[up2].up[0]==-1){
-                    for (i=0; i<L[li].numsites; i++)
-                            for (j=0; j<4; j++)
-                                   gtree[node].hkyi.newfrac[i][j]=pijt(ci,li,mutrate, gtree[up1].time, kappa, j, L[li].seq[up1][i])*pijt(ci, li,mutrate, gtree[up2].time, kappa, j, L[li].seq[up2][i]);
-                    }
-           else if (gtree[up1].up[0]==-1)
-               {
-                for (i=0; i<L[li].numsites; i++){
-                    for (j=0; j<4; j++)
-                        {
-                        gtree[node].hkyi.newfrac[i][j]=0;
-                        for (k=0; k<4; k++)
-                              gtree[node].hkyi.newfrac[i][j]+=pijt(ci, li,mutrate, gtree[up2].time-gtree[gtree[up2].up[0]].time, kappa, j, k)*fracpoint2[i][k];
-                        gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*pijt(ci,li,mutrate, gtree[up1].time, kappa, j, L[li].seq[up1][i]);
-                        }
-                    }
-                }
-           else 
-               if (gtree[up2].up[0]==-1)
-                   {
-                   for (i=0; i<L[li].numsites; i++)
-                       {
-                        for (j=0; j<4; j++)
-                            {
-                            gtree[node].hkyi.newfrac[i][j]=0;
-                            for (k=0; k<4; k++)
-                                  gtree[node].hkyi.newfrac[i][j]+=pijt(ci, li,mutrate, gtree[up1].time-gtree[gtree[up1].up[0]].time, kappa, j, k)*fracpoint1[i][k];
-                            gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*pijt(ci,li,mutrate, gtree[up2].time, kappa, j, L[li].seq[up2][i]);
-                            }
-                        }
-                    }
-           else
-               {
-                for (i=0; i<L[li].numsites; i++){
-                    for (j=0; j<4; j++)
-                        {
-                        sum[j]=0;
-                        for (k=0; k<4; k++)
-                              sum[j]+=pijt(ci, li,mutrate, gtree[up1].time-gtree[gtree[up1].up[0]].time, kappa, j, k)*fracpoint1[i][k];
-                        gtree[node].hkyi.newfrac[i][j]=0;
-                        for (k=0; k<4; k++)
-                              gtree[node].hkyi.newfrac[i][j]+=pijt(ci,li,mutrate, gtree[up2].time-gtree[gtree[up2].up[0]].time, kappa, j, k)*fracpoint2[i][k];
-                        gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*sum[j];
-                        }
-                    }
+              gtree[node].hkyi.newfrac[i][j]=0;
+              for (k=0; k<4; k++)
+                    gtree[node].hkyi.newfrac[i][j]+=pijt(ci, li,mutrate, gtree[up2].time-gtree[gtree[up2].up[0]].time, kappa, j, k)*fracpoint2[i][k];
+              gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*pijt(ci,li,mutrate, gtree[up1].time, kappa, j, L[li].seq[up1][i]);
+            }
+          }
+        }
+        else 
+        {
+          if (gtree[up2].up[0]==-1)
+          {
+            for (i=0; i<L[li].numsites; i++)
+            {
+                for (j=0; j<4; j++)
+                {
+                  gtree[node].hkyi.newfrac[i][j]=0;
+                  for (k=0; k<4; k++)
+                        gtree[node].hkyi.newfrac[i][j]+=pijt(ci, li,mutrate, gtree[up1].time-gtree[gtree[up1].up[0]].time, kappa, j, k)*fracpoint1[i][k];
+                  gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*pijt(ci,li,mutrate, gtree[up2].time, kappa, j, L[li].seq[up2][i]);
                 }
             }
+          }
         }
-    return ret;
-    } /* Rasmus's original makefrac */
+        else
+        {
+          for (i=0; i<L[li].numsites; i++)
+          {
+            for (j=0; j<4; j++)
+            {
+              sum[j]=0;
+              for (k=0; k<4; k++)
+                    sum[j]+=pijt(ci, li,mutrate, gtree[up1].time-gtree[gtree[up1].up[0]].time, kappa, j, k)*fracpoint1[i][k];
+              gtree[node].hkyi.newfrac[i][j]=0;
+              for (k=0; k<4; k++)
+                    gtree[node].hkyi.newfrac[i][j]+=pijt(ci,li,mutrate, gtree[up2].time-gtree[gtree[up2].up[0]].time, kappa, j, k)*fracpoint2[i][k];
+              gtree[node].hkyi.newfrac[i][j]=gtree[node].hkyi.newfrac[i][j]*sum[j];
+            }
+            }
+        }
+      }
+    }
+  return ret;
+} /* Rasmus's original makefrac */
 
 #endif  // #if 0
 

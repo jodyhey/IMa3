@@ -1105,7 +1105,7 @@ checkpoptree(ci,1);
 #ifdef TURNONCHECKS
     checkdetailedbalance(0.0,0.0,newpriorp,oldpriorp,propose_old_given_new, propose_new_given_old,beta[ci]);
 #endif //TURNONCHECKS
-    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+    if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
     {
       metropolishastingsratio = priorratio + proposalratio;
     }

@@ -49,6 +49,10 @@
       if DEBUG is defined,  TURNONCHECKS will also be defined, which leads to lots of things being checked and makes it quite slow 
       To run in debug mode without all the checks,  uncomment #define TURNONCHECKS
 
+      WRITECHECKOUTPUTPROGRESSDEBUGFILE can be defined for tracking down hard to find crashes/hangs
+        this enables calls to writecheckoutputprogress() which appends text to the file  "writecheckoutputprogress.txt"
+        this can be used with or without DEBUG 
+
   For running on the testbed
    - compile with STDTEST defined, this will cause RANDOM_NUMBERS_FROM_FILE to be defined
    -  if STDTEST is defined TURNONCHECKS will be undefined so as not to take too long if running standard tests in debug mode
@@ -69,7 +73,8 @@
 #endif
 
 
-#define IMA3RELEASEVERSION  "1.1"  // update only when a release is made 
+#define IMA3RELEASEVERSION  "1.11"  // update only when a release is made 
+/* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default 
 /* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
 /* set to 1.01  on 1/22/2019  various bug fixes and small enhancements for catching things when reading input files 
     zero changes to analyses */ 
@@ -84,7 +89,7 @@
 #define INDEVELOPMENT 
 #endif
 
-//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
@@ -121,7 +126,6 @@
 //on linux using -D NDEBUG makes program about 5% smaller
 // and it runs about 8% faster 
 
-
 #ifdef DEBUG
 #define TURNONCHECKS
 #endif 
@@ -135,6 +139,9 @@
 #define TURNONCHECKS
 #endif 
 
+#undef WRITECHECKOUTPUTPROGRESSDEBUGFILE  // use to write to a file for debugging output file generation on cluster 
+// see void writecheckoutputprogress(const char *fmt, ...)  
+//#define WRITECHECKOUTPUTPROGRESSDEBUGFILE 
 
 // vld - visual leak dectector for finding memory leaks,  only runs under visual studio on windows
 // output is not appearing in the IDE,  so need to look in  memory_leak_report.txt
@@ -471,10 +478,10 @@ load genealogies vs not:   4 vs 0,1,2,3,5,6
 
 
 enum{
-POPTREEHYPERPRIORmode0 = 0,  //sample poptree topology, sample priors given hyperprior   -j03     
-POPTREEmode1 = 1,  //sample poptree topology         -j0
+POPTREEHYPERPRIORmode0 = 0,  //sample poptree topology, sample priors given hyperprior   -j03     (-j013 with ghost)
+POPTREEmode1 = 1,  //sample poptree topology         -j0   (-j01 with ghost)
 GHYPERPRIORmode2 = 2,   // topology is given, sample hyperparameters given hyperprior,    -j3
-Gmode3 = 3,  //topology is given, sample genealogies, aka M mode   no model options (no -j)
+Gmode3 = 3,  //topology is given, sample genealogies, aka M mode   no model options (no -j  unless ghost is used -j1)
 LOADGmode4	= 4, //topology is given, load genealogies, aka L mode  -r0   (no -j) 
 HGHYPERPRIORmode5 = 5, //topology is given, sample  hyperparameters given hyperprior, use hidden genealogy -jh2 -j3
 HGmode6 = 6, //topology is given, sample genealogies, use hidden genealogies - like mode 3 with with hidden genealogies  -jh2  (no -j) 
@@ -497,7 +504,7 @@ NUMRUNMODES = 7};
     PRINT2NMASCIICURVES  prints ascii curves for 2Nm,  takes some time so off by default 
     SKIPMOSTUSCALAROUTPUT  stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
     STOPMOSTINTERVALOUTPUT  stop writing most interval output to the screen  use -jhb or -jhB on command line
-    PRIORRATIOHEATINGON = 12, // -jhD raise the prior ratio to beta when calculating MH,  set this off as default on 4/27/2018
+    PRIORRATIOHEATINGOFF = 12, // -jhD turns off raising the prior ratio to beta when calculating MH,   3/21/2019 set heating of prior to on as default, marginal likelihood calculation requires it be turned off
   some options tried, but proved unnecessary or harmful:
    - SUPERHEATING    in chain swapping raised the mh ratio term to the largest of the two betas,  did not work at all
    - tried having an update in which topology was never updated within a chain,  but only updated by swapping in chains
@@ -523,7 +530,7 @@ enum
   SKIPMOSTUSCALAROUTPUT = 9, // stop printing of  most mutation scalar stuff, use -jha  or -jhA on command line 
   STOPMOSTINTERVALOUTPUT = 10,// stop writing most interval output to the screen  use -jhb or -jhB on command line
   READOLDMCFFILE = 11, // -jhC on command line, read mcf files generated before 1/17/2018  use -jhb or -jhC on command line
-  PRIORRATIOHEATINGON = 12, // -jhD raise the prior ratio to beta when calculating MH,  set this off as default on 4/27/2018
+  PRIORRATIOHEATINGOFF = 12, // -jhD turn off raising the prior ratio to beta when calculating MH,  3/21/2019 set heating of prior to on as default, marginal likelihood calculation requires it be turned off
   HIDDENOPTIONNUMBER=13};
 
 /* calcoptions -c
@@ -1472,6 +1479,7 @@ gextern int currentid_debug;  // turn this on when debugging as it makes it easi
 #endif 
 
 
+
 /******************************************/
 /***** GLOBAL FUNCTION PROTOTYPES *********/
 /******************************************/
@@ -1800,6 +1808,9 @@ int metropolishastingsdecide(double logmhratio,int othercriteria);
 char* timestring(time_t seconds);
 int nearlyequalfloat(float a, float b, float epsilon);
 int nearlyequaldouble(double a, double b, double epsilon);
+#ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
+void writecheckoutputprogress(const char *fmt, ...);
+#endif
 
 /* GLOBAL Functions in multi_t_bins */
 void setup_multi_t_arrays (int z);

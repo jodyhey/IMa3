@@ -3,7 +3,6 @@ CC2 = g++
 FLAGS = -O3 -fpermissive
 SKIPTINYFILES := $(filter-out $(wildcard tiny*.cpp),$(wildcard *.cpp))
 
-
 all: $(SKIPTINYFILES)
 	$(CC1) $(SKIPTINYFILES) -D MPI_ENABLED -D NDEBUG -o IMa3 $(FLAGS)
 
@@ -19,6 +18,9 @@ debug:
 valgrind: $(SKIPTINYFILES)
 	$(CC1) $(SKIPTINYFILES) -D MPI_ENABLED -g -O3 -o IMa3_valgrind $(FLAGS)
 
+gprof:  $(SKIPTINYFILES)
+	$(CC2) $(SKIPTINYFILES) -U MPI_ENABLED -D NDEBUG -o IMa3_gprof $(FLAGS) -pg -g -no-pie
+	
 clean:
 	rm IMa3 IMa3_singlecpu IMa3_stdtest
 	rm *.o

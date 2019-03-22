@@ -482,15 +482,13 @@ printrunbasics (FILE * outfile, int loadrun, char fpstr[], int burninsteps,int b
     MPI_Status status;
     if (numprocesses > 1) // if multiple processes reduce sum 
     {
+      MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
 	     rc = MPI_Reduce(&totaltopolupdates, &totaltopol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		    if (rc != MPI_SUCCESS)
-			    MPI_Abort(MPI_COMM_WORLD, rc);
+		    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 			   rc = MPI_Reduce(&chain0topolupdates, &chain0topol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-			   if (rc != MPI_SUCCESS)
-				    MPI_Abort(MPI_COMM_WORLD, rc);
+			   if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 			   rc = MPI_Reduce(&chain0topolswaps, &chain0topolswaps_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-			   if (rc != MPI_SUCCESS)
-				    MPI_Abort(MPI_COMM_WORLD, rc);
+			   if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     }
 #endif	
     z = whichiscoldchain();
@@ -925,7 +923,6 @@ void callprintacceptancerates (FILE * outto, int currentid)
   xstack.push(acceptancerates);
   #endif
 
-
 /* SPLITTING TIME UPDATE RATES 
    ---------------------------*/
 
@@ -938,13 +935,12 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	    y1[x] = T[x].upinf[update_type_RY].tries;
 	    z1[x] = T[x].upinf[update_type_RY].accp;
     }
-		rc = MPI_Reduce(y1, y_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
-		rc = MPI_Reduce(z1, z_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		if (rc != MPI_SUCCESS)
-	    MPI_Abort(MPI_COMM_WORLD, rc);
-	  if (currentid == HEADNODE) 
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
+		  rc = MPI_Reduce(y1, y_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
+		  rc = MPI_Reduce(z1, z_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+		  if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+	   if (currentid == HEADNODE) 
     {
 	    for (int x = 0; x < numsplittimes; x++) 
       {	
@@ -954,7 +950,6 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
   }
 #endif //MPI_ENABLED
-
   double *y2 = static_cast<double *> (malloc (numsplittimes * sizeof (double))); // not clear why we can't just reuse y1 and z1 
   double *z2 = static_cast<double *> (malloc (numsplittimes * sizeof (double)));
 
@@ -968,14 +963,12 @@ void callprintacceptancerates (FILE * outto, int currentid)
       y2[x] = T[x].upinf[update_type_NW].tries;
       z2[x] = T[x].upinf[update_type_NW].accp;
     }
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(y2, y_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
-	
+    if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(z2, z_rec, numsplittimes, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
-	  if (currentid == HEADNODE) 
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+	   if (currentid == HEADNODE) 
     {
       for (int x = 0; x < numsplittimes; x++) 
       {
@@ -985,7 +978,6 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
   }
 #endif //MPI_ENABLED
-
 
 /* print RY and NW update rates  */
   for (i = 0; i < numsplittimes; i++)
@@ -1047,12 +1039,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	      y1[x] = mh[x].upinf[PRIOR_UPDATE].tries;
 	      z1[x] = mh[x].upinf[PRIOR_UPDATE].accp;
       }
+      MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
 		    rc = MPI_Reduce(y1, y_rec, nummigrateparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		    if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+		    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		    rc = MPI_Reduce(z1, z_rec, nummigrateparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		    if (rc != MPI_SUCCESS)
-	        MPI_Abort(MPI_COMM_WORLD, rc);
+		    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	      if (currentid == HEADNODE) 
       {
 	      for (int x = 0; x < nummigrateparams; x++) 
@@ -1068,6 +1059,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
       {
         y1[0] = mhnit->upinf[PRIOR_UPDATE].tries;
 	       z1[0] = mhnit->upinf[PRIOR_UPDATE].accp;
+        MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
 		      rc = MPI_Reduce(y1, y_rec,1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		      rc = MPI_Reduce(z1, z_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1108,6 +1100,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	  XFREE(y1);
 	  XFREE(z1);
   }
+
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])   // now do popsize hyperprior stuff 
   {
     double *y1 = static_cast<double *> (malloc (numpopsizeparams * sizeof (double)));
@@ -1122,12 +1115,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	      y1[x] = qh[x].upinf[PRIOR_UPDATE].tries;
 	      z1[x] = qh[x].upinf[PRIOR_UPDATE].accp;
       }
+      MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
 		    rc = MPI_Reduce(y1, y_rec, numpopsizeparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		    if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+		    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		    rc = MPI_Reduce(z1, z_rec, numpopsizeparams, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-		    if (rc != MPI_SUCCESS)
-	        MPI_Abort(MPI_COMM_WORLD, rc);
+		    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 	      if (currentid == HEADNODE) 
       {
 	      for (int x = 0; x < numpopsizeparams; x++) 
@@ -1143,6 +1135,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
       {
         y1[0] = qhnit->upinf[PRIOR_UPDATE].tries;
 	       z1[0] = qhnit->upinf[PRIOR_UPDATE].accp;
+        MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
 		      rc = MPI_Reduce(y1, y_rec,1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		      if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
 		      rc = MPI_Reduce(z1, z_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1195,12 +1188,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
 #ifdef MPI_ENABLED
     a1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries;
     b1 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].accp;
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(&a1, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-		  MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(&b1, &b_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-  		MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     if (currentid == HEADNODE) 
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_ANY].tries = a_rec;
@@ -1208,12 +1200,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	  }
     a2 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries;
     b2 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].accp;
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(&a2, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  	if (rc != MPI_SUCCESS)
-	  	MPI_Abort(MPI_COMM_WORLD, rc);
+  	if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(&b2, &b_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  	if (rc != MPI_SUCCESS)
-	  	MPI_Abort(MPI_COMM_WORLD, rc);
+  	if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
     if (currentid == HEADNODE) 
     {
       poptreeuinfo->upinf[IM_UPDATE_POPTREE_TOPOLOGY].tries = a_rec;
@@ -1221,9 +1212,9 @@ void callprintacceptancerates (FILE * outto, int currentid)
 	  }
     a3 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_TMRCA].tries;
     b3 = poptreeuinfo->upinf[IM_UPDATE_POPTREE_TMRCA].accp;
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(&a3, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD,rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD,rc);
     rc = MPI_Reduce(&a3, &a_rec, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	  if (rc != MPI_SUCCESS)
 		  MPI_Abort(MPI_COMM_WORLD, rc);
@@ -1251,7 +1242,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
     }
 #endif //MPI_ENABLED
   } // hiddengenealogy==1
-   
+  
   double *c1 = static_cast<double *> (malloc (nloci * sizeof (double)));
   double *c2 = static_cast<double *> (malloc (nloci * sizeof (double)));
   double *c3 = static_cast<double *> (malloc (nloci * sizeof (double)));
@@ -1270,12 +1261,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
       c1[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].tries;
       d1[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_ANY].accp;
     }
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(c1, c_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(d1, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     if (currentid == HEADNODE) 
     {
       for (int x = 0; x < nloci; x++) 
@@ -1289,12 +1279,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
       c2[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].tries;
       d2[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TOPOLOGY].accp;
     }
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(c2, c_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(d2, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     if (currentid == HEADNODE) 
     {
       for (int x = 0; x < nloci; x++) 
@@ -1308,12 +1297,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
       c3[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].tries;
       d3[x] = L[x].g_rec->upinf[IM_UPDATE_GENEALOGY_TMRCA].accp;
     }
+    MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
     rc = MPI_Reduce(c3, c_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     rc = MPI_Reduce(d3, d_rec, nloci, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    if (rc != MPI_SUCCESS)
-      MPI_Abort(MPI_COMM_WORLD, rc);
+    if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
     if (currentid == HEADNODE) 
     {
       for (int x = 0; x < nloci; x++) 
@@ -1323,7 +1311,6 @@ void callprintacceptancerates (FILE * outto, int currentid)
       }
     }
   }
-
 #endif  //MPI_ENABLED
   if (hiddenoptions[SKIPMOSTUSCALAROUTPUT] == 0)
   {
@@ -1387,12 +1374,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
             e[li][j] = L[li].u_rec[j].upinf->tries;
             f[li][j] = L[li].u_rec[j].upinf->accp;
           }
+          MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
           rc = MPI_Reduce(e[li], e_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-          if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           rc = MPI_Reduce(f[li], f_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-          if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           if (currentid == HEADNODE) 
           {
             for (j = 0; j < L[li].nlinked; j++) 
@@ -1443,12 +1429,11 @@ void callprintacceptancerates (FILE * outto, int currentid)
               f[li][j] = L[li].kappa_rec[j].upinf->accp;
             }
           }
+          MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
           rc = MPI_Reduce(e[li], e_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-          if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           rc = MPI_Reduce(f[li], f_rec[li], L[li].nlinked, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-          if (rc != MPI_SUCCESS)
-          MPI_Abort(MPI_COMM_WORLD, rc);
+          if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
           if (currentid == HEADNODE) 
           {
             for (j = 0; j < L[li].nlinked; j++) 
@@ -1508,7 +1493,6 @@ void callprintacceptancerates (FILE * outto, int currentid)
     XFREE(f_rec);
   }  
 /* DONE mutation rate scalar and kappa update acceptatance rate stuff */
-
 
 // STR ancestral allele states 
 // A_rec not used as of sometime in 2010, A gets enough updates when updating genealogy

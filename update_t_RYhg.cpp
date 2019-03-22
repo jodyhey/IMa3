@@ -515,7 +515,7 @@ changet_RYhg (int ci, int timeperiod)    // after Rannala and Yang (2003)  - rub
 #endif //TURNONCHECKS
 /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+  if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
     {
     metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
   }

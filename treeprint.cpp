@@ -1461,7 +1461,7 @@ void checkdetailedbalance(double newlikelihood, double oldlikelihood, double new
 	double aforward,abackward;
 	double temp;
 	double dbforward, dbbackward;
-	if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+	if (hiddenoptions[PRIORRATIOHEATINGOFF])
 	{
 		temp = beta * (newlikelihood - oldlikelihood) + (newprior - oldprior) + (propose_old_given_new - propose_new_given_old);
 		aforward = (temp >= 0.0) ? 0.0 : temp; 
@@ -1475,7 +1475,7 @@ void checkdetailedbalance(double newlikelihood, double oldlikelihood, double new
 		temp = beta * (-(newlikelihood - oldlikelihood + newprior - oldprior)) - (propose_old_given_new - propose_new_given_old);
 		abackward = (temp >= 0.0) ? 0.0 : temp; 
 	}
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+  if (hiddenoptions[PRIORRATIOHEATINGOFF])
   {
 	  dbforward = beta * oldlikelihood + oldprior + propose_new_given_old + aforward;
 	  dbbackward = beta * newlikelihood + newprior + propose_old_given_new + abackward;
@@ -1494,7 +1494,7 @@ void checkdetailedbalance_chainswap(double likelihood_i, double likelihood_k, do
 	double aforward,abackward;
 	double temp;
 	double dbforward, dbbackward;
-	if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+	if (hiddenoptions[PRIORRATIOHEATINGOFF])
 	{
 		temp = (beta_i - beta_k) * (likelihood_k - likelihood_i);
 		aforward =  (temp >= 0.0) ? 0.0 : temp; 
@@ -1508,7 +1508,7 @@ void checkdetailedbalance_chainswap(double likelihood_i, double likelihood_k, do
 
 
 	}
-  if (hiddenoptions[PRIORRATIOHEATINGON] == 0)
+  if (hiddenoptions[PRIORRATIOHEATINGOFF])
   {
 	  dbforward = beta_i * likelihood_i + prior_i + beta_k * likelihood_k + prior_k +  aforward;
 	  dbbackward = beta_i * likelihood_k + prior_k + beta_k * likelihood_i + prior_i + abackward;

@@ -2116,3 +2116,37 @@ int nearlyequaldouble(double a, double b, double epsilon)
   }
 }
 
+#ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
+
+/*
+  usage:
+  #ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
+  writecheckoutputprogress(" location 1  var1 %d",var1)
+  #endif
+
+  alternatively, if multiple CPUS,  and only checking HEADNODE 
+  #ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
+  if (currentid == HEADNODE) writecheckoutputprogress(" location 1  var1 %d",var1)
+  #endif
+
+*/
+
+void writecheckoutputprogress(const char *fmt, ...)
+{
+  char fn[30]="writecheckoutputprogress.txt";
+  FILE *f;
+  if ((f = fopen (fn, "a")) == NULL)
+  {
+    IM_err (IMERR_CREATEFILEFAIL, "Error creating file for writing output progress");
+  }
+  va_list args;
+  va_start (args, fmt);
+  fprintf (f, "IMa3 debugging ");
+  vfprintf (f, fmt, args);
+  fprintf (f, "\n");
+  va_end (args);
+  FCLOSE(f);
+}
+
+#endif 
+

@@ -999,7 +999,7 @@ since only genealogy li is being changed at the present time,  the ratio works o
     proposalratio = migweight + slideweight + Atermsum;
     /* 5/19/2011 JH adding thermodynamic integration  - only the likelihood ratio gets raised to beta,  not the prior ratio */
 
-    if (hiddenoptions[PRIORRATIOHEATINGON] == 0) 
+    if (hiddenoptions[PRIORRATIOHEATINGOFF]) 
     {
       metropolishastingsratio = beta[ci] * likelihoodratio + priorratio + proposalratio;
     }

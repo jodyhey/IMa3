@@ -668,8 +668,8 @@ it is ok to have spaces between a flag and its values
                   hiddenoptions[STOPMOSTINTERVALOUTPUT] = 1;                  
                 if (toupper(pstr[j])=='C') // treat 'C' as READOLDMCFFILE  //jh1_17_2018
                   hiddenoptions[READOLDMCFFILE] = 1; 
-                if (toupper(pstr[j])=='D') // treat 'D' as PRIORRATIOHEATINGON //jh 4/27/2018
-                  hiddenoptions[PRIORRATIOHEATINGON] = 1; 
+                if (toupper(pstr[j])=='D') // treat 'D' as PRIORRATIOHEATINGOFF //jh 4/27/2018
+                  hiddenoptions[PRIORRATIOHEATINGOFF] = 1; 
               }
               pstr[j] = '\0';
               j--;
@@ -900,6 +900,14 @@ it is ok to have spaces between a flag and its values
     {
       IM_err (IMERR_COMMANDLINEHEATINGTERMS, "too few chains specified in heating model,  minimum is %d",MINNUMCHAINS);
     }
+
+    if (calcoptions[CALCMARGINALLIKELIHOOD])
+    {
+      hiddenoptions[PRIORRATIOHEATINGOFF] = 1;
+      if (Hbp)
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " -hb cannot be used with used with calcoptions[CALCMARGINALLIKELIHOOD]");
+    }
+
   }
   /* setting  mcmc step intervals:
     regardless of sampling phylgoenies or not
@@ -1771,7 +1779,7 @@ void start (int argc, char *argv[], int currentid)
 #define GENEALOGYUPDATEINTERVAL 0  
 #define POPTOPOLUPDATEINTERVAL 0
 #define USCALARUPDATEINTERVAL  9
-#define CHAINSWAPINTERVAL 0
+#define CHAINSWAPINTERVAL 4  //0  try every 5th step , seems ok,  3/15/2019
 #define POPRYUPDATEINTERVAL  1
 #define POPNWUPDATEINTERVAL  1
 #define POPSLIDEUPDATEINTERVAL 1 
@@ -3500,12 +3508,14 @@ int
 whichiscoldchain (void)
 {
 	int which = UNDEFINEDINT;
-	for (int i = 0; i < numchainspp; i++) {
-		if (beta[i] == 1.0) {
+	for (int i = 0; i < numchainspp; i++) 
+ {
+		if (beta[i] == 1.0) 
+  {
 			which = i;
+   break;
 		}
 	}
-	//else return a -ve flag
 	return which;
 }
 
@@ -3945,6 +3955,7 @@ printf("printed run basics\n");
     }
 
     callprintacceptancerates (outfile, currentid); 
+
 #ifdef STDTEST
 printf("printed acceptance rates\n");
 #endif
@@ -3981,6 +3992,7 @@ printf("printed autoc table\n");
       if (numprocesses > 1)
       {
 #ifdef MPI_ENABLED
+        MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
         rc = MPI_Reduce(poptopologycounts, totalpoptopologycounts, numpoptopologies,MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 			     if (rc != MPI_SUCCESS)  MPI_Abort(MPI_COMM_WORLD, rc);
         rc = MPI_Reduce(poptopologyproposedlist, poptopologyproposedlist_rec, numpoptopologies , MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -4080,6 +4092,9 @@ printf("found peaks\n");
 /*   printoutput()  print histograms*/  
   if (currentid == HEADNODE) 
   {
+#ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
+if (currentid == HEADNODE) writecheckoutputprogress("made it to here: 4");
+#endif
     printhistograms (outfile, mcmcrecords, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
 #ifdef STDTEST
 printf("printed histograms\n");
@@ -4242,7 +4257,8 @@ void output_update_scalars(int z,int currentid, char updatestr[])
 
 #ifdef MPI_ENABLED
 /* reduction operation for updatescalarinfo -  ignore type, just trust that it's our struct type */
-void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo *inout, int *len, MPI_Datatype *type){
+void jh_mpi_sum_scalerstruct(struct updatescalarinfo *in,struct updatescalarinfo *inout, int *len, MPI_Datatype *type)
+{
   for (int i=0; i<*len; i++) 
   {
     inout[i].updatescalarval += in[i].updatescalarval;            
@@ -4380,18 +4396,16 @@ void intervaloutput (FILE * outto, int currentid)
    if (modeloptions[POPTREETOPOLOGYUPDATE]==1) // do the reduction for all processors 
    {
 #ifdef MPI_ENABLED
-  if (numprocesses > 1)
-  {
-	  rc = MPI_Reduce(&totaltopolupdates, &totaltopol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		if (rc != MPI_SUCCESS)
-			MPI_Abort(MPI_COMM_WORLD, rc);
-  	rc = MPI_Reduce(&chain0topolupdates, &chain0topol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-	  if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-		rc = MPI_Reduce(&chain0topolswaps, &chain0topolswaps_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-		if (rc != MPI_SUCCESS)
-				MPI_Abort(MPI_COMM_WORLD, rc);
-   }
+    if (numprocesses > 1)
+    {
+      MPI_Barrier(MPI_COMM_WORLD); // apparently this is recommended when using MPI_Reduce
+	     rc = MPI_Reduce(&totaltopolupdates, &totaltopol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		    if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
+  	   rc = MPI_Reduce(&chain0topolupdates, &chain0topol_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	     if (rc != MPI_SUCCESS)	MPI_Abort(MPI_COMM_WORLD, rc);
+		    rc = MPI_Reduce(&chain0topolswaps, &chain0topolswaps_rec, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		    if (rc != MPI_SUCCESS)		MPI_Abort(MPI_COMM_WORLD, rc);
+    }
 #endif	
     if (numchainstotal > 1 && currentid == HEADNODE) 
     {
