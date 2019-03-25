@@ -20,7 +20,7 @@ ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_18.out  -q10 -m1 -t1.5 -b10000
 ima3_stdtest -i ima3test4pop5loci.u  -o ima3_test_19.out  -q10 -m1 -t1.5 -b100000 -L5000  -j0 -r5
 ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_20.out  -q10 -m1 -t1.5 -b100000 -L5000  -j01
 ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_21.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013  -hn8 -ha0.95 -hb0.9
-ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_22.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013  -hn12 -ha0.97 
+ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_22.out  -q10 -m1 -t1.5 -b30000  -L5000  -j013  -hn100  -ha0.999
 ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_23.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013  -hn12 -c4
 ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_24.out  -q10 -m1 -t1.5 -b100000 -L5000  -j012
 ima3_stdtest -i ima3test4pop2loci.u  -o ima3_test_25.out  -q10 -m1 -t1.5 -b100000 -L5000  -j013

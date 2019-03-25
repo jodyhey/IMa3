@@ -74,7 +74,7 @@
 
 
 #define IMA3RELEASEVERSION  "1.11"  // update only when a release is made 
-/* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default 
+/* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default, set swapchain interval to every 5th step  */ 
 /* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
 /* set to 1.01  on 1/22/2019  various bug fixes and small enhancements for catching things when reading input files 
     zero changes to analyses */ 
@@ -89,7 +89,7 @@
 #define INDEVELOPMENT 
 #endif
 
-#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
