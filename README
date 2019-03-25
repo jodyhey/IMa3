@@ -1,3 +1,10 @@
+3/25/2019
+The latest update on github has a couple changes that should improve mixing when multiple heated chains are used. 
+The default heating model has been changed with the result that the swap rate between chains will be lower. 
+This will probably require a change for most users, in which the -hb option is used (if it was not before) or the -hb value is raised. 
+While this may seem that swap rates will go down,  the net effect after some testing is that this improves mixing. 
+Also the interval between swap attempts has been raised, as this seems to help as well.
+
 3/6/2018
 
 Fixed a bug that got into the code in late may 2018 when the default
