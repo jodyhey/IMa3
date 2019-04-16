@@ -363,7 +363,7 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("       If fixed phylogeny,LOAD-GENEALOGY mode (-r0, -v), # genealogies to load from file(s)\n");
       printf ("	    If floating point: value = the time in hours between outputs. \n");
       printf ("         Run continues until file " "IMrun" " is absent from directory, or does not begin with 'y'\n");
-      printf ("-m  Migration prior value (maximum for uniform,  mean if exponential distribution is used) \n");
+      printf ("-m  Migration prior value (maximum for uniform,  mean of exponential distribution is used) \n");
       printf ("-o  Output file name (no spaces) default is 'outfile.txt' \n");
       printf ("-p  Output options: \n");
       printf ("    0 Turn off trend plots in outfile (default is to print trend plots)\n");
@@ -4092,10 +4092,13 @@ printf("found peaks\n");
 /*   printoutput()  print histograms*/  
   if (currentid == HEADNODE) 
   {
+
 #ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
-if (currentid == HEADNODE) writecheckoutputprogress("made it to here: 4");
+  if (currentid == HEADNODE) writecheckoutputprogress("made it to here: 4");
 #endif
+
     printhistograms (outfile, mcmcrecords, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
+
 #ifdef STDTEST
 printf("printed histograms\n");
 #endif

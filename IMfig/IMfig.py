@@ -24,7 +24,7 @@ try:
     check_colormath = True
 except ImportError:
     check_colormath = False
-    
+
 
 ## some users won't have PIL
 check_PIL = False
@@ -1867,6 +1867,11 @@ def scancommandline(args):
             gv["maximumxpoint"] = gv["maximumxpoint"] * f
         else:
             gv["localxscale"] = f
+    def lflag(tempval):
+        #  added 9/18/2017 based simply on xflag
+        #  runs with values less than 1  but does weird things
+        f = float(tempval)
+        gv["maximumypoint"] = gv["maximumypoint"] * f
 
     def yflag(tempval):
         gv["localyscale"] = float(tempval)
@@ -1985,11 +1990,11 @@ def scancommandline(args):
         return
 
     cldic = {'a': aflag, 'b': bflag, 'c': cflag, 'd': dflag, 'e': eflag, 'f': fflag,
-             'g': gflag, 'i': iflag, 'j': jflag, 'k': kflag, 'm': mflag, 'n': nflag, 'o': oflag,
+             'g': gflag, 'i': iflag, 'j': jflag, 'k': kflag, 'l': lflag, 'm': mflag, 'n': nflag, 'o': oflag,
              'p': pflag, 'q': qflag, 'r': rflag, 's': sflag, 't': tflag, 'u': uflag, 'v': vflag, 'w': wflag,
              'x': xflag, 'y': yflag, 'z': zflag}
     flags_must_use = 'i'
-    flags_with_values = "cbfgijmoptxynw"
+    flags_with_values = "cbfgijlmoptxynw"
     flags_without_values = "adesuvkqrz"
     cmdstr = " ".join(args)
     checkallflags(flags_with_values, flags_without_values, cldic)
@@ -2041,6 +2046,7 @@ def printcommandset():
     print("-i : input file name")
     print("-j : arrow width, default = 1")
     print("-k : print population names on an angle")
+    print("-l expand/shrink height by a positive scalar, >1 means taller, <1 means shorter")
     print("-m : options for printing of arrows and 2Nm values for migration :")
     print("      -m x :  do not print migration arrows")
     print("      -m a : 2Nm migration arrows for all cases when both m > 0 and 2Nm > 0")
@@ -2059,7 +2065,7 @@ def printcommandset():
     print("-v : multiple colors for population boxes, red arrows for migration (default grayscale)")
     if check_PIL:
         print("-w : file image width, integer multiple of 720 pixels (only if using -c) ")
-    print("-x : adjust width of plot, >1 means wider, <1 means narrower")
+    print("-x : expand/shrink width of plot by a positive scaler, >1 means wider, <1 means narrower")
     print("-y : adjust height of splittimes, relative to bottom of figure, max = 1.")  # not clear what this does  5/12/2016
     print("-z : exclude the ghost population from the figure")
 
