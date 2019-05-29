@@ -1102,7 +1102,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
         FP "\n\nPROBLEM CALCULATING HISTOGRAMS ON DEMOGRAPHIC SCALES\n");
         if (runoptions[LOADRUN] && (scaleumeaninput <= 0))
           FP " If run in LOADMODE,  user must provide the geometric mean mutation scalar estimate \n");
-        if (uratecount == 0)
+        if (uratecount == 0) // bug here,  uratecount is not initialized sometimes  ?? 
           FP " Mutation rates not provided in input file - at least one locus must have a mutation rate provided \n");
       }
       else

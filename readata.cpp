@@ -556,7 +556,7 @@ readseqSW (FILE * infile, int li, int currentid)
   {
     if (hiddenoptions[SWINPUTOPTION])     // alernate input option  only works if there is only one SW portion
     {
-      assert (0);
+      //assert (0);
       c = &textline[0];
       scanfval = sscanf (c, "%s ", &tempname[0]);
       strncpy (gName, textline, 10);

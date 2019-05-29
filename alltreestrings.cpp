@@ -13,8 +13,9 @@ uses a lot of strings of fixed length to keep dynamic memory stuff down.
 int numuniquenodes[] = {0,0,0,3,10,25,56,119,246,501};  /* number of unique internal branches,  
      internal branches that occur at least once among all the possible trees (not counting entire tree or leaf nodes , equal to 2^n- (n+2)   
      also this is extern in output.cpp*/
-extern int numtreesarray[];  // =  {0,1,1,3,18,180,2700,56700,1587600};  /* number of possible ordered trees,  for up to 7 populations */
-extern int numdistinctpopulationpairs[]; // = {0,0,1,6,25,90,301,966,3025}; /* number of distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */
+
+extern int numtreesarray[];  // =  {0,1,1,3,18,180,2700,56700,1587600,57153600};  /* number of possible ordered trees,  for up to 8 populations */
+extern int numdistinctpopulationpairs[]; // = {0,0,1,6,25,90,301,966,3025,9330,28501}; /* number of distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */
 
 /*********** local to this file  ***************/
 

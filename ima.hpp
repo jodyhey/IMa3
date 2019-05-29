@@ -216,8 +216,8 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define DEFAULTNUMCHAINS 1
 #define MINNUMCHAINSPERPROCESSOR 2 // changed to 2 after some testing on 10/4/2017  4  // must have at least 4 for swaps within chains
 #define MINNUMCHAINS  4
-#define MAXPOPS 9 // 10     set this back to 9 , have not tested it with this many        // MAXPOPS cannot exceed 10 because the treestring functions assume populations and nodes are represented by single integers
-#define MAXPOPS_PHYLOGENYESTIMATION 9  // actually 8,  but 9 prevents a crash  (with ghost 8 becomes 9) for larger numbers the list of possble trees just gets too large. 
+#define MAXPOPS 9 // MAXPOPS cannot exceed 9 because the treestring functions assume populations and nodes are represented by single integers
+#define MAXPOPS_PHYLOGENYESTIMATION 9  // 9 without a ghost,  8 with a ghost.  larger values cause numtreesarray[] to get extremely large
 #define MAXPERIODS (MAXPOPS+1)
 #define MAXTREEPOPS  (2*MAXPOPS - 1)
 #define MAXUPPOPS    2           /* added for hidden genealogy stuff.  maximum number of populations that can come together in the tree at one time */

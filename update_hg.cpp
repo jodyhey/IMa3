@@ -118,7 +118,7 @@ storeoldedgeshg (int ci, int li, int edge, int sisedge, int downedge)
       i++;
       if (i > MIGMAX)
       {
-        IM_err (IMERR_TOOMANYMIG, "step %d: locus [%d] a[j] [%d] mig %d > %d",
+        IM_err (IMERR_TOOMANYMIG, " in storeoldedgeshg() 1,step %d: locus [%d] a[j] [%d] mig %d < %d",
                 step, li, a[j], MIGMAX, i);
       }
       copyedgehg[j].mig[i] = gtree[a[j]].mig[i];
@@ -130,7 +130,7 @@ storeoldedgeshg (int ci, int li, int edge, int sisedge, int downedge)
       i++;
       if (i > MIGMAX)
       {
-        IM_err (IMERR_TOOMANYMIG, "step %d: locus [%d] a[j] [%d] mig %d > %d",
+        IM_err (IMERR_TOOMANYMIG, " in storeoldedgeshg() 2,step %d: locus [%d] a[j] [%d] mig %d < %d",
                 step, li, a[j], MIGMAX, i);
       }
       copyedgehg[j].mighg[i] = gtree[a[j]].mighg[i];

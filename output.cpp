@@ -731,7 +731,7 @@ void asciicurve (FILE * outfile, struct plotpoint *a, char *qlabel,
   {
     xmax = -1;
     i = GRIDSIZE - 1;
-    while (xmax == -1)
+    while (xmax == -1 && i >= 0) // fix bug, added i condition  5/29/2019 
     {
       if (fabs (a[i].y) > ASCIICURVEMINVAL)
         xmax = i;

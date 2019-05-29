@@ -75,10 +75,12 @@ static time_t starttime;
 
 /******* variables that are extern in some other files *********/
 
-/* arrays that are indexed by numpops,  all should have length MAXPOPS_PHYLOGENYESTIMATION + 1 */
-int numdistinctpopulationpairs[] = {0,0,1,6,25,90,301,966,3025,9330}; /* total number of possible distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */  
-int numtreesarray[] = {0,1,1,3,18,180,2700,56700,1587600}; // numer of distinct tree topologies with different #'s of populations
-int hashvalmaxes[] = {0,0,2,10,50,100,300,1000,3000,10000}; // hashvalue range 
+/* arrays that are indexed by numpops,  all should have length at least MAXPOPS_PHYLOGENYESTIMATION + 1 
+  5/16/2019   MAXPOPS_PHYLOGENYESTIMATION changed from 8 (with a ghost)  or 9 (without a ghost)
+*/
+int numdistinctpopulationpairs[] = {0,0,1,6,25,90,301,966,3025,9330,28501}; /* total number of possible distinct pairs of populations that could engage in gene flow (don't share any descendant pops) */  
+int numtreesarray[] = {0,1,1,3,18,180,2700,56700,1587600,57153600}; // numer of distinct tree topologies with different #'s of populations
+int hashvalmaxes[] = {0,0,2,10,50,100,300,1000,3000,10000,30000}; // hashvalue range 
 
 #ifdef MPI_ENABLED
 MPI_Datatype MPI_updatescalar;  // used for passing updatescalar structures among processes
@@ -822,9 +824,9 @@ it is ok to have spaces between a flag and its values
   if (infilename==0)
     IM_err (IMERR_READFILEOPENFAIL,  "pointer to input file not set,  check -i on command line");
   npops = imaInfileNpops (infilename);
-  if (npops < 1 || npops > 10)
+  if (npops < 1 || (npops + modeloptions[ADDGHOSTPOP] > MAXPOPS))
   {
-    IM_err (IMERR_COMMANDLINEFORMAT, "Number of populations must be nonnegative and less than 10");
+    IM_err (IMERR_COMMANDLINEFORMAT, "Toal number of populations, including a ghost population, must be nonnegative and less than or equal to %d",MAXPOPS);
   }
   if (npops == 1)
   {
@@ -2254,11 +2256,11 @@ void reset_after_burn (int currentid)
 
   burninsteps = step - 1;
   runsteps = 0;
-  if (cdurationmode == TIMEINF)
-  {
+  //if (cdurationmode == TIMEINF) // removed this condition, caused a bug 5/29/2019
+  //{
     time (&lasttime);
     time (&timer);
-  }
+  //}
 #ifdef MPI_ENABLED
 		if (numprocesses > 1)	
   {
@@ -2488,6 +2490,11 @@ int run (int currentid)
 	       }
       case TIMEINF:
       {
+          if (maxedoutgenealogysave) // moved this here,  was not stopping when maxedoutgenealogysave ==1 5/29/2019 
+	         {
+		          return(0);
+	         }
+
         if (checkinterval < CHECKINTERVALSTEPS)
         {
           checkinterval++;
@@ -2495,11 +2502,8 @@ int run (int currentid)
         }
         else
         {
+
           checkinterval = 0;
-          if (maxedoutgenealogysave)
-	         {
-		          return(0);
-	         }
           time (&timer);
 #ifdef MPI_ENABLED
 		        if (numprocesses > 1)	
@@ -3591,8 +3595,8 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 #endif
 
   }
-  else
-  {
+ /* else   fixed a bug that was stopping the saving of the last genealogy when genealogysamples reached MAXGENEALOGIESTOSAVE  5/29/2019 */
+ //{
 	int z = whichiscoldchain();
 	if (currentid == HEADNODE) {
 		if ( z >= 0) {
@@ -3666,7 +3670,7 @@ void savegenealogyinfo (int currentid)        // use floats to save space
 #endif  //MPI_ENABLED
 	
 	return;
-  }
+  //}
 }                               /* savegenealogyinfo */
 
 

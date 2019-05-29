@@ -20,7 +20,10 @@ valgrind: $(SKIPTINYFILES)
 
 gprof:  $(SKIPTINYFILES)
 	$(CC2) $(SKIPTINYFILES) -U MPI_ENABLED -D NDEBUG -o IMa3_gprof $(FLAGS) -pg -g -no-pie
+
+gdb:  $(SKIPTINYFILES)
+	$(CC2) $(SKIPTINYFILES) -U MPI_ENABLED -D NDEBUG -o IMa3_gdb $(FLAGS) -g
 	
 clean:
-	rm IMa3 IMa3_singlecpu IMa3_stdtest
-	rm *.o
+#	rm IMa3 IMa3_singlecpu IMa3_stdtest IMa3_testbed IMa3_debug IMa3_valgrind IMa3_gprof IMa3_gdb
+	rm *.o $(objects)
