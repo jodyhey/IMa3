@@ -1,3 +1,6 @@
+5/29/2019
+Fixed bugs associated with sampling too many genealogies. 
+
 3/25/2019
 The latest update on github has a couple changes that should improve mixing when multiple heated chains are used. 
 The default heating model has been changed with the result that the swap rate between chains will be lower. 
