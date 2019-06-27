@@ -1,3 +1,7 @@
+6/26/2019
+	made some changes to prevent crash due to filled migration array
+
+	
 5/29/2019
 Fixed bugs associated with sampling too many genealogies. 
 
