@@ -128,7 +128,7 @@ static const char *simerrmsg[] = {
   /* 14 */ "option number on command line not allowed",
   /* 15 */ "problem w/ number of loci indicated in data file",
   /* 16 */ "problem in specifying nested models for LLR tests",
-  /* 17 */ "",
+  /* 17 */ "problem with number of sampled gene copies",
   /* 18 */ "mutation range priors to constraining - not able to set starting values",
   /* 19 */ "product of mutation scalars not equal to 1",
   /* 20 */ "problem with mutation rate scalars",
@@ -556,6 +556,7 @@ If cmm + i >= MIGMAX  return the largest value of i consistent with  cmm + i <= 
 
 #define USENORMAL  100.0  // only for very large parameter values, because it is not a perfect approximation
 #define MINPP 0.25
+
 int
 poisson (double param, int condition,int cmm)
 {
@@ -563,6 +564,8 @@ poisson (double param, int condition,int cmm)
   int i;
   int stop;
 
+  //param = DMIN(param,(MIGMAX-cmm)/10); // 6/26/2019 cut param way back to make it unlikely that it will propose a value that gets near MIGMAX 
+  assert (param >= 0); 
   switch (condition) // check incoming cmm values to see if they allow room
   {
   case -1:

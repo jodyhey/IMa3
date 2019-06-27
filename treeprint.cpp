@@ -474,6 +474,9 @@ gtreeprint (int ci, int li/*, int step , int callsource */ )
   struct treevals *tvmhgptr;
   int checkfpop;
 
+  if (ci >= numchainstotal || li >= nloci)
+    return; 
+
 /*	switch (callsource)
 		{
 		case 8 : strcpy(sourcestring,"make_JOINT_IS_SW()"); break;

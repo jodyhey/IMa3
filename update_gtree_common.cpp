@@ -1421,6 +1421,8 @@ mwork_single_edge (int ci, struct edgemiginfo *edgem,struct edgemiginfo *oldedge
       while (C[ci]->poptree[edgem->temppop].e <= periodi && C[ci]->poptree[edgem->temppop].e != -1) // is this a problem for hg stuff
         edgem->temppop = C[ci]->poptree[edgem->temppop].down;
     r = calcmrate(oldedgem->mp[periodi],oldedgem->mtimeavail[periodi])*edgem->mtimeavail[periodi]; //9/2/10
+    if (edgem->mpall >= REDUCEMIGRATECOUNT)  //6/26/2019  cut back mrate if the current count is high 
+      r /= REDUCEMIGSCALAR;
     if (periodi < edgem->e)           // can do migration to any available pop
     {
       /* bug ??  why does the call to simmpath not return the last population state of the edge?   
@@ -1528,6 +1530,8 @@ mwork_two_edges(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sisem, st
           while (C[ci]->poptree[mm->temppop].e <= periodi && C[ci]->poptree[mm->temppop].e != -1) // is this a problem for hg stuff
             mm->temppop = C[ci]->poptree[mm->temppop].down;
         r = calcmrate(oldmm->mp[periodi],oldmm->mtimeavail[periodi])*mm->mtimeavail[periodi];//9/2/10
+        if (mm->mpall >= REDUCEMIGRATECOUNT)   //6/26/2019  cut back mrate if the current count is high 
+          r /= REDUCEMIGSCALAR;
         mm->mp[periodi] = poisson (r, -1,mm->cmm);
         if (mm->mp[periodi] < 0)
           return -1;
@@ -1600,6 +1604,8 @@ mwork_two_edges(int ci, struct edgemiginfo *edgem, struct edgemiginfo *sisem, st
       mm = (ii==0) ? edgem : sisem;
       oldmm = (ii==0) ? oldedgem : oldsisem;
       r = calcmrate(oldmm->mp[periodi],oldmm->mtimeavail[periodi])*mm->mtimeavail[periodi];//9/2/10
+      if (mm->mpall >= REDUCEMIGRATECOUNT)  //6/26/2019  cut back mrate if the current count is high 
+        r /= REDUCEMIGSCALAR;
       if (npops - periodi == 2)
       {
         if (mm->temppop == mm->fpop)      //even

@@ -647,6 +647,8 @@ parse_locus_info (int li, int *uinext, char *cc, int *fpstri, char fpstr[], doub
     scanfval = sscanf (cc, "%d", &L[li].samppop[i]);
     cc = nextnonspaceafterspace (cc);
     L[li].numgenes += L[li].samppop[i];
+    if (L[li].numgenes >= MAXGENES) // added 6/4/2019
+      IM_err (IMERR_INFILEFAIL_NUMGENES, "locus %  number of sampled copies exceeds maximum %s\n", li, MAXGENES);
   }
   total_numgenes += L[li].numgenes;
   SP "  %d\t%s", li, L[li].name);

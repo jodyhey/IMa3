@@ -671,6 +671,8 @@ update_mig_tNW (int li, struct edge *gtree, int period)
         if (period_a < lastperiodnumber)
         {
           minfo[j].mrate[i] = calcmrate(minfo[j].mcount[i],minfo[j].mtime[i])*minfo[j].mtime[i];
+          if (k >= REDUCEMIGRATECOUNT) //6/26/2019  cut back mrate if the current count is high 
+            minfo[j].mrate[i] /= REDUCEMIGSCALAR;
         }
         else
         {
@@ -702,6 +704,8 @@ update_mig_tNW (int li, struct edge *gtree, int period)
         if (period_b < lastperiodnumber)
         {
           minfo[j].mrate_r[i] = calcmrate(minfo[j].mnew[i],minfo[j].mtime[i])*minfo[j].mtime[i];
+          if (k >= REDUCEMIGRATECOUNT)   //6/26/2019  cut back mrate if the current count is high 
+            minfo[j].mrate_r[i] /= REDUCEMIGSCALAR;
         }
         else
         {
@@ -876,6 +880,7 @@ changet_NW (int chain, int timeperiod)
   checkupdatescalarer(&C[ci]->NWwidthinfo[timeperiod]);
   mforward = mreverse = 0;
   ci = chain;
+
   /* select a new time */
   t_u = (timeperiod == 0) ? 0 : C[ci]->tvals[timeperiod - 1];
   t_d = (timeperiod == (lastperiodnumber - 1)) ? TIMEMAX : C[ci]->tvals[timeperiod + 1];
@@ -906,12 +911,17 @@ changet_NW (int chain, int timeperiod)
     {
       gtree = G->gtree;
       migweight += update_mig_tNW (li, gtree, timeperiod);
+
       C[ci]->tvals[timeperiod] = newt;  // reset for treeweight() calculations
       C[ci]->poptree[C[ci]->droppops[timeperiod + 1][0]].time = \
         C[ci]->poptree[C[ci]->droppops[timeperiod + 1][1]].time = newt;
+
       setzero_genealogy_weights (&G->gweight);
+
 #ifdef TURNONCHECKS
       checkgenealogy(0,0,4);
+
+
 #endif //TURNONCHECKS
 
       int treeweightcallcode = 4;  // a debugging code,  if treeweight has an error results are written to an output file with this code 
@@ -923,7 +933,9 @@ changet_NW (int chain, int timeperiod)
       C[ci]->poptree[C[ci]->droppops[timeperiod + 1][0]].time = \
         C[ci]->poptree[C[ci]->droppops[timeperiod + 1][1]].time = oldt;
     }
+
     sum_treeinfo (&C[ci]->allgweight, &G->gweight);
+
   }
   if (tw < 0)
      goto rejectjump;  // don't like to do this kind of jump,  but need to reject if treeweight() fails 
@@ -934,6 +946,7 @@ changet_NW (int chain, int timeperiod)
   C[ci]->poptree[C[ci]->droppops[timeperiod + 1][0]].time = \
     C[ci]->poptree[C[ci]->droppops[timeperiod + 1][1]].time = newt;
 //initialize_integrate_tree_prob (ci, &C[ci]->allgweight, &C[ci]->allpcalc); 
+
   integrate_tree_prob (ci, &C[ci]->allgweight, &holdallgweight_t_NW,&C[ci]->allpcalc, &holdallpcalc_t_NW);
 
   /* calculate the MH term - depends ratio of prior probabilities and hastings term for simulated migration events */

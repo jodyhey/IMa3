@@ -23,6 +23,11 @@ basic instructions:
 		run ima3_stdtest.sh
 
 	current standard is 3_5_2019
+
+6/26/2019
+	made some changes to prevent crash due to filled migration array
+	stdtest results looked unchanged
+	
 	
 3/25/2019
 	the 3/21/2019 run looked good.  only test22 looked different from the 3/8/2019 runs

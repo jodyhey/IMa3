@@ -65,14 +65,6 @@
       only commits to github that will be done will be release versions  (i.e. #define IMA3RELEASE)
  */
 
-//#define MPI_ENABLED  // usually done in compiler settings or the command line 
-//#undef MPI_ENABLED
-
-#ifdef MPI_ENABLED
-#include <mpi.h>
-#endif
-
-
 #define IMA3RELEASEVERSION  "1.11"  // update only when a release is made 
 /* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default, set swapchain interval to every 5th step  */ 
 /* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
@@ -81,7 +73,6 @@
 
 #define IMA3RELEASE   //default, gets posted with this undefined
 
-
 #ifdef IMA3RELEASE 
 #undef INDEVELOPMENT
 #else
@@ -89,7 +80,27 @@
 #define INDEVELOPMENT 
 #endif
 
-//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+/*-------------*/
+/* MPI_ENABLED */
+/*-------------*/
+
+//#define MPI_ENABLED  // usually done in compiler settings or the command line 
+//#undef MPI_ENABLED
+
+#ifdef MPI_ENABLED
+#include <mpi.h>
+#endif
+
+/*----------*/
+/* STDTEST  */
+/*----------*/
+
+/* #define RANDOM_NUMBERS_FROM_FILE   coded by Janeen, used to be called SANITY_TEST
+ * for testing only. Usually used on testbed.  Avoids use of random number generator to make things more repeatable. 
+ * read a random number from a file "randNums" which contains a list of random numbers (in ascii)
+ * then convert the ascii to unsigned long and return.*/ 
+
+#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
@@ -100,7 +111,11 @@
 #undef IMA3RELEASE
 #endif
 
-/* use XMLOUTPUT when running in IMgui */ 
+/*-----------*/
+/* XMLOUTPUT */
+/*-----------*/
+
+/* use XMLOUTPUT when running in IMgui  or when doing STDTEST*/ 
 
 //#define XMLOUTPUT
 
@@ -110,11 +125,9 @@
 #endif
 
 
-/* #define RANDOM_NUMBERS_FROM_FILE   coded by Janeen, used to be called SANITY_TEST
- * for testing only. Usually used on testbed.  Avoids use of random number generator to make things more repeatable. 
- * read a random number from a file "randNums" which contains a list of random numbers (in ascii)
- * then convert the ascii to unsigned long and return.*/ 
-
+/*--------------------------------------------------------------------*/
+/* DEBUGGING: DEBUG, TURNONCHECKS, WRITECHECKOUTPUTPROGRESSDEBUGFILE  */
+/*--------------------------------------------------------------------*/
 #if defined(_DEBUG) && !defined(DEBUG) // defines DEBUG by default,  _DEBUG is visual studio macro // will be overridden by compiling with -D NDEBUG in release mode
 #define DEBUG
 #endif /* _DEBUG or DEBUG */
@@ -132,6 +145,15 @@
 
 //#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
 
+#undef WRITECHECKOUTPUTPROGRESSDEBUGFILE  // use to write to a file for debugging output file generation on cluster 
+// see void writecheckoutputprogress(const char *fmt, ...)  
+//#define WRITECHECKOUTPUTPROGRESSDEBUGFILE 
+
+
+/*---------*/
+/* STDTEST */
+/*---------*/
+
 #ifdef STDTEST
 #undef TURNONCHECKS   // turn off debugging check when running standard tests
 #endif 
@@ -139,9 +161,11 @@
 #define TURNONCHECKS
 #endif 
 
-#undef WRITECHECKOUTPUTPROGRESSDEBUGFILE  // use to write to a file for debugging output file generation on cluster 
-// see void writecheckoutputprogress(const char *fmt, ...)  
-//#define WRITECHECKOUTPUTPROGRESSDEBUGFILE 
+
+/*----------------------*/
+/* Visual Leak Detector */
+/*----------------------*/
+
 
 // vld - visual leak dectector for finding memory leaks,  only runs under visual studio on windows
 // output is not appearing in the IDE,  so need to look in  memory_leak_report.txt
@@ -227,6 +251,8 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
 #define LOGFACTMAX  100001   // large number for logarithm of factorial,  needed in various contexts,  but must be big to handle large sample sizes if they come up
 #define MINVALFROMHYPERPRIOR 0.0001  // only used for selecting new hyperpriorvalue, as values to close to 0 cause integration problems. 
 #define MINPOPSFORDISTANCE 6 // minimum number of npops for which to use topology distance value rather than just topology number 
+
+
 /* 
   MIGMAX is the maximum number of migration events on an edge. 
   MIGMAX has a pretty big effect on how much memory is used.
@@ -234,10 +260,24 @@ but it does not seem to work when compiled on linux, changed _forceinline  to in
   and we will want to be able to have lots of migration in heated models 
   particularly when updating topologies
   settle on 50 6/7/2016
+  this is much less than in IMa2 which has 5000
+  seems like the very large numbers happen mostly with STR data and high priors on migration
+  STR data and c0  will not return flat curves when MIGMAX is 50  unless the migration prior is clearly less than the inverse of the population size prior 
+  add REDUCEMIGRATECOUNT 
+
+  6/26/2019 - trying to stop the adding of too many migration events 
+  add REDUCEMIGRATECOUNT
+  when the number of migration events exceeds this value the migration rate is dropped by a factor of REDUCEMIGSCALAR
+  this applies in update_t_NW  and in update_gtree_common 
+  quite awkard   
 */
 #define MIGMAX 50              // number of migration events that can be in .mig[] and .mighg[] arrays  
+#define REDUCEMIGRATECOUNT  45    // 6/26/2019 when the number of migration events exceeds this value the migration rate is dropped by a factor of REDUCEMIGSCALAR
+#define REDUCEMIGSCALAR  100.0    // 6/26/2019 amount to reduce the migration rate when the count exceeds REDUCEMIGRATECOUNT
 #define MIGARRAYSIZE  (MIGMAX + 1)  //  +1 allows for last migration element at end of array to be terminator,  with -1 for time 
 #define MPRIORMIN 0.000001      /* small value for setting upper bound on migration to (near) zero */
+
+
 #define KAPPAMAX  100           /* maximum value of HKY parameter */
 #define RECORDINTERVALDEFAULT 10     // default # of steps between recording values of things - used to call record()
 #define SAMPLEGENEALOGYINTERVALDEFAULT 100  // default # of steps between recording information about the genealogies
@@ -738,6 +778,8 @@ enum
 
   IMERR_INFILEFAIL_NLOCI = 15,
   IMERR_NESTEDMODELLSPECIFYLFAIL = 16,
+  IMERR_INFILEFAIL_NUMGENES = 17,
+
 
   IMERR_MUTSCALARPRIORRANGEFAIL = 18,
   IMERR_MUTSCALEPRODUCTFAIL = 19,

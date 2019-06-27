@@ -826,7 +826,7 @@ it is ok to have spaces between a flag and its values
   npops = imaInfileNpops (infilename);
   if (npops < 1 || (npops + modeloptions[ADDGHOSTPOP] > MAXPOPS))
   {
-    IM_err (IMERR_COMMANDLINEFORMAT, "Toal number of populations, including a ghost population, must be nonnegative and less than or equal to %d",MAXPOPS);
+    IM_err (IMERR_COMMANDLINEFORMAT, "Total number of populations, including a ghost population, must be nonnegative and less than or equal to %d",MAXPOPS);
   }
   if (npops == 1)
   {
