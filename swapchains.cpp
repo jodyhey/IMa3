@@ -412,7 +412,8 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
     x++;
 				break;
 			case HEVEN: // default for calculating marginal likelihood // no longer default
-      h = 1.0 / (numchainstotal - 1);
+      //h = 1.0 / (numchainstotal - 1);
+      h = (1.0  - hval2) / (numchainstotal - 1); // 7/26/2019 changed so a lower bound can be used with EVEN 
 						allbetas[x] = 1.0 - i * h;	
 					x++;
 					break;

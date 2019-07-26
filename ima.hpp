@@ -100,7 +100,7 @@
  * read a random number from a file "randNums" which contains a list of random numbers (in ascii)
  * then convert the ascii to unsigned long and return.*/ 
 
-#define STDTEST //  in visual studio, uncomment this to compile for testbed 
+//#define STDTEST //  in visual studio, uncomment this to compile for testbed 
 
 #ifndef STDTEST //  STDTEST can be defined at compile time or in the code 
 #undef STDTEST
@@ -109,7 +109,9 @@
 #define RANDOM_NUMBERS_FROM_FILE  // STDTEST and RANDOM_NUMBERS_FROM_FILE should both be defined or both not
 #define XMLOUTPUT
 #undef IMA3RELEASE
+#undef TURNONCHECKS   // turn off debugging check when running standard tests
 #endif
+
 
 /*-----------*/
 /* XMLOUTPUT */
@@ -143,29 +145,27 @@
 #define TURNONCHECKS
 #endif 
 
-//#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
-
-#undef WRITECHECKOUTPUTPROGRESSDEBUGFILE  // use to write to a file for debugging output file generation on cluster 
-// see void writecheckoutputprogress(const char *fmt, ...)  
-//#define WRITECHECKOUTPUTPROGRESSDEBUGFILE 
-
-
-/*---------*/
-/* STDTEST */
-/*---------*/
-
-#ifdef STDTEST
-#undef TURNONCHECKS   // turn off debugging check when running standard tests
-#endif 
 #ifdef CLTURNONCHECKS // allow for command line turn on of TURNONCHECKS, i.e. -D CLTURNONCHECKS // debugging files must be included if using this
 #define TURNONCHECKS
 #endif 
+
+//#undef TURNONCHECKS   // turn off debugging check functions (mostly in treeprint.cpp and chainprint.cpp)
+
+/*------------------------------------*/
+/* WRITECHECKOUTPUTPROGRESSDEBUGFILE  */
+/*------------------------------------*/
+
+// use to write to a file for debugging output file
+// can run on cluster,  for tracking down bug(s) that cause program to hang
+// see void writecheckoutputprogress(const char *fmt, ...)  
+
+#undef WRITECHECKOUTPUTPROGRESSDEBUGFILE  // use to write to a file for debugging output file generation on cluster 
+//#define WRITECHECKOUTPUTPROGRESSDEBUGFILE 
 
 
 /*----------------------*/
 /* Visual Leak Detector */
 /*----------------------*/
-
 
 // vld - visual leak dectector for finding memory leaks,  only runs under visual studio on windows
 // output is not appearing in the IDE,  so need to look in  memory_leak_report.txt

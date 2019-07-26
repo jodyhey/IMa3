@@ -336,14 +336,14 @@ scan_commandline (int argc, char *argv[], int currentid)
       printf ("    1 Include ranges on mutation rates as priors on mutation rate scalars\n");
       printf ("    2 Joint posterior density calculations, for LLR tests of nested models, use with -r0 -w\n");
       printf ("    3 Get prior distribution terms from file (requires filename given with -g )\n");
-      printf ("    4 Calculate the marginal likelihood,  requires 100 or more chains and EVEN or SYGMOID heating models\n");
+      //printf ("    4 Calculate the marginal likelihood,  requires 100 or more chains and EVEN or SYGMOID heating models\n"); jh turn off 7/26/2019, not sure its working well
       printf ("-d  Number of steps between sampling genealogies (default 100)\n");
       printf ("-f  Name of file with saved Markov chain state generated in previous run (use with -r3)\n");
       printf ("-g  Name of file for parameter priors, default: '%s'\n",defaultpriorfilename);
       printf ("-h  Heating terms (MCMC mode only.  Default: EVEN. -ha only: GEOMETRIC. -ha and -hb SYGMOID): \n");
       printf ("  -hn Number of chains \n");
       printf ("  -ha heating curve shape parameter (less than but near 1, required for GEOMETRIC and SYGMOID)\n");
-      printf ("  -hb lower heating value  (required for GEOMETRIC) \n");
+      printf ("  -hb lower heating value  (required GEOMETRIC, optional for EVEN) \n"); //7/26/2019,  changed so a lower bound can be used with EVEN 
       printf ("-i  Input file name (no spaces) \n");
       printf ("-j  Model options: \n");
       printf ("    0  Population Topology Updating and Estimation (for 3 or more populations)\n");
@@ -893,8 +893,8 @@ it is ok to have spaces between a flag and its values
     }
     else
     {
-      if (Hbp)
-        IM_err (IMERR_COMMANDLINEHEATINGTERMS, " -hb used without -ha ");
+      //if (Hbp)  JH 7/26/2019  turn this error off so that the EVEN model could be used with lower bounds greater than 0 
+        //IM_err (IMERR_COMMANDLINEHEATINGTERMS, " -hb used without -ha ");
       heatmode = HEVEN;
     }
 
@@ -1145,6 +1145,7 @@ begin_outputfile_info_string (void)
   *fpstri = 0;
   SP "IMa3 - Isolation with Migration Analysis  -  Jody Hey, Rasmus Nielsen, Sang Chul Choi, Vitor Sousa, Janeen Pisciotta, Arun Sethuraman, Yujin Chung 2018 \n");
 
+/* print info about the main macros defined when compiling */ 
 #ifdef STDTEST
   SP "\n\n==================\nSTANDARD TEST MODE\n");
 #ifdef RANDOM_NUMBERS_FROM_FILE
@@ -1152,11 +1153,21 @@ begin_outputfile_info_string (void)
 #endif
   SP "==================\n\n");
 #endif
-  SP "\n%s\n",releaseinfostring());
-  SP "%s\n",buildtimestring);
+#ifdef DEBUG
+  SP "\n**Compiled and Run with DEBUG**\n");
+#endif //TURNONCHECKS
 #ifdef TURNONCHECKS
   SP "\n**Compiled and Run with TURNONCHECKS**\n");
 #endif //TURNONCHECKS
+#ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE 
+  SP "\n**Compiled and Run with WRITECHECKOUTPUTPROGRESSDEBUGFILE **\n");
+#endif WRITECHECKOUTPUTPROGRESSDEBUGFILE 
+#ifdef USEVLD
+  SP "\n**Compiled and Run with USEVLD **\n");
+#endif USELVD
+
+  SP "\n%s\n",releaseinfostring());
+  SP "%s\n",buildtimestring);
 
   SP "\nJob Started: %s\n",timeinfostring);
   SP "\nCommand line string : %s \n", command_line);
@@ -2479,6 +2490,7 @@ int run (int currentid)
   int tempburndone;
   int rc = 0; //AS: return code for MPI C bindings
   time_t timer;
+
   if (burndone)
   {
     switch (cdurationmode)
@@ -2524,6 +2536,7 @@ int run (int currentid)
 #endif
             if (currentid == HEADNODE)
             {
+
               continuerun = checkrunfile(runfilename);
             }
 #ifdef MPI_ENABLED
@@ -4098,7 +4111,7 @@ printf("found peaks\n");
   {
 
 #ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE
-  if (currentid == HEADNODE) writecheckoutputprogress("made it to here: 4");
+  if (currentid == HEADNODE) writecheckoutputprogress("made it to here: 8");
 #endif
 
     printhistograms (outfile, mcmcrecords, generationtime,usegenerationtimedefault, scaleumeaninput,priorfilename);
@@ -4637,6 +4650,7 @@ int main (int argc, char *argv[])
 
     while (run (currentid))  // main mcmc loop 
     {
+//printf("%d %d\n",step,currentid); this crashes things on mpi 
       qupdate (currentid);
       if ((step / (int) printint) * (int) printint == step && step > 0)
       {
