@@ -1073,6 +1073,8 @@ printchaininfo (FILE * outto, int heatmode, double hval1,
 
     fprintf(outto, "\nHeated Chain Swapping\n");
     fprintf(outto,   "---------------------\n");
+    time_t givemetime = time(NULL);
+    fprintf(outto,"%s\n", ctime(&givemetime)); //ctime() returns given time  For debugging walltime problem 
   }
 
 #ifdef MPI_ENABLED
