@@ -4553,9 +4553,21 @@ void commit_mpi_updatescalar(void)
   int mpi_updatescalar_blocklengths[10] = {1,1,1,1,1,1,1,1,1,1};
   MPI_Datatype mpi_updatescalar_types[10]={MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_INT,MPI_INT,MPI_INT,MPI_INT,MPI_INT};
   MPI_Aint mpi_updatescalar_displacements[10];
-  MPI_Aint intex,doublex;
-  MPI_Type_extent(MPI_INT,&intex);
-  MPI_Type_extent(MPI_DOUBLE,&doublex);
+
+  /* changes to avoid deprecated MPI_type_extent and MPI_type_struct see https://www.open-mpi.org/faq/?category=mpi-removed
+  suggested by PopGen33 in github issue 3
+  MPI_Aint intex,doublex,lb;//Previously: MPI_Aint intex,doublex; 
+  MPI_Type_get_extent(MPI_INT,&lb,&intex);//Previously: MPI_Type_extent(MPI_INT,&intex); 
+  MPI_Type_get_extent(MPI_DOUBLE,&lb,&doublex);//Previously: MPI_Type_extent(MPI_DOUBLE,&doublex);
+
+...and changed line 4569 to:
+
+MPI_Type_create_struct(10,mpi_updatescalar_blocklengths,mpi_updatescalar_displacements,mpi_updatescalar_types,&MPI_updatescalar);//Previously: MPI_Type_struct(...)
+ */
+
+  MPI_Aint intex,doublex,lb; //MPI_Aint intex,doublex;
+  MPI_Type_get_extent(MPI_INT,&lb,&intex); //MPI_Type_extent(MPI_INT,&intex);
+  MPI_Type_get_extent(MPI_DOUBLE,&lb,&doublex); //MPI_Type_extent(MPI_DOUBLE,&doublex);
   mpi_updatescalar_displacements[0] = (MPI_Aint) 0;
   mpi_updatescalar_displacements[1] = doublex;
   mpi_updatescalar_displacements[2] = 2*doublex;
@@ -4566,7 +4578,8 @@ void commit_mpi_updatescalar(void)
   mpi_updatescalar_displacements[7] = 5*doublex + 2*intex;
   mpi_updatescalar_displacements[8] = 5*doublex + 3*intex;
   mpi_updatescalar_displacements[9] = 5*doublex + 4*intex;
-  MPI_Type_struct(10,mpi_updatescalar_blocklengths,mpi_updatescalar_displacements,mpi_updatescalar_types,&MPI_updatescalar);
+  MPI_Type_create_struct(10,mpi_updatescalar_blocklengths,mpi_updatescalar_displacements,mpi_updatescalar_types,&MPI_updatescalar);
+  //MPI_Type_struct(10,mpi_updatescalar_blocklengths,mpi_updatescalar_displacements,mpi_updatescalar_types,&MPI_updatescalar);
   MPI_Type_commit(&MPI_updatescalar);
 
 #endif
