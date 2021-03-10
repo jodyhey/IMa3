@@ -187,7 +187,6 @@ simmpath_tNW (int edge, struct edge *gtree, int numm, int lastm,
       gtree[edge].mig[i].mp =
         picktopop (lastpop, C[ci]->plist[period], npops - period);
       lastpop = gtree[edge].mig[i].mp;
-if (step==1542608) printf("%d %d %.3lf %d\t",edge,i,gtree[edge].mig[i].mt,lastpop);
     }
   }
   else
@@ -200,7 +199,6 @@ if (step==1542608) printf("%d %d %.3lf %d\t",edge,i,gtree[edge].mig[i].mt,lastpo
         gtree[edge].mig[i].mp =
           picktopop (lastpop, C[ci]->plist[period], npops - period);
         lastpop = gtree[edge].mig[i].mp;
-if (step==1542608) printf("%d %d %.3lf %d\t",edge,i,gtree[edge].mig[i].mt,lastpop);
         i++;
       }
       lastpop_2 = lastpop;
@@ -209,7 +207,6 @@ if (step==1542608) printf("%d %d %.3lf %d\t",edge,i,gtree[edge].mig[i].mt,lastpo
         picktopop2 (lastpop, C[ci]->plist[period], npops - period,
                     constrainpop);
       gtree[edge].mig[lastm].mp = constrainpop;
-if (step==1542608) printf("%d %d %.3lf %d\t",edge,lastm,gtree[edge].mig[lastm].mt,constrainpop);
     }
     else
     {
@@ -217,7 +214,6 @@ if (step==1542608) printf("%d %d %.3lf %d\t",edge,lastm,gtree[edge].mig[lastm].m
       {
         gtree[edge].mig[lastm].mp = constrainpop;
         lastpop = constrainpop;
-if (step==1542608) printf("%d %d %.3lf %d\t",edge,lastm,gtree[edge].mig[lastm].mt,constrainpop);
       }
     }
   }

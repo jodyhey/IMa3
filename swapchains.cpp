@@ -527,7 +527,8 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
   int sb = 0;
   int x = 0;
   int y = 0;
-
+  whichElementA = -1; //JH
+  whichElementB = -1;  //JH
   /* poptreestrings involved in the swaps are compared so that we can count how many swaps update the topology */
   char holdpoptreestringA[POPTREESTRINGLENGTHMAX],holdpoptreestringB[POPTREESTRINGLENGTHMAX]; 
   int treematch;
@@ -682,6 +683,8 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 	    //	do within process swap(),  whichElementB and whichElementA are the chain numbers on the current node for which betas are swapped 
         assert (procIdForA == currentid);  // doISwap is only true if the current node is has A or B 
         *numattemptwithin += 1;
+        assert(whichElementA >= 0);
+        assert(whichElementB >= 0);
 		      swapvar = swapchains(3,1,whichElementB,whichElementA);
         numsuccesswithin += swapvar;
         /* ==== END STEP 5.1 ====*/

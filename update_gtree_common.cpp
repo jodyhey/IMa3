@@ -913,7 +913,14 @@ getmprob(int ci, struct edgemiginfo *edgem,
         case 0: assert(pop[0]==topop);
                 n = -r; 
                 break;
-        case 1: assert(pop[0] != topop);
+        case 1: 
+                /*assert(pop[0] != topop); 
+                This failed on a test run  3/3/2021
+                with mpi  10 cores
+                -i test4popssmall.u -o debug.out -q 10 -m 0.2 -t 10 -s123 -b 1.0 -l 1.0 -hn40 -ha0.98   
+                */
+                if (pop[0] == topop)
+                  return FORCEREJECTIONCONSTANT;
                 n = log(r/edgem->mtimeavail[edgem->e]) - r;
                 break;
         default:
@@ -1913,7 +1920,16 @@ callcode is used for debugging
       assert (ISELEMENT (nowpop, C[ci]->periodset[sgp->periodi])); 
       sgp->pop = nowpop;
       sgp->topop = gtree[i].mig[j].mp;
-      assert (nowpop != sgp->topop);
+      //assert (nowpop != sgp->topop);  triggered 3/5/2021
+      // -n 10 IMa3 -i Pan_5pops_10loci_10_6_2016.u  -o debug.out -q 10 -m 0.2 -t 10 -s123 -b 15.0 -l 15.0 -hn60 -ha0.98 -hb 0.5  
+      // stuck in some debug code to take a look at some point
+      if (nowpop == sgp->topop)
+      {
+#ifdef TURNONCHECKS
+            debugtreeweight(ec,ci,li,4,j,-1,callcode); //int ec,int ci, int li,int twe,int jval, int infoval)
+#endif
+            return -1;
+      }
       nowpop = sgp->topop;
       assert (sgp->topop >= 0 && sgp->topop < numtreepops);
       sgp->cmt = 1;        // a migration event

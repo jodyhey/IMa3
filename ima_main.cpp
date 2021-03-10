@@ -1161,10 +1161,10 @@ begin_outputfile_info_string (void)
 #endif //TURNONCHECKS
 #ifdef WRITECHECKOUTPUTPROGRESSDEBUGFILE 
   SP "\n**Compiled and Run with WRITECHECKOUTPUTPROGRESSDEBUGFILE **\n");
-#endif WRITECHECKOUTPUTPROGRESSDEBUGFILE 
+#endif // WRITECHECKOUTPUTPROGRESSDEBUGFILE 
 #ifdef USEVLD
   SP "\n**Compiled and Run with USEVLD **\n");
-#endif USELVD
+#endif //USELVD
 
   SP "\n%s\n",releaseinfostring());
   SP "%s\n",buildtimestring);
@@ -4555,7 +4555,7 @@ void commit_mpi_updatescalar(void)
   MPI_Aint mpi_updatescalar_displacements[10];
 
   /* changes to avoid deprecated MPI_type_extent and MPI_type_struct see https://www.open-mpi.org/faq/?category=mpi-removed
-  suggested by PopGen33 in github issue 3
+  suggested by PopGen33 in github issue 3  1/19/2021
   MPI_Aint intex,doublex,lb;//Previously: MPI_Aint intex,doublex; 
   MPI_Type_get_extent(MPI_INT,&lb,&intex);//Previously: MPI_Type_extent(MPI_INT,&intex); 
   MPI_Type_get_extent(MPI_DOUBLE,&lb,&doublex);//Previously: MPI_Type_extent(MPI_DOUBLE,&doublex);

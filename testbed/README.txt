@@ -19,11 +19,19 @@ basic instructions:
 		copy the files from  E:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory 
 			e.g. E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\wsl\####
 			delete any previous results file in that folder
-		compile a new IMa3_stdtest  using make testbed
+		under wsl in ~/IMa3/src
+			compile a new IMa3_stdtest  
+			make sure that conda is not active, else mpi does not work 
+				conda deactivate 
+			make testbed
+		copy IMa3_stdtest to the desired folder 
+		
 		run ima3_stdtest.sh
 
 	current standard is 3_5_2019
 
+1/20/2021 
+	updated this file
 6/26/2019
 	made some changes to prevent crash due to filled migration array
 	stdtest results looked unchanged
