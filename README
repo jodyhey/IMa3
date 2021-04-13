@@ -1,3 +1,5 @@
+4/13/2021
+	fixed a bug that caused crash when updating poptree 
 3/10/2021
 	fixed two bugs in assessing genealogy probability that could cause the program to hang
 6/26/2019
