@@ -1720,7 +1720,7 @@ void print_means_variances_correlations (FILE * outfile)
   variances = static_cast<double *> (calloc ((size_t) np, sizeof (double)));
   if (npops > 1)
   {
-    correlations = orig2d_alloc2Ddouble (np, np);
+    correlations = static_cast<double **> ( orig2d_alloc2Ddouble (np, np));
   }
 
   for (i = 0; i < genealogysamples; i++)

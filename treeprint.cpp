@@ -924,7 +924,7 @@ poptreeprint_frompointer (int ci, struct popedge *poptree/*, int step*/)
 }                               /* poptreeprint_frompointer */
 
 /* 1 check migs, but not length , 2 check mighg but not  mig, 3 check neither mig or mighg, 4 check it all except mignum, 0 check everything including lengths*/
-#define epsilon 0.0000000001  //1e-10 
+#define epsilon 0.000000001  //1e-9  //JH 4/5/2001 changed from 1e-10 to 1e-9 
 void checkgenealogy(int ci, int li, int mode )
 {
 

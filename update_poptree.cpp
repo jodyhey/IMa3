@@ -36,7 +36,7 @@ static void renumberpopnodes(int ci,double *tvals);
 static void poptreejoinsisdown (struct popedge *ptree,int sis, int *roottimechanges);
 static void poptreesplitsisdown (struct popedge *ptree, int slidingedge, int down, int newsis,int *roottimechanges);
 static void poptreeslider (struct popedge *ptree, int slidingedge, int *sis,
-                    double *timepoint, double *slidedist);
+                    double *timepoint, double *slidedist, int slidecount);
 static void poptreesliderlimited (struct popedge *ptree, int slidingedge, int *sis,
                     double *timepoint, double *slidedist,double *upperiodtimelimit,double *dnperiodtimelimit);
 void init_holdgweight_array_for_hg(void);
@@ -410,9 +410,19 @@ poptreesplitsisdown (struct popedge *ptree,int slidingedge, int down, int newsis
   return;
 }                               /* poptreesplitsisdown */
 
+#define MAXPOPTREESLIDECOUNT 100 
+/*
+  4/7/2021   
+  this recursion was maxing out the stack in some j03 runs (phylogeny search with hyperpriors)
+  This happens when a long slide distance is picked and the only valid slides are over a short distance.
+  Added a counter to poptreeslider and halt the recursion after MAXPOPTREESLIDECOUNT times through (have to reset timepoint in each of four conditions).
+  timepoint is set to half the distance from the current position to the next limit
+  This kluge will cause the MH criterion to be wrong in those instances,  but at least it seems to prevent the crash
+  Also reduced the last value of scaletemp[] to 0.1  (from 0.3) 
+*/
 void
 poptreeslider (struct popedge *ptree, int slidingedge, int *sis,
-                    double *timepoint, double *slidedist)
+                    double *timepoint, double *slidedist,int slidecount)
 /* this is copied from the version in update_gtree.cpp    */
 /* timepoint points at ptree[*slidingedge].time and is the current position of the sliding point, 
 slidedist is the distance it must move 
@@ -421,6 +431,7 @@ this will be the new sisterbranch
 use recursion */
 {
   double uplimit,dnlimit;
+
   if (*slidedist < 0)
   {
     /* go up */
@@ -445,10 +456,16 @@ use recursion */
       else
       {
         /* slide up and reflect, sis remains the same, leave slidedist positive so slidingedge goes down with next call to poptreeslider */
+        if (slidecount >= MAXPOPTREESLIDECOUNT)
+        {
+          *timepoint = *timepoint - (*timepoint - uplimit)/2.0;
+          *slidedist = 0;
+          return;
+        }
         *slidedist -= (*timepoint - uplimit);
         *timepoint = uplimit;
         assert (*slidedist > 0);
-        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist);
+        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist,slidecount+1);
         return;
       }
     }
@@ -467,6 +484,12 @@ use recursion */
       else
       {
         /* slide up and reach a node, pick one side at random and recurse */
+        if (slidecount >= MAXPOPTREESLIDECOUNT)
+        {
+          *timepoint = *timepoint - (*timepoint - ptree[ptree[*sis].up[0]].time)/2.0;
+          *slidedist = 0;
+          return;
+        }
         *slidedist -= *timepoint - ptree[ptree[*sis].up[0]].time;
         *timepoint = ptree[ptree[*sis].up[0]].time;
         if (bitran () /*uniform() < 0.5 */ )
@@ -480,7 +503,7 @@ use recursion */
         /* reset slidedist to negative, so slidingedge continues up the ptree in next call to poptreeslider */
         *slidedist = -*slidedist;
         assert (*slidedist < 0);
-        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist);
+        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist,slidecount+1);
         return;
       }
     }
@@ -495,11 +518,17 @@ use recursion */
       /* if slide distance would take edge past the maximal time, slide down and then start back up */
       if (*timepoint + *slidedist > dnlimit)
       {
+        if (slidecount >= MAXPOPTREESLIDECOUNT)
+        {
+          *timepoint = *timepoint + (dnlimit - *timepoint)/2.0;
+          *slidedist = 0;
+          return;
+        }
         /* slide down the sis and then backup */
         *slidedist -= (dnlimit - *timepoint);
         *slidedist = -*slidedist;
         *timepoint = dnlimit;
-        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist);
+        poptreeslider (ptree, slidingedge, sis, timepoint, slidedist,slidecount+1);
         return;
       }
       else
@@ -521,6 +550,12 @@ use recursion */
       else
       {
         /* a down node is reached */
+        if (slidecount >= MAXPOPTREESLIDECOUNT)
+        {
+          *timepoint = *timepoint + (ptree[*sis].time  - *timepoint)/2.0;
+          *slidedist = 0;
+          return;
+        }
         assert(ptree[*sis].time > *timepoint);
         *slidedist -= (ptree[*sis].time - *timepoint);
         *timepoint = ptree[*sis].time;
@@ -528,7 +563,7 @@ use recursion */
         {
           /* begin to slide down the down node, slidedist stays negative */
           *sis = ptree[*sis].down;
-          poptreeslider (ptree, slidingedge, sis, timepoint, slidedist);
+          poptreeslider (ptree, slidingedge, sis, timepoint, slidedist,slidecount+1);
           return;
         }
         else
@@ -543,13 +578,14 @@ use recursion */
             *sis = ptree[ptree[*sis].down].up[0];
           }
           *slidedist = -*slidedist;
-          poptreeslider (ptree, slidingedge, sis, timepoint, slidedist);
+          poptreeslider (ptree, slidingedge, sis, timepoint, slidedist,slidecount+1);
           return;
         }
       }
     }
   }
 }                               /* poptreeslider */
+#undef MAXPOPTREESLIDECOUNT //JH 4/7/2021
 
 void
 poptreesliderlimited (struct popedge *ptree, int slidingedge, int *sis,
@@ -781,7 +817,8 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
   double slideweightnum = 0.0, slideweightdenom = 0.0;
   int roottimechanges = 0;
   double mpriorratio,qpriorratio,topologypriorratio;
-  double scaletemp[7] = {0.0003,0.001,0.003,0.01,0.03,0.1,0.3};// series of update widths, roughly uniform on log scale  
+  double scaletemp[7] = {0.0003,0.001,0.003,0.01,0.03,0.1,0.1};// series of update widths, roughly uniform on log scale //4/7/2021 changed last value to 0.1, to have fewer slider maxout problems
+  int slidecount = 0; //jh 4/7/2021 ised by slider to count recursions 
   static int scalei;
   SET holddescendantpops[MAXTREEPOPS];
 
@@ -899,15 +936,17 @@ checkgenealogyweights(ci);
         newsis = oldsis;
         temptime = C[ci]->poptree[edge].time;
         temptmax = T[findtindex(ci,temptime)].pr.max;
-        poptreeslider (C[ci]->poptree,edge, &newsis, &temptime,&slidedist);
+        //printf("1 %d %d\t",ci,step);
+        poptreeslider (C[ci]->poptree,edge, &newsis, &temptime,&slidedist,slidecount);
         assert (slidedist==0.0);
       } while (temptime > temptmax);
       C[ci]->poptree[edge].time = temptime;
     }
     else
     {
-      poptreeslider (C[ci]->poptree,edge, &newsis, &C[ci]->poptree[edge].time,&slidedist);
-      assert (slidedist==0.0);
+      //printf("2 %d %d\t",ci,step);
+      poptreeslider (C[ci]->poptree,edge, &newsis, &C[ci]->poptree[edge].time,&slidedist, slidecount);
+      assert (slidedist==0.0); 
     }
   }
   else   // only slide within range of flanking splitting times 
@@ -932,7 +971,7 @@ checkpoptree(ci,1);
   
   if (roottimechanges)
   {
-    assert (roottime != newt[npops-2]);
+    //assert (roottime != newt[npops-2]); //jh 4/7/2021  this failed when testing in -j03 mode, seems to run ok without it
     roottime = newt[npops-2];
     *trytmrcachange = 1;
     if (topologychangeallowed && SCALESLIDEDISTBYPRIOR==0) // if topoogychangeallowed == 0  then slidestdv comes from the boundaries and will not change

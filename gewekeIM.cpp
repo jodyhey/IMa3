@@ -86,7 +86,7 @@ acf0(double *x, int n, int ns, int nl, int correlation, double *acf)
 // acf <- .Call(C_acf, x, lag.max, type == "correlation")
 std::vector<double> SEXP_acf(std::vector<double> x, double lmax) // , SEXP sCor)
 {
-  int nx = x.size(), ns = 1, lagmax = (int) lmax;
+  int nx = (int) x.size(), ns = 1, lagmax = (int) lmax;
   //        cor = asLogical(sCor);
   //  x = PROTECT(coerceVector(x, REALSXP));
   //  SEXP ans = PROTECT(allocVector(REALSXP, (lagmax + 1)*ns*ns));
@@ -230,7 +230,7 @@ void Eureka::eureka(int lr, std::vector<double> r, std::vector<double> g) // , s
 // v0[i] <- ar.out$var.pred/(1 - sum(ar.out$ar))^2
 void AR::ar(std::vector<double> vars)
 {
-  int n_used =vars.size();
+  int n_used = (int) vars.size();
   double order_max = std::min((double) n_used - 1, floor(10* log10((double) n_used)) );
   if(order_max <1)
     std::cout <<"'order_max' must be >= 1";

@@ -28,8 +28,35 @@ basic instructions:
 		
 		run ima3_stdtest.sh
 
-	current standard is 3_5_2019
+	! Current standard is 4_12_2021 !
+	
+	
+	
+	
+4/12/2021
+	Did some debugging of poptreeslider() in update_poptree.cpp
+	This results in changes to the testbed outputs in -j0 mode 
+	
+	ran some longer tests to see if new and old code seem to converge on the same results 
 
+
+		mpiexec -n 4 ima3_stdtest -i ima3test4pop2loci.u -o ima3_test_40x_long_noc4.out -q10 -m1 -t1.5 -b2000000 -L250000 -j013 -r7 -hn20 -ha0.97 -hb0.5 -x 0 1 1e2 -x 2 3 0.1  
+		mpiexec -n 4 ima3 -i ima3test4pop2loci.u -o ima3_release_test_40x_long_noc4.out -q10 -m1 -t1.5 -b2000000 -L250000 -j013 -r7 -hn20 -ha0.97 -hb0.5 -x 0 1 1e2 -x 2 3 0.1  
+			these look very similar 
+			
+		mpiexec -n 8 ima3_stdtest -i ima3test8pop2loci.u  -o ima3_test_33_32chains.out -q10 -m1 -t1.5 -b20000 -L200000  -j03 -hn32 -ha0.98 -hb0.5
+		mpiexec -n 8 ima3 -i ima3test8pop2loci.u  -o ima3_release_est_33_32chains.out -q10 -m1 -t1.5 -b20000 -L200000  -j03 -hn32 -ha0.98 -hb0.5
+			too many populations to really compare 
+			but the t posteriors were very similar 
+
+	also do a -c0 -j013 run - look for flat posteriors 
+		mpiexec -n 8 ima3_stdtest  -i ima3test4pop2loci.u -o ima3_test_newx.out -q10 -m2 -t2 -b50000 -L200000 -j013 -c0 -hn50 -ha0.97 -hb0.4  
+		
+		looks pretty good,  the phylogeny posteriors and the sum of the t posteriors looks flat. 
+
+	so generate a new standard for 4/12/2021  using the same scripts 
+	
+	
 1/20/2021 
 	updated this file
 6/26/2019

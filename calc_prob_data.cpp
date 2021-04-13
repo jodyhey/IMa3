@@ -636,7 +636,7 @@ calc_sumlogk (int ci, int li, double *psumlogk)
 #endif  // #if 0
   //int summ = 0, *mutcount, i, j; summ was not being used 
   int *mutcount, i, j;
-  double fact, sum;
+  double sum;
   struct edge *gtree = C[ci]->G[li].gtree;
   int ng = L[li].numgenes;
   // shouldn't this be sizeof(int) ?? 
@@ -724,11 +724,6 @@ calc_sumlogk (int ci, int li, double *psumlogk)
   }
   for (sum = 0.0, i = 0; i < L[li].numlines - ng; i++)
   {
-    /*  changed to using logfact 2/24/2019  this was crashing when mutcount was high 
-    fact = 1.0; 
-    for (j = 1; j <= mutcount[i]; j++)
-      fact *= (double) j;
-    sum += log (fact); */
     sum += logfact[mutcount[i]];
   } 
   *psumlogk = sum;
