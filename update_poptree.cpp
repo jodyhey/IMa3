@@ -410,7 +410,10 @@ poptreesplitsisdown (struct popedge *ptree,int slidingedge, int down, int newsis
   return;
 }                               /* poptreesplitsisdown */
 
-#define MAXPOPTREESLIDECOUNT 100 
+#define MAXPOPTREESLIDECOUNT 100000 // was 100,  set to a large number to stop this from working and see what happens 6/3/2021
+// was getting crashes when MAXPOPTREESLIDECOUNT was set to 100,  setting to 100000 seemed to stop them. 
+// this would seem to undo the reason for having this counter. 
+// so my kluge did not ultimately work, and now I've added overhead (i.e. counting) 
 /*
   4/7/2021   
   this recursion was maxing out the stack in some j03 runs (phylogeny search with hyperpriors)
@@ -837,7 +840,7 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
 #ifdef TURNONCHECKS
   //poptreeprint(ci);
     //gtreeprint(ci,0);
-checkpoptree(ci,0);
+  checkpoptree(ci,0);
   checkgenealogy(ci,0,0);
   checkprobs(ci,-1);
   check_hgprob_sums(ci);

@@ -472,9 +472,22 @@ fillplist (int ci)
       {
         if (k >= 2)
         {
-//#ifdef DEUBG
+//#ifdef DEBUG
       //    poptreeprint(ci);
 //#endif
+          /* 4/19/2021 got a crash here when running 
+            mpirun ./IMa3 -i alyrata_400L_7p5em9.u -o alyrata_400L_cb2rr_mode03_x1.out -j 03 -q 10 -t 1 -m 0.01 -b 0.0 -L 23.0  -hn 960 -ha 0.994 -hb 0.5 -r67
+
+          crash report:  IMa3: some problem in the population tree string  -  wrong number ancestral populations indicated. step 76177 treestring (0,((1,(5,6)7)9,(3,(2,4)8)10)11)12
+
+          the treestring looks fine 
+
+          add a checkpoptree call 
+          */
+#ifdef TURNONCHECKS //added 4/19/2021 
+          checkpoptree(ci,0);
+#endif //TURNONCHECKS
+
           IM_err (IMERR_POPTREESTRINGFAIL,  " wrong number ancestral populations indicated. step %d treestring %s",
                   step,C[ci]->chainpoptreestring);
         }

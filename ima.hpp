@@ -65,7 +65,8 @@
       only commits to github that will be done will be release versions  (i.e. #define IMA3RELEASE)
  */
 
-#define IMA3RELEASEVERSION  "1.11"  // update only when a release is made 
+#define IMA3RELEASEVERSION  "1.12"  // update only when a release is made 
+/* set to 1.12 on 9/23/2021  added the counter to population sliding update */
 /* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default, set swapchain interval to every 5th step  */ 
 /* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
 /* set to 1.01  on 1/22/2019  various bug fixes and small enhancements for catching things when reading input files 

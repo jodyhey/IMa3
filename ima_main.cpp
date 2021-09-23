@@ -4685,6 +4685,13 @@ int main (int argc, char *argv[])
           recordburntopology();
 
         }
+
+      /*if (currentid == HEADNODE) //debugging
+      {
+  	     printf ("step %d\n",step);
+        fflush(stdout);
+      }  */
+
       }
 #ifdef TURNONCHECKS
 //    if (burndone)
