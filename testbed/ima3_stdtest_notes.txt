@@ -1,5 +1,4 @@
-current stuff is in README.txt
-
+current stuff is in README.txt  in testbed folder
 
 older notes
 -----------
