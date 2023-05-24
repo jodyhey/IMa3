@@ -188,7 +188,7 @@ void init_i_params (void)
 
 void getparamnums()
 {
-  int i, j, k,si,sj, mi, mcheck;
+  int i, j, k, mi, mcheck;
   
   /* set up the population size parameters */
   if (modeloptions[PARAMETERSBYPERIOD])
@@ -248,7 +248,7 @@ void getparamnums()
                 mcheck = checkaresis (ARBCHAIN,k, i, j);
               else
               {
-
+                //if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior < 0.0) || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL))
                 if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL))
                   mcheck = 1;
                 else
@@ -264,23 +264,14 @@ void getparamnums()
     }
     else /* calcoptions[LOADPRIORSFROMFILE]*/
     {
-    for (si=0; si< numtreepops;si++)
-        for (sj = 0; sj < numtreepops; sj++) if ( sj != si)
-        {
-          mcheck = 0; // each ordered pair of populations can only be counted once 
-          for (k = 0; k < lastperiodnumber; k++) 
-            for (i = 0; i < npops - k; i++)
-              for (j = 0; j < npops - k; j++) if ( j != i) 
-                if (C[ARBCHAIN]->plist[k][i] == si && C[ARBCHAIN]->plist[k][j]==sj)
-                  if (mprior_fromfile[si][sj] > MINPARAMVAL)
-                    mcheck = 1;
-          if (mcheck==1)
-            mi++;
-        }
-
+      for (k = 0; k < lastperiodnumber; k++)
+        for (i = 0; i < npops - k; i++)
+          for (j = 0; j < npops - k; j++) if ( j != i) 
+          {
+             if (mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL)
+               mi++;
+          }
     }
-
-
 outsidefirstloop:  ;
 
   }
@@ -428,7 +419,7 @@ void set_iparam_poptreeterms(int ci)
             {
               if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
                 mcheck = 1;
-              else
+               else
                  mcheck = 0;
             }
             if (mcheck)
@@ -586,8 +577,8 @@ void set_iparam_poptreeterms(int ci)
               mcheck = checkaresis (ci,k, i, j);
             else
             {
-              // if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0)  || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
-              if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
+               //if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0)  || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
+			   if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
                 mcheck = 1;
                else
                  mcheck = 0;
@@ -1001,7 +992,7 @@ setuinfo (double summut)   // called only for chain 0 because mutation rate info
   if (hiddenoptions[NOMUTATIONSCALARUPATES] == 1) // fix them all to be 1 and then do not update them
   {
     domutationscalarupdate = 0;
-    for (li=0;li<nloci;li++) if (L[li].model != INFINITESITES)
+    for (li=0;li<nloci;li++) if (L[li].model != INFINITESITES && hiddenoptions[HKYTOJK] == 0)
       IM_err (IMERR_MUTSCALEPROBLEM,"locus %d is not infinite sites mutation model.  This is not allowed when fixing mutation rate scalars. ",li);
     for (ui = 0; ui < nurates; ui++)
       C[mutchain0]->G[ul[ui].l].uvals[ul[ui].u] =  1.0;
@@ -1538,7 +1529,7 @@ init_mutation_scalar_rec (int li)
   }
 
   // do kappa_rec 
-  if (L[li].model == HKY)
+  if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
   {
     L[li].kappa_rec = static_cast<chainstate_record_updates_and_values *> 
                 (malloc (sizeof (struct chainstate_record_updates_and_values)));
@@ -1611,7 +1602,7 @@ void fixmutationratescalars()
   double gm,prodcheck,lprod = 0.0; 
   for (li=0;li<nloci;li++)
   {
-    if (L[li].model != INFINITESITES)
+    if (L[li].model != INFINITESITES && hiddenoptions[HKYTOJK]==0)
       IM_err (IMERR_MUTSCALEPROBLEM,"locus %d is not infinite sites mutation model.  This is not allowed when fixing mutation rate scalars. ",li);
     if (L[li].nlinked != 1)
       IM_err (IMERR_MUTSCALEPROBLEM,"locus %d has multiple components, each with a scalar.  This is not allowed when fixing mutation rate scalars. ",li);
@@ -1671,7 +1662,6 @@ void add_priorinfo_to_output(char priorfilename[],int *fpstri, char fpstr[])
       SP"\tMigration rate\tPrior mean value\n");
       for (i=0;i<nummigrateparams;i++)
         SP"\t%s\t%.4lg\n",C[ARBCHAIN]->imig[i].str,C[ARBCHAIN]->imig[i].pr.expomean);
-        
     }
 
   }
@@ -1965,9 +1955,15 @@ finish_setup_C (int currentid)
       case HKY:
         for (i = 0; i < 4; i++)
         {
-          C[ci]->G[li].pi[i] = pi[li][i];
+			    if (hiddenoptions[HKYTOJK] == 1)
+            C[ci]->G[li].pi[i] = 0.25;
+          else
+            C[ci]->G[li].pi[i] = pi[li][i];
         }
-        C[ci]->G[li].kappaval = 2.0;    // starting kappa value
+        if (hiddenoptions[HKYTOJK] )
+          C[ci]->G[li].kappaval = 1.0;    // starting kappa value
+        else
+          C[ci]->G[li].kappaval = 2.0;    // starting kappa value
         makeHKY (ci, li,nosimmigration);
         if (hiddenoptions[HIDDENGENEALOGY] == 1)
           makegenealogy_from_hiddengenealogy(ci,li);
