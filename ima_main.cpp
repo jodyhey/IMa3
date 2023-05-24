@@ -672,6 +672,8 @@ it is ok to have spaces between a flag and its values
                   hiddenoptions[READOLDMCFFILE] = 1; 
                 if (toupper(pstr[j])=='D') // treat 'D' as PRIORRATIOHEATINGOFF //jh 4/27/2018
                   hiddenoptions[PRIORRATIOHEATINGOFF] = 1; 
+                if (toupper(pstr[j])=='E') // treat 'E' as HKYTOJK //jh 5/23/2023
+                  hiddenoptions[HKYTOJK] = 1; 
               }
               pstr[j] = '\0';
               j--;
@@ -970,6 +972,11 @@ it is ok to have spaces between a flag and its values
   {
     IM_err (IMERR_MISSINGCOMMANDINFO,
             " No information provided for maximum value for migration parameter (-m)");
+  }
+  if (Mp && calcoptions[LOADPRIORSFROMFILE] && npops > 1)
+  {
+    IM_err (IMERR_COMMANDLINEINCOMPAT,
+            " Conflicting command line arguments, migration prior set on command line (-m) in conflict with use of prior file");
   }
   if (!Qp && !calcoptions[LOADPRIORSFROMFILE])
   {
@@ -1279,6 +1286,8 @@ begin_outputfile_info_string (void)
   if (hiddenoptions[FIXMUTATIONSCALARUPATES]==1)
     SP"  Mutation rate scalars fixed at relative values of mutation rate per year,  given on command line. No updates.\n");
 
+  if (hiddenoptions[HKYTOJK]==1)
+    SP"  Force HKY to Jukes-Cantor.  Kappa fixed at 1. Base frequencies fixed at 0.25.\n");
   if (outputoptions[PRINTTMRCA])
     SP "  TMRCA  histograms printed \n");
 
@@ -1919,6 +1928,7 @@ checkgenealogyweights(ci);
             }
             #ifdef TURNONCHECKS
             pcheck(ci,2);
+            checkprobs(ci,-1);
             #endif
           }
         }
@@ -2077,7 +2087,7 @@ checkgenealogyweights(ci);
     }
     else
     {
-      if (nloci == 1 && L[0].model == HKY)      /* if there is just one HKY locus kappa needs updating on its own */
+      if (nloci == 1 && L[0].model == HKY && hiddenoptions[HKYTOJK] == 0)      /* if there is just one HKY locus kappa needs updating on its own */
         for (ci = 0; ci < numchainspp; ci++)
         {
           changekappa (ci);
@@ -2292,7 +2302,7 @@ void reset_after_burn (int currentid)
     {
       for (j = 0; j < L[li].u_rec[ui].num_uptypes; j++)
         L[li].u_rec[ui].upinf[j].accp = L[li].u_rec[ui].upinf[j].tries = 0;
-      if (L[li].model == HKY)
+      if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
         for (j = 0; j < L[li].kappa_rec->num_uptypes; j++)
           L[li].kappa_rec->upinf[j].accp = L[li].kappa_rec->upinf[j].tries =
             0;
@@ -2789,7 +2799,7 @@ void trendrecord (int loadarrayj, int currentid)
             trend_reset (L[li].u_rec[ui].v, 1);
           }
         }
-        if (L[li].model == HKY)
+        if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
         {
           if (L[li].kappa_rec->v->do_trend)
           {
@@ -2950,7 +2960,7 @@ void trendrecord (int loadarrayj, int currentid)
 #endif
 		      }
 	     }
-      if (L[li].model == HKY && L[li].kappa_rec->v->do_trend) 
+      if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0 && L[li].kappa_rec->v->do_trend) 
       {
 		      int z = whichiscoldchain();
 		      if (z >= 0 && currentid == HEADNODE) 
@@ -3278,7 +3288,7 @@ void record (int currentid)
 	    }
 #endif
     }
-    if (L[li].model == HKY)
+    if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
     {
 	    if (z >= 0 && currentid == HEADNODE) 
       {
@@ -4663,7 +4673,7 @@ int main (int argc, char *argv[])
 
     while (run (currentid))  // main mcmc loop 
     {
-//printf("%d %d\n",step,currentid); this crashes things on mpi 
+//printf("%d\n",step); //this crashes things on mpi 
       qupdate (currentid);
       if ((step / (int) printint) * (int) printint == step && step > 0)
       {

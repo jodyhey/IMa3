@@ -838,8 +838,8 @@ change_poptree (int ci,int *trytopolchange, int *topolchange, int *trytmrcachang
     oldtreenum = C[ci]->poptreenum;
 
 #ifdef TURNONCHECKS
-  //poptreeprint(ci);
-    //gtreeprint(ci,0);
+  poptreeprint(ci);
+  gtreeprint(ci,0);
   checkpoptree(ci,0);
   checkgenealogy(ci,0,0);
   checkprobs(ci,-1);

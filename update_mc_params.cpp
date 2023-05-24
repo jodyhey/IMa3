@@ -253,25 +253,30 @@ changeu (int ci, int j, int *k)
     switch (L[li].umodel[ai])
     {
     case HKY:
-      U = uniform ();
-      if (U > 0.5)
-      {
-        newkappa[i] =
-          C[ci]->G[li].kappaval + (2.0 * U - 1.0) * L[li].kappa_rec->win;
-        if (newkappa[i] > L[li].kappa_rec->pr.max)
-          newkappa[i] = 2.0 * L[li].kappa_rec->pr.max - newkappa[i];
-      }
+      if (hiddenoptions[HKYTOJK] ) // no update of kappa
+        newpdg[i] =  likelihoodHKY (ci, li, C[ci]->G[li].uvals[ai], C[ci]->G[li].kappaval, -1, -1, -1, -1);
       else
       {
-        newkappa[i] = C[ci]->G[li].kappaval - L[li].kappa_rec->win * U * 2.0;
-        if (newkappa[i] < 0)
-          newkappa[i] = -newkappa[i];
+        U = uniform ();
+        if (U > 0.5)
+        {
+          newkappa[i] =
+            C[ci]->G[li].kappaval + (2.0 * U - 1.0) * L[li].kappa_rec->win;
+          if (newkappa[i] > L[li].kappa_rec->pr.max)
+            newkappa[i] = 2.0 * L[li].kappa_rec->pr.max - newkappa[i];
+        }
+        else
+        {
+          newkappa[i] = C[ci]->G[li].kappaval - L[li].kappa_rec->win * U * 2.0;
+          if (newkappa[i] < 0)
+            newkappa[i] = -newkappa[i];
+        }
+        if (ci == 0)
+          L[li].kappa_rec->upinf->tries++;
+        newpdg[i] =
+          likelihoodHKY (ci, li, C[ci]->G[li].uvals[ai], newkappa[i],
+                          -1, -1, -1, -1);
       }
-      if (ci == 0)
-        L[li].kappa_rec->upinf->tries++;
-      newpdg[i] =
-        likelihoodHKY (ci, li, C[ci]->G[li].uvals[ai], newkappa[i],
-                        -1, -1, -1, -1);
       break;
     case INFINITESITES:
       newpdg[i] = likelihoodIS (ci, li, C[ci]->G[li].uvals[ai]);
@@ -309,12 +314,16 @@ changeu (int ci, int j, int *k)
       }
       C[ci]->G[li].pdg += newpdg[i] - C[ci]->G[li].pdg_a[ai];
       C[ci]->G[li].pdg_a[ai] = newpdg[i];
-      if (L[li].umodel[ai] == HKY)
+      if (L[li].umodel[ai] == HKY )
       {
         assert (ai == 0);
-        C[ci]->G[li].kappaval = newkappa[i];
-        if (ci == 0)
-          L[li].kappa_rec->upinf->accp++;
+        if (hiddenoptions[HKYTOJK]==0)
+        {
+          C[ci]->G[li].kappaval = newkappa[i];
+          if (ci == 0)
+            L[li].kappa_rec->upinf->accp++;
+        }
+        
         copyfraclike (ci, li);
         storescalefactors (ci, li);
       }

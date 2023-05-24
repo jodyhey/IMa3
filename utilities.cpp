@@ -969,7 +969,7 @@ gcflog (double *gammcflog, double a, double x, double *gln)
       break;
   }
   if (i > ITMAX)
-    IM_err (IMERR_UPPERGAMMA, " too many iterations within gcflog()");
+    IM_err (IMERR_UPPERGAMMA, " too many iterations within gcflog(), a: %.5lf , x: %.5lf");
 
   //*gammcf=exp(-x+a*log(x)-(*gln))*h;
   *gammcflog = (-x + a * log (x) - (*gln)) + log (h);

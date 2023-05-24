@@ -190,7 +190,7 @@ free_locus ()
     if (L[li].model == INFINITESITES || L[li].model == JOINT_IS_SW)
       XFREE (L[li].badsite);
     free_chainstate_record_updates_and_values (L[li].u_rec, L[li].nlinked);
-    if (L[li].model == HKY)
+    if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
       free_chainstate_record_updates_and_values (L[li].kappa_rec, 1);
     if (L[li].model == STEPWISE || L[li].model == JOINT_IS_SW)
       free_chainstate_record_updates_and_values (L[li].A_rec, L[li].nlinked);

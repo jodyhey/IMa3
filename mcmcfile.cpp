@@ -855,7 +855,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
       if (L[i].umodel[j] == STEPWISE)
         write_struct_chainstate_record_updates_and_values(mcffile,&L[i].A_rec[j]);
     }
-    if (L[i].model == HKY)
+    if (L[i].model == HKY && hiddenoptions[HKYTOJK]==0)
       write_struct_chainstate_record_updates_and_values(mcffile,L[i].kappa_rec);
   }
   for (i=0;i<npops-1;i++)

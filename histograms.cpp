@@ -588,7 +588,7 @@ void prepare_splittime_and_mutation_rate_histograms (int *numhistprint)
       }
     for (li = 0; li < nloci; li++)
       for (ui = 0; ui < L[li].nlinked; ui++)
-        if (L[li].umodel[0] == HKY)
+        if (L[li].umodel[0] == HKY && hiddenoptions[HKYTOJK]==0)
         {
           assert (ui < L[li].nlinked);
           strcpy (hp[*numhistprint].str, L[li].kappa_rec->str);
@@ -1004,7 +1004,7 @@ void printhistograms (FILE * outfile, long int mcmcrecords,
   // number passed to init_print_histograms  just needs to be large enough to hold as many histograms as might be printed
 
   for (li = 0; li < nloci; li++)
-    predictmcmchist += L[li].nlinked + (L[li].umodel[0] == HKY);
+    predictmcmchist += L[li].nlinked + (L[li].umodel[0] == HKY && hiddenoptions[HKYTOJK]==0);
   predictparamhist = numpopsizeparams + 2 * nummigrateparams;
   numhist = numsplittimes + IMAX(predictmcmchist,predictparamhist);
   if (modeloptions[POPSIZEANDMIGRATEHYPERPRIOR])

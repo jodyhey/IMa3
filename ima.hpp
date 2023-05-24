@@ -572,7 +572,8 @@ enum
   STOPMOSTINTERVALOUTPUT = 10,// stop writing most interval output to the screen  use -jhb or -jhB on command line
   READOLDMCFFILE = 11, // -jhC on command line, read mcf files generated before 1/17/2018  use -jhb or -jhC on command line
   PRIORRATIOHEATINGOFF = 12, // -jhD turn off raising the prior ratio to beta when calculating MH,  3/21/2019 set heating of prior to on as default, marginal likelihood calculation requires it be turned off
-  HIDDENOPTIONNUMBER=13};
+  HKYTOJK = 13, // force hky to look like jukes canter,  fix kappa to 1 and set base frequencies to 0.25
+  HIDDENOPTIONNUMBER=14};
 
 /* calcoptions -c
     DONTCALCLIKELIHOODMUTATION - don't calculate p(Data|G)  if set to 1 then data likelihood functions return a constant

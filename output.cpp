@@ -1423,7 +1423,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
         {
           for (j = 0; j < L[li].nlinked; j++) 
           {
-            if (L[li].umodel[j] == HKY) 
+            if (L[li].umodel[j] == HKY && hiddenoptions[HKYTOJK]==0) 
             {
               e[li][j] = L[li].kappa_rec[j].upinf->tries;
               f[li][j] = L[li].kappa_rec[j].upinf->accp;
@@ -1438,7 +1438,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
           {
             for (j = 0; j < L[li].nlinked; j++) 
             {
-              if (L[li].umodel[j] == HKY) 
+              if (L[li].umodel[j] == HKY && hiddenoptions[HKYTOJK]==0) 
               {
                 L[li].kappa_rec[j].upinf->tries = e_rec[li][j];
                 L[li].kappa_rec[j].upinf->accp = f_rec[li][j];
@@ -1453,7 +1453,7 @@ void callprintacceptancerates (FILE * outto, int currentid)
         for (i = 0, li = 0; li < nloci; li++)
         for (j = 0; j < L[li].nlinked; j++)
         {
-          if (L[li].umodel[j] == HKY)
+          if (L[li].umodel[j] == HKY && hiddenoptions[HKYTOJK]==0)
           {
             reclist[i] = L[li].kappa_rec;
             i++;
@@ -2172,7 +2172,7 @@ void callasciitrend (FILE * outtofile,int trenddoublepoint,int trendspot)
           asciitrend (outtofile, L[li].u_rec[ui].v, trenddoublepoint, trendspot);
     }
     for (li = 0; li < nloci; li++)
-      if (L[li].model == HKY && runoptions[LOADRUN] == 0  && domutationscalarupdate && L[li].kappa_rec->v->do_trend)  // added do_trend condition 6/1/2018 
+      if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0 && runoptions[LOADRUN] == 0  && domutationscalarupdate && L[li].kappa_rec->v->do_trend)  // added do_trend condition 6/1/2018 
         asciitrend (outtofile, L[li].kappa_rec->v, trenddoublepoint, trendspot);
   }
 
@@ -2214,7 +2214,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
       doucurves = 1;
     }
     for (li = 0; li < nloci; li++)
-      if (L[li].model == HKY)
+      if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
       {
         numcurve++;
         dohkycurves = 1;
@@ -2325,7 +2325,7 @@ void callasciicurves (FILE *outfile,int mcmcrecords)
   if (dohkycurves)
   {
     for (li = 0; li < nloci; li++)
-      if (L[li].model == HKY)
+      if (L[li].model == HKY && hiddenoptions[HKYTOJK]==0)
       {
         curvexy[j] = L[li].kappa_rec->v->xy;
         curvestr[j] = &L[li].kappa_rec->v->str[0];
