@@ -2,11 +2,11 @@ NOTE:  the most current version of this and all testbed files are in E:\genemod\
 DO NOT use older versions of testbed files from old directories. 
 THIS IS also true for the linux version IMa3_stdtest.sh
 basic instructions:
-	all the main files are in E:\genemod\ML-MCMC\SEAI\IMa3\testbed
+	all the main files are in D:\genemod\ML-MCMC\SEAI\IMa3\testbed
 
 	to do a run:
-		copy the files from E:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory
-		e.g. E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\####
+		copy the files from D:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory
+		e.g. D:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\####
 		
 		delete any previous results file in that folder
 		
@@ -16,11 +16,12 @@ basic instructions:
 		
 	for wsl
 		from unbuntu
-		copy the files from  E:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory 
-			e.g. E:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\wsl\####
+		copy the files from  D:\genemod\ML-MCMC\SEAI\IMa3\testbed into a new directory 
+			e.g. D:\genemod\ML-MCMC\SEAI\IMa3_work\stdTest\wsl\todays_date
 			delete any previous results file in that folder
 		under wsl in ~/IMa3/src
-			compile a new IMa3_stdtest  
+			compile a new IMa3_stdtest  useing the makefile:  make testbed
+			copy the new IMa3_stdtest to the folder 
 			make sure that conda is not active, else mpi does not work 
 				conda deactivate 
 			make testbed
@@ -28,10 +29,29 @@ basic instructions:
 		
 		run ima3_stdtest.sh
 
-	! Current standard is 4_12_2021 !
+	! Current standard is 5_23_2023 !
 	
 	
 	
+5/23/2023
+starting up on new machine
+all files are now on D drive rather than E 
+	
+	did a fair bit of work trying to meet concerns raised by Ziheng Yang
+	email:
+		Dear Jody,
+		I hope you are doing well.
+		We are trying to use IMa3 and have a few questions.  I hope you could take a quick look for us.
+		a) Is it possible to fix locus rates to 1 for all loci, or can we force all loci to have the same mutation rate without changing the source code?
+		b) is it possible to use JC instead of HKY.  Can I fix kappa = 1 and base frequencies to ¼ each?
+		c) the program seems to map the migration rates incorrectly when we use a migration model for 3 species with fewer than 8 migration rates.  I attach a set of files (data file and prior file for the saturated model, and the model with 4 rates between sister species). 
+		# the following command runs the saturated model (works correctly)
+		../IMa3 -imydataIMa3_L250.txt -j2 -c3 -gpriorsat.txt -ooutIMA3 -b5 -L5
+		# Here we define 4 migration rates between sisters (0->1, 1->0, 3->2, 2->3).
+		# However, the values are incorrectly mapped to 0->1, 1->0, 0->2, and 2->0.
+		../IMa3 -imydataIMa3_L250.txt -j2 -c3 -gpriorsister.txt -ooutIMA3 -b5 -L5
+		Thanks and best wishes,
+		ziheng	
 	
 4/12/2021
 	Did some debugging of poptreeslider() in update_poptree.cpp

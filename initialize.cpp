@@ -188,7 +188,7 @@ void init_i_params (void)
 
 void getparamnums()
 {
-  int i, j, k, mi, mcheck;
+  int i, j, k,si,sj, mi, mcheck;
   
   /* set up the population size parameters */
   if (modeloptions[PARAMETERSBYPERIOD])
@@ -222,41 +222,65 @@ void getparamnums()
       goto outsidefirstloop; // get out of this big condition section
     }
     /* each chain will have the same number of migration parameters, so C[ARBCHAIN] is ok */
-    for (k = 0; k < lastperiodnumber; k++)
-      for (i = 0; i < npops - k - 1; i++)
-        for (j = i + 1; j < npops - k; j++) if ( k == 0 ||
-              ( modeloptions[MIGRATIONBETWEENSAMPLED]==0 &&
-               (modeloptions[PARAMETERSBYPERIOD]==1 ||
-                ( !ISELEMENT (C[ARBCHAIN]->plist[k][i], C[ARBCHAIN]->periodset[k - 1]) ||
-                  !ISELEMENT (C[ARBCHAIN]->plist[k][j], C[ARBCHAIN]->periodset[k - 1])  
-                  ) ) ) )
-          /* tricky condition.  proceed to set mcheck if:
-            where are considering only sampled populations (k==0)  or
-            (not considering just sampled populations  AND
-            EITHER we are considering each parameter to apply only to one period
-                  OR one of the two populations being considered was not in the previous (k-1) period (meaning it is a new ancestral pop) */
-          {
-          /* if mcheck ends up as 1, we have one more parameter to add
-             if it is also the case that migration is not the same in both directions,  then we have two parameters to add
+    if (calcoptions[LOADPRIORSFROMFILE] ==0)
+    {
+      for (k = 0; k < lastperiodnumber; k++)
+        for (i = 0; i < npops - k - 1; i++)
+          for (j = i + 1; j < npops - k; j++) if ( k == 0 ||
+                ( modeloptions[MIGRATIONBETWEENSAMPLED]==0 &&
+                 (modeloptions[PARAMETERSBYPERIOD]==1 ||
+                  ( !ISELEMENT (C[ARBCHAIN]->plist[k][i], C[ARBCHAIN]->periodset[k - 1]) ||
+                    !ISELEMENT (C[ARBCHAIN]->plist[k][j], C[ARBCHAIN]->periodset[k - 1])  
+                    ) ) ) )
+            /* tricky condition.  proceed to set mcheck if:
+              where are considering only sampled populations (k==0)  or
+              (not considering just sampled populations  AND
+              EITHER we are considering each parameter to apply only to one period
+                    OR one of the two populations being considered was not in the previous (k-1) period (meaning it is a new ancestral pop) */
+            {
+            /* if mcheck ends up as 1, we have one more parameter to add
+               if it is also the case that migration is not the same in both directions,  then we have two parameters to add
              
-             mcheck can get set to 0 if we require two populations to be sisters, and they are not
-             or if the prior given for that pair of populations is zero 
-             */
-            if (modeloptions[NOMIGBETWEENNONSISTERS])
-              mcheck = checkaresis (ARBCHAIN,k, i, j);
-            else
-            {
-              if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior < 0.0) || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL))
-                mcheck = 1;
+               mcheck can get set to 0 if we require two populations to be sisters, and they are not
+               or if the prior given for that pair of populations is zero 
+               */
+              if (modeloptions[NOMIGBETWEENNONSISTERS])
+                mcheck = checkaresis (ARBCHAIN,k, i, j);
               else
-                mcheck = 0;
+              {
+
+                if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL))
+                  mcheck = 1;
+                else
+                  mcheck = 0;
+              }
+              if (mcheck)
+              {
+                mi++;
+			    if (calcoptions[LOADPRIORSFROMFILE] ==0)
+				    mi += modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS]==0;
+              }
             }
-            if (mcheck)
-            {
-              mi++;
-              mi += modeloptions[SINGLEMIGRATIONBOTHDIRECTIONS]==0;
-            }
-          }
+    }
+    else /* calcoptions[LOADPRIORSFROMFILE]*/
+    {
+    for (si=0; si< numtreepops;si++)
+        for (sj = 0; sj < numtreepops; sj++) if ( sj != si)
+        {
+          mcheck = 0; // each ordered pair of populations can only be counted once 
+          for (k = 0; k < lastperiodnumber; k++) 
+            for (i = 0; i < npops - k; i++)
+              for (j = 0; j < npops - k; j++) if ( j != i) 
+                if (C[ARBCHAIN]->plist[k][i] == si && C[ARBCHAIN]->plist[k][j]==sj)
+                  if (mprior_fromfile[si][sj] > MINPARAMVAL)
+                    mcheck = 1;
+          if (mcheck==1)
+            mi++;
+        }
+
+    }
+
+
 outsidefirstloop:  ;
 
   }
@@ -402,9 +426,9 @@ void set_iparam_poptreeterms(int ci)
               mcheck = checkaresis (ci,k, i, j);
             else
             {
-               if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior < 0.0) || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
+              if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
                 mcheck = 1;
-               else
+              else
                  mcheck = 0;
             }
             if (mcheck)
@@ -562,7 +586,8 @@ void set_iparam_poptreeterms(int ci)
               mcheck = checkaresis (ci,k, i, j);
             else
             {
-               if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0)  || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
+              // if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0)  || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
+              if (mprior > 0.0 || (calcoptions[LOADPRIORSFROMFILE] && mprior_fromfile[C[ci]->plist[k][i]][C[ci]->plist[k][j]] > MINPARAMVAL))
                 mcheck = 1;
                else
                  mcheck = 0;
@@ -906,7 +931,7 @@ set_nomigrationchecklist ()  // not used for population tree updating so work on
       {
         if ((modeloptions[MIGRATIONBETWEENSAMPLED]==1 && (C[ARBCHAIN]->plist[k][i] >= npops || C[ARBCHAIN]->plist[k][j] >= npops)) ||
             (modeloptions[NOMIGBETWEENNONSISTERS]==1 && checkaresis (ARBCHAIN,k, i, j)==0) ||
-            (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0 && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] <= MINPARAMVAL))
+            (calcoptions[LOADPRIORSFROMFILE]==1 && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] <= MINPARAMVAL))
         {
           nomigrationchecklist.n+=2;
         }
@@ -926,7 +951,7 @@ set_nomigrationchecklist ()  // not used for population tree updating so work on
         {
           if ((modeloptions[MIGRATIONBETWEENSAMPLED]==1 && (C[ARBCHAIN]->plist[k][i] >= npops || C[ARBCHAIN]->plist[k][j] >= npops)) ||
             (modeloptions[NOMIGBETWEENNONSISTERS]==1 && checkaresis (ARBCHAIN,k, i, j)==0) ||
-            (calcoptions[LOADPRIORSFROMFILE]==1 && mprior < 0.0 && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] <= MINPARAMVAL))
+            (calcoptions[LOADPRIORSFROMFILE]==1 && mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] <= MINPARAMVAL))
           {
               n++;
               nomigrationchecklist.p[n] = k;
@@ -1638,14 +1663,15 @@ void add_priorinfo_to_output(char priorfilename[],int *fpstri, char fpstr[])
       SP"  Migration parameters maximum values \n");
       SP"\tMigration rate\tMaximum value\n");
       for (i=0;i<nummigrateparams;i++)
-        SP"\t%s\t%.3lf\n",C[ARBCHAIN]->imig[i].str,C[ARBCHAIN]->imig[i].pr.max);
+        SP"\t%s\t%.4lg\n",C[ARBCHAIN]->imig[i].str,C[ARBCHAIN]->imig[i].pr.max);
     }
     else
     {
       SP"  Migration parameter prior means (exponential priors)\n");
       SP"\tMigration rate\tPrior mean value\n");
       for (i=0;i<nummigrateparams;i++)
-        SP"\t%s\t%.3lf\n",C[ARBCHAIN]->imig[i].str,C[ARBCHAIN]->imig[i].pr.expomean);
+        SP"\t%s\t%.4lg\n",C[ARBCHAIN]->imig[i].str,C[ARBCHAIN]->imig[i].pr.expomean);
+        
     }
 
   }

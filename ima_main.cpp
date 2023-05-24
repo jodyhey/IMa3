@@ -971,6 +971,11 @@ it is ok to have spaces between a flag and its values
     IM_err (IMERR_MISSINGCOMMANDINFO,
             " No information provided for maximum value for migration parameter (-m)");
   }
+  if (Mp && calcoptions[LOADPRIORSFROMFILE] && npops > 1)
+  {
+    IM_err (IMERR_COMMANDLINEINCOMPAT,
+            " Conflicting command line arguments, migration prior set on command line (-m) in conflict with use of prior file");
+  }
   if (!Qp && !calcoptions[LOADPRIORSFROMFILE])
   {
     IM_err (IMERR_MISSINGCOMMANDINFO,
