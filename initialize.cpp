@@ -188,7 +188,7 @@ void init_i_params (void)
 
 void getparamnums()
 {
-  int i, j, k, mi, mcheck;
+  int i, j, k,si,sj, mi, mcheck;
   
   /* set up the population size parameters */
   if (modeloptions[PARAMETERSBYPERIOD])
@@ -264,12 +264,18 @@ void getparamnums()
     }
     else /* calcoptions[LOADPRIORSFROMFILE]*/
     {
-      for (k = 0; k < lastperiodnumber; k++)
-        for (i = 0; i < npops - k; i++)
-          for (j = 0; j < npops - k; j++) if ( j != i) 
+      for (si=0; si< numtreepops;si++)
+          for (sj = 0; sj < numtreepops; sj++) if ( sj != si)
           {
-             if (mprior_fromfile[C[ARBCHAIN]->plist[k][i]][C[ARBCHAIN]->plist[k][j]] > MINPARAMVAL)
-               mi++;
+            mcheck = 0; // each ordered pair of populations can only be counted once 
+            for (k = 0; k < lastperiodnumber; k++) 
+              for (i = 0; i < npops - k; i++)
+                for (j = 0; j < npops - k; j++) if ( j != i) 
+                  if (C[ARBCHAIN]->plist[k][i] == si && C[ARBCHAIN]->plist[k][j]==sj)
+                    if (mprior_fromfile[si][sj] > MINPARAMVAL)
+                      mcheck = 1;
+            if (mcheck==1)
+              mi++;
           }
     }
 outsidefirstloop:  ;
