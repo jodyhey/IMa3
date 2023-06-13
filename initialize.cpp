@@ -2080,6 +2080,15 @@ finish_setup_C (int currentid)
 
   for (ci = 0; ci < numchainspp; ci++)
     C[ci]->currallbetapos = currentid*numchainspp + ci;
+  /* reset mutation parameter counters if needed */
+  if (hiddenoptions[HKYTOJK])
+  {
+    nkappas=0;
+  }
+ if (domutationscalarupdate == 0)
+  {
+    nurates=0;
+  }
   return;
 }                               // finish_setup_C
 
