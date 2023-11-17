@@ -387,6 +387,51 @@ readseqHKY (FILE * infile, int li, int currentid)
   }
 
   eliminategaps (li, currentid);
+
+  if (hiddenoptions[HKYTOJK]==1)
+  {
+    /* loop added by Ziheng Yang's student Jiayi to process each column in the alignment according to the JC model. leads to speed increase,  1.5-2x faster than before.
+    */
+    /*#if 1 */
+    /* TF: Code to recode sites for JC69 compression */
+
+    /* flag whether state i was recoded to our new encoding */
+    int recoded[4] = {0,0,0,0};  
+    /* the state to which we recoded state i */
+    int recoded_state[4] = {0,0,0,0};
+
+    //char BASEs[5] = "ACGT", siteold[1000] = {0}, sitenew[1000] = { 0 };
+  
+    for (j = 0; j < L[li].numsites; ++j)
+    {
+      int state = 0;
+      for (i = 0; i < 4; i++)
+         recoded[i] = recoded_state[i] = 0;
+
+      //for (i = 0; i < L[li].numgenes; ++i) siteold[i] = BASEs[L[li].seq[i][j]];
+
+      for (i = 0; i < L[li].numgenes; ++i)
+      {
+        assert(L[li].seq[i][j] >= 0);
+
+        int current_state = L[li].seq[i][j];
+  
+        if (!recoded[current_state])
+        {
+          recoded_state[current_state] = state++;
+          recoded[current_state] = 1;
+        }
+  
+        L[li].seq[i][j] = recoded_state[current_state];
+      }
+
+      //for (i = 0; i < L[li].numgenes; ++i) sitenew[i] = BASEs[L[li].seq[i][j]];
+      //printf("site %4d: %s -> %s\n", j+1, siteold, sitenew);
+      //if ((j + 1) % 20 == 0) getchar();
+    }
+  
+  /*#endif */
+  }
   L[li].totsites=L[li].numsites;
   sortseq (li);
   PIstandard = 0.0;
