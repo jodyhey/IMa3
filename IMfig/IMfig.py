@@ -1,5 +1,5 @@
 """
-    Copyright 2009-2018  Jody Hey
+    Copyright 2009-2025  Jody Hey
     IMfig makes an image file containing a figure of the population phylogeny
         in an Isolation-with-Migration framework
     To see the helpscreen run the following at a command prompt:
@@ -9,6 +9,70 @@
     Check releasedate.
     Tested using python 3.6  but may run ok in python 2.7
     Read the documentation for details on running the program
+
+
+IMfig program. Copyright 2009-2025  Jody Hey  Release Date Apr 18, 2025
+usage: IMfig.py [-h] -i IMFILENAME [-a] [-b POPBOXSPACEADJ] [-c {j,p,n}] [-d] [-e] [-f FONT] [-g GLOBALSCALE] [-j ARROWHEIGHTADJ] [-k] [-l HEIGHTSCALE] [-m MOPTION] [-n ALTNAMEFILENAME] [-o OUTPUTFILENAME]
+                [-p FONTSIZE] [-q] [-r] [-s] [-t LASTT_LOWER_Y] [-u] [-v] [-w WIDTHSCALAR] [-x XADJUST] [-y LOCALYSCALE] [-z]
+
+IMfig program. Copyright 2009-2025 Jody Hey. Release Date Apr 18, 2025
+
+options:
+  -h, --help            show this help message and exit
+  -i IMFILENAME, --input IMFILENAME
+                        input file name
+  -a, --label-ancestor-pops
+                        include ancestral population #'s in plot
+  -b POPBOXSPACEADJ, --box-spacing POPBOXSPACEADJ
+                        adjust width spacing of population boxes, values > 0, default = 1
+  -c {j,p,n}, --convert {j,p,n}
+                        output format, default is eps, see also -w
+                        -c j : make a jpeg file
+                        -c p : make a pdf file
+                        -c n : make a png file
+  -d, --no-demographic-scale
+                        do not use demographic scale information even if in input file
+  -e, --even-split-times
+                        space split times evenly (not proportional to time, no confidence intervals shown)
+  -f FONT, --font FONT  font. Default=Arial. Use postscript fonts available on the computer
+                        e.g. Arial, Helvetica, Times-roman, Courier
+  -g GLOBALSCALE, --global-scale GLOBALSCALE
+                        global plot scale sets the size of the plot, max = 1, default = 1
+  -j ARROWHEIGHTADJ, --arrow-width ARROWHEIGHTADJ
+                        arrow width, default = 1
+  -k, --angled-names    print population names on an angle
+  -l HEIGHTSCALE, --height-scale HEIGHTSCALE
+                        expand/shrink height by a positive scalar, >1 means taller, <1 means shorter
+  -m MOPTION, --migration MOPTION
+                        options for printing of arrows and 2Nm values for migration:
+                        -m x : do not print migration arrows
+                        -m a : 2Nm migration arrows for all cases when both m > 0 and 2Nm > 0
+                        -m s : 2Nm migration arrows only if m is statistically significant p <= 0.05 (default)
+                        -m S : 2Nm migration arrows only if m is statistically significant p <= 0.01
+                        -m # : "#" is a number, migration arrows appear when 2NM >= # (e.g. -m0.1)
+  -n ALTNAMEFILENAME, --alt-names ALTNAMEFILENAME
+                        file with alternative species names
+  -o OUTPUTFILENAME, --output OUTPUTFILENAME
+                        output file name, default is imfig_output.eps
+  -p FONTSIZE, --font-size FONTSIZE
+                        fontsize (default is 14 for full scale, default follows global scale)
+  -q, --no-confidence-interval-boxes
+                        no confidence interval boxes for population boxes printed
+  -r, --no-confidence-interval-arrows
+                        no confidence interval arrows for population boxes printed
+  -s, --square          print square, rather than landscape
+  -t LASTT_LOWER_Y, --time-height LASTT_LOWER_Y
+                        relative height of oldest time point, values between 0 and 1
+                        default value = 1/(# sampled populations+1)
+  -u, --simple-colors   simple colors, blue for population boxes, red arrows for migration (default grayscale)
+  -v, --color           multiple colors for population boxes, red arrows for migration (default grayscale)
+  -w WIDTHSCALAR, --image-width WIDTHSCALAR
+                        file image width, integer multiple of 720 pixels (only if using -c)
+  -x XADJUST, --width-adjust XADJUST
+                        expand/shrink width of plot by a positive scalar, >1 means wider, <1 means narrower
+  -y LOCALYSCALE, --height-adjust LOCALYSCALE
+                        adjust height of splittimes, relative to bottom of figure, max = 1.
+  -z, --exclude-ghost   exclude the ghost population from the figure    
 """
 
 import math
@@ -34,7 +98,8 @@ try:
 except ImportError:
     check_PIL = False
 
-releasedate = "Jul 10, 2018"
+releaseyear = "2025"
+releasedate = "Apr 18, 2025"
 
 # global variables.  gv is a dictionary that holds nearly all of them
 gv = {}  # dictionary to hold the many global constants, 'gv' for global variables
@@ -535,7 +600,7 @@ def check_ghost_status(f, a, s):
     # f, s not used but needed for function to match general function format
     global gv
     if gv["newercode"]:
-        gv["useghost"] = (a.find("-j") >= 0) and ("1" in a[a.find("-j") + 1:])   # should only be true if -j is there with a 1
+        gv["useghost"] = (a.find("-j") >= 0) # don't think this is needed, 1 is the default ' and ("1" in a[a.find("-j") + 1:])   # should only be true if -j is there with a 1'
     else:
         gv["useghost"] = (a.find("-j") >= 0) and ("4" in a[a.find("-j") + 1:])  # should only be true if -j is there with a 4
 
@@ -761,10 +826,6 @@ def get_parameter_priors(f, a, s):
         if aa.count("exponential") > 0:
             psp[i][1] = "exponential"
     return psp
-
-
-## localscale is 1 if (gv["fixedUR"][0]-gv["fixedLL"][0]) corresponds to Ne of 1e6
-
 
 def calc_scaledvals(slist):
     gentime = slist[7][4][0]
@@ -1816,259 +1877,179 @@ def print_mcurves(slist, popbox, plist):
 ##////////////// Command line use ///////////////////////////////////////////////////
 ##***********************************************************************************
 
-
-def scancommandline(args):
-    """ command line consists of flags, each with a dash, '-', followed immediately by a letter
-        some flags should be followed by a value, depending on the flag.  The value can be placed
-        immediately after the flag or spaces can be inserted """
-    global gv
-
-    def aflag():
-        gv["label_a_pops"] = True
-
-    def bflag(tempval):
-        gv["popboxspaceadj"] = float(tempval)
-
-    def cflag(tempval):
-        if check_PIL is False:
-            print("PIL module not available, -c option cannot be used")
-        else:
-            if tempval.upper() == 'J':
-                gv["imagefileextension"] = ".jpg"
-            elif tempval.upper() == 'P':
-                gv["imagefileextension"] = ".pdf"
-            elif tempval.upper() == 'N':
-                gv["imagefileextension"] = ".png"
-            else:
-                print("-c variable", tempval, "not recognized")
-                sys.exit(1)
-
-    def dflag():
-        gv["skipdemographicscaling"] = True
-
-    def eflag():
-        gv["eventimes"] = True
-
-    def iflag(tempname):
-        gv["imfilename"] = tempname.strip()
-
-    def oflag(tempname):
-        if len(tempname) >= 3 and tempname[-3:].lower() != "eps":
-            tempname += ".eps"
-        gv["outputfilename"]= tempname.strip()
-
-    def gflag(tempval):
-        gv["globalscale"] = float(tempval)
-
-    def xflag(tempval):
-        #  edited 9/1/2017, this seemed to work better.  use maximumxpoint for making plot wider, and use localxscale for makeing it narrower
-        f = float(tempval)
-        if f > 1.0:
-            gv["maximumxpoint"] = gv["maximumxpoint"] * f
-        else:
-            gv["localxscale"] = f
-    def lflag(tempval):
-        #  added 9/18/2017 based simply on xflag
-        #  runs with values less than 1  but does weird things
-        f = float(tempval)
-        gv["maximumypoint"] = gv["maximumypoint"] * f
-
-    def yflag(tempval):
-        gv["localyscale"] = float(tempval)
-
-    def jflag(tempval):
-        gv["arrowheightadj"] = float(tempval)
-
-    def fflag(tempval):
-        gv["font"] = tempval
-        gv["bifont"] = gv["font"] + "-BoldItalic"
-
-    def kflag():
-        gv["line0y"] = 0.88 # a tradeof, between need to make room and not wanting to squash figure
-        gv["anglenames"] = True
-
-    def mflag(tempval):
-        if tempval[0].isdigit():
-            gv["moption"] = float(tempval)
-        else:
-            if tempval[0].lower() != 's':
-                gv["moption"] = tempval[0].lower()
-            else:
-                gv["moption"] = tempval
-
-    def nflag(tempname):
-        gv["usealtnames"] = True
-        gv["altnamefilename"] = tempname.strip()
-
-    def qflag():
-        gv["popboxcintervalboxes"] = False
-
-    def rflag():
-        gv["popboxcintervalarrows"] = False
-
-    def pflag(tempval):
-        gv["fontsize"] = float(tempval)
-        gv["fontfixed"] = True
-
-    def tflag(tempval):
-        gv["lastt_lower_y"] = float(tempval)
-        gv["set_lastt_lower_y"] = False
-
-    def sflag():
-        gv["dosquare"] = True
-        gv["maximumxpoint"] = 576.1
-
-    def uflag():
-        gv["simplecolor"] = True
-
-    def vflag():
-        gv["rgbcolor"] = True
-
-    def wflag(tempval):
-        maxscalar = 20
-        temp = int(round(float(tempval)))
-        if temp > maxscalar:
-            print(" maximum -w value: 20 ")
-            sys.exit(1)
-        gv["widthscalar"] = temp
-    def zflag():
-        gv["excludeghost"] = True
-
-    def removewhitespace(temps):
-        return "".join(temps.split())
-
-    def cleanarglist(arglist, flags_with_values):
-        """
-        """
-        if arglist[-1] =='':
-            arglist.pop(-1)
-        newarg = []
-        if arglist[0][0] != "-":  # skip program name at beginning of list
-            arglist = arglist[1:]
-        ai = 0
-        while ai < len(arglist):
-            if removewhitespace(arglist[ai]) != "":
-                arglist[ai] = removewhitespace(arglist[ai])
-            else:
-                print("bad whitespace in command line: ", repr(" ".join(arglist)))
-                sys.exit(1)
-            if arglist[ai][0] == "-":
-                if arglist[ai][1] in flags_with_values and len(arglist[ai]) == 2:  # found a space in the command line
-                    arglist[ai] = arglist[ai] + arglist[ai + 1]
-                    newarg.append(arglist[ai])
-                    ai += 1
-                else:
-                    newarg.append(arglist[ai])
-            else:
-                print("error on command line, \"-\" not found:", arglist[ai])
-                printcommandset()
-                sys.exit(1)
-            ai += 1
-        return newarg
-
-    def checkallflags(flags_with_values, flags_withoutvalues, cldic):
-        """
-            checks that flags that must be used are used
-            checks that flags_with_values, flags_withoutvalues and cldic all make use of the appropriate flags
-        """
-        if len(set(flags_with_values).intersection(set(flags_without_values))) > 0:
-            print("error some flags appear in two lists of flags, with and without required values:", set(flags_with_values).intersection(set(flags_without_values)))
-            printcommandset()
-            sys.exit(1)
-        for flag in set(flags_with_values).union(set(flags_withoutvalues)):
-            if flag not in cldic:
-                print("error some flag mismatch between strings of flags and dictionary of flags:", flag)
-                printcommandset()
-                sys.exit(1)
-        return
-
-    def check_flags_used(flagsused, flags_must_use):
-        for f in flags_must_use:
-            if f not in flagsused:
-                print("-%c missing from command line. Run without any commands to get the help screen." % f)
-                sys.exit(1)
-        return
-
-    cldic = {'a': aflag, 'b': bflag, 'c': cflag, 'd': dflag, 'e': eflag, 'f': fflag,
-             'g': gflag, 'i': iflag, 'j': jflag, 'k': kflag, 'l': lflag, 'm': mflag, 'n': nflag, 'o': oflag,
-             'p': pflag, 'q': qflag, 'r': rflag, 's': sflag, 't': tflag, 'u': uflag, 'v': vflag, 'w': wflag,
-             'x': xflag, 'y': yflag, 'z': zflag}
-    flags_must_use = 'i'
-    flags_with_values = "cbfgijlmoptxynw"
-    flags_without_values = "adesuvkqrz"
-    cmdstr = " ".join(args)
-    checkallflags(flags_with_values, flags_without_values, cldic)
-    argv = cleanarglist(args, flags_with_values)
-    flagsused = ''
-    for i in range(0, len(argv)):
-        if argv[i][0] == '-':
-            flaglet = argv[i][1].lower()
-            flagsused += flaglet
-##            print(i, flaglet)
-            if len(argv[i]) == 2:
-                if i == (len(argv)-1):
-                    cldic[flaglet]()
-                else:
-                    if argv[i + 1][0] == '-':
-                        cldic[flaglet]()
-                    else:
-                        cldic[flaglet](argv[i + 1])
-                        i += 1
-            else:
-                if (len(argv[i]) < 2):
-                    print("problem on command line ")
-                    sys.exit(1)
-##                print(flaglet, i, argv[i])
-                cldic[flaglet](argv[i][2:len(argv[i])])
-        else:
-            print("error on command line, \"-\" not found:", argv[i])
-            printcommandset()
-            sys.exit(1)
-    check_flags_used(flagsused, flags_must_use)
-    return cmdstr
-
-
-def printcommandset():
-    print("IMfig command line terms (-i is required):")
-    print("-a : include ancestral population #'s in plot")
-    print("-b : adjust width spacing of population boxes, values > 0, default = 1")
+def parse_arguments(args=None):
+    """
+    Parse command line arguments using argparse
+    Returns parsed arguments and command string
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description=f"IMfig program. Copyright 2009-{releaseyear} Jody Hey. Release Date {releasedate}",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    
+    # Required argument
+    parser.add_argument('-i', '--input', required=True, dest='imfilename', help='input file name')
+    # Optional arguments
+    parser.add_argument('-a', '--label-ancestor-pops', action='store_true', dest='label_a_pops',
+                        help='include ancestral population #\'s in plot')
+    parser.add_argument('-b', '--box-spacing', type=float, default=1.0, dest='popboxspaceadj',
+                        help='adjust width spacing of population boxes, values > 0, default = 1')
     if check_PIL:
-        print("-c : output format, default is eps, see also -w")
-        print("      -c j : make a jpeg file")
-        print("      -c p : make a pdf file")
-        print("      -c n : make a png file")
-    print("-d : do not use demographic scale information even if in input file")
-    print("-e : space split times evenly (not proportional to time, no confidence intervals shown)")
-    print("-f : font.  Default=Arial. Use postscript fonts available on the computer")
-    print("     e.g. Arial, Helvetica, Times-roman, Courier")
-    print("-g : global plot scale sets the size of the plot, max = 1, default = 1")
-    print("-h : print only this help menu")
-    print("-i : input file name")
-    print("-j : arrow width, default = 1")
-    print("-k : print population names on an angle")
-    print("-l expand/shrink height by a positive scalar, >1 means taller, <1 means shorter")
-    print("-m : options for printing of arrows and 2Nm values for migration :")
-    print("      -m x :  do not print migration arrows")
-    print("      -m a : 2Nm migration arrows for all cases when both m > 0 and 2Nm > 0")
-    print("      -m s : 2Nm migration arrows only if m is statistically significant p <= 0.05(default)")
-    print("      -m S : 2Nm migration arrows only if m is statistically significant p <= 0.01")
-    print("      -m # : '#' is a number, migration arrows appear when 2NM >= #(e.g. -m0.1)")
-    print("-n : file with alternative species names")
-    print("-o : output file name, default is imfig_output")
-    print("-p : fontsize (default is 14 for full scale, default follows global scale)")
-    print("-q : no confidence interval boxes for population boxes printed")
-    print("-r : no confidence interval arrows for population boxes printed")
-    print("-s : print square, rather than landscape")
-    print("-t : relative height of oldest time point, values between 0 and 1")
-    print("     default value = 1/(# sampled populations+1)")
-    print("-u : simple colors, blue for population boxes, red arrows for migration (default grayscale)")
-    print("-v : multiple colors for population boxes, red arrows for migration (default grayscale)")
+        parser.add_argument('-c', '--convert', choices=['j', 'p', 'n'], dest='imageformat',
+                           help='output format, default is eps, see also -w\n'
+                                '-c j : make a jpeg file\n'
+                                '-c p : make a pdf file\n'
+                                '-c n : make a png file')
+    
+    parser.add_argument('-d', '--no-demographic-scale', action='store_true', dest='skipdemographicscaling',
+                        help='do not use demographic scale information even if in input file')
+    parser.add_argument('-e', '--even-split-times', action='store_true', dest='eventimes',
+                        help='space split times evenly (not proportional to time, no confidence intervals shown)')
+    parser.add_argument('-f', '--font', default='Arial', dest='font',
+                        help='font. Default=Arial. Use postscript fonts available on the computer\n'
+                             'e.g. Arial, Helvetica, Times-roman, Courier')
+    parser.add_argument('-g', '--global-scale', type=float, default=1.0, dest='globalscale',
+                        help='global plot scale sets the size of the plot, max = 1, default = 1')
+    parser.add_argument('-j', '--arrow-width', type=float, default=1.0, dest='arrowheightadj',
+                        help='arrow width, default = 1')
+    parser.add_argument('-k', '--angled-names', action='store_true', dest='anglenames',
+                        help='print population names on an angle')
+    parser.add_argument('-l', '--height-scale', type=float, dest='heightscale',
+                        help='expand/shrink height by a positive scalar, >1 means taller, <1 means shorter')
+    parser.add_argument('-m', '--migration', default='s', dest='moption',
+                        help='options for printing of arrows and 2Nm values for migration:\n'
+                             '-m x : do not print migration arrows\n'
+                             '-m a : 2Nm migration arrows for all cases when both m > 0 and 2Nm > 0\n'
+                             '-m s : 2Nm migration arrows only if m is statistically significant p <= 0.05 (default)\n'
+                             '-m S : 2Nm migration arrows only if m is statistically significant p <= 0.01\n'
+                             '-m # : "#" is a number, migration arrows appear when 2NM >= # (e.g. -m0.1)')
+    parser.add_argument('-n', '--alt-names', dest='altnamefilename',
+                        help='file with alternative species names')
+    parser.add_argument('-o', '--output', default='imfig_output.eps', dest='outputfilename',
+                        help='output file name, default is imfig_output.eps')
+    parser.add_argument('-p', '--font-size', type=float, dest='fontsize',
+                        help='fontsize (default is 14 for full scale, default follows global scale)')
+    parser.add_argument('-q', '--no-confidence-interval-boxes', action='store_true', dest='no_popboxcintervalboxes',
+                        help='no confidence interval boxes for population boxes printed')
+    parser.add_argument('-r', '--no-confidence-interval-arrows', action='store_true', dest='no_popboxcintervalarrows',
+                        help='no confidence interval arrows for population boxes printed')
+    parser.add_argument('-s', '--square', action='store_true', dest='dosquare',
+                        help='print square, rather than landscape')
+    parser.add_argument('-t', '--time-height', type=float, dest='lastt_lower_y',
+                        help='relative height of oldest time point, values between 0 and 1\n'
+                             'default value = 1/(# sampled populations+1)')
+    parser.add_argument('-u', '--simple-colors', action='store_true', dest='simplecolor',
+                        help='simple colors, blue for population boxes, red arrows for migration (default grayscale)')
+    parser.add_argument('-v', '--color', action='store_true', dest='rgbcolor',
+                        help='multiple colors for population boxes, red arrows for migration (default grayscale)')
     if check_PIL:
-        print("-w : file image width, integer multiple of 720 pixels (only if using -c) ")
-    print("-x : expand/shrink width of plot by a positive scaler, >1 means wider, <1 means narrower")
-    print("-y : adjust height of splittimes, relative to bottom of figure, max = 1.")  # not clear what this does  5/12/2016
-    print("-z : exclude the ghost population from the figure")
-
+        parser.add_argument('-w', '--image-width', type=int, dest='widthscalar',
+                           help='file image width, integer multiple of 720 pixels (only if using -c)')
+    parser.add_argument('-x', '--width-adjust', type=float, dest='xadjust',
+                        help='expand/shrink width of plot by a positive scalar, >1 means wider, <1 means narrower')
+    parser.add_argument('-y', '--height-adjust', type=float, default=-1, dest='localyscale',
+                        help='adjust height of splittimes, relative to bottom of figure, max = 1.')
+    parser.add_argument('-z', '--exclude-ghost', action='store_true', dest='excludeghost',
+                        help='exclude the ghost population from the figure')
+    # Parse arguments
+    if args is None:
+        args = sys.argv[1:]
+    parsed_args = parser.parse_args(args)
+    cmdstr = " ".join(["IMfig.py"] + args)
+    
+    # Set additional values based on parsed args
+    if hasattr(parsed_args, 'fontsize') and parsed_args.fontsize is not None:
+        parsed_args.fontfixed = True
+    else:
+        parsed_args.fontfixed = False
+        parsed_args.fontsize = 14
+    
+    if hasattr(parsed_args, 'altnamefilename') and parsed_args.altnamefilename is not None:
+        parsed_args.usealtnames = True
+    else:
+        parsed_args.usealtnames = False
+    
+    if hasattr(parsed_args, 'lastt_lower_y') and parsed_args.lastt_lower_y is not None:
+        parsed_args.set_lastt_lower_y = False
+    else:
+        parsed_args.set_lastt_lower_y = True
+        parsed_args.lastt_lower_y = -1
+    
+    if hasattr(parsed_args, 'no_popboxcintervalboxes') and parsed_args.no_popboxcintervalboxes:
+        parsed_args.popboxcintervalboxes = False
+    else:
+        parsed_args.popboxcintervalboxes = True
+    
+    if hasattr(parsed_args, 'no_popboxcintervalarrows') and parsed_args.no_popboxcintervalarrows:
+        parsed_args.popboxcintervalarrows = False
+    else:
+        parsed_args.popboxcintervalarrows = True
+    
+    if hasattr(parsed_args, 'xadjust') and parsed_args.xadjust is not None:
+        if parsed_args.xadjust > 1.0:
+            parsed_args.maximumxpoint = 756.1 * parsed_args.xadjust
+            parsed_args.localxscale = -1
+        else:
+            parsed_args.localxscale = parsed_args.xadjust
+            parsed_args.maximumxpoint = 756.1
+    else:
+        parsed_args.localxscale = -1
+        parsed_args.maximumxpoint = 756.1
+    
+    if hasattr(parsed_args, 'heightscale') and parsed_args.heightscale is not None:
+        parsed_args.maximumypoint = 576.1 * parsed_args.heightscale
+    else:
+        parsed_args.maximumypoint = 576.1
+    
+    if hasattr(parsed_args, 'dosquare') and parsed_args.dosquare:
+        parsed_args.maximumxpoint = 576.1
+    
+    if hasattr(parsed_args, 'anglenames') and parsed_args.anglenames:
+        parsed_args.line0y = 0.88
+    else:
+        parsed_args.line0y = 0.95
+    
+    if hasattr(parsed_args, 'widthscalar') and parsed_args.widthscalar is None:
+        parsed_args.widthscalar = -1
+    
+    # Process image format if applicable
+    if check_PIL and hasattr(parsed_args, 'imageformat') and parsed_args.imageformat is not None:
+        if parsed_args.imageformat == 'j':
+            parsed_args.imagefileextension = ".jpg"
+        elif parsed_args.imageformat == 'p':
+            parsed_args.imagefileextension = ".pdf"
+        elif parsed_args.imageformat == 'n':
+            parsed_args.imagefileextension = ".png"
+    else:
+        parsed_args.imagefileextension = ""
+    
+    # Set bifont based on font
+    parsed_args.bifont = parsed_args.font + "-BoldItalic"
+    
+    # Convert moption to float if it's a number
+    if hasattr(parsed_args, 'moption') and parsed_args.moption not in ['x', 'a', 's', 'S']:
+        try:
+            parsed_args.moption = float(parsed_args.moption)
+        except ValueError:
+            parsed_args.moption = 's'  # Default if conversion fails
+    
+    # Constants
+    parsed_args.lineINFy = 0.1
+    parsed_args.blue = [0, 0, 1]
+    parsed_args.red = [1, 0, 0]
+    parsed_args.black = [0, 0, 0]
+    parsed_args.darkgreen = [0, 0.58823, 0.19607]
+    parsed_args.graylevel = 0.6
+    parsed_args.dashinterval = 3
+    parsed_args.imaversion = 3  # Set default, will be updated when reading file
+    
+    # Ensure output has .eps extension
+    if not parsed_args.outputfilename.lower().endswith('.eps'):
+        parsed_args.outputfilename += '.eps'
+    
+    return parsed_args, cmdstr
 
 ##*************************************************************
 ##///////////// default values, basic scale////////////////////
@@ -2101,6 +2082,27 @@ def setdefaults():
 ##***********************************************************************************
 
 
+# def writeimagefile():
+#     fn, tempext = os.path.splitext(gv["outputfilename"])
+#     if gv["widthscalar"] < 1:
+#         gv["widthscalar"] = 1
+#     try:
+#         im = Image.open(gv["outputfilename"])
+#         im.load(scale=gv["widthscalar"])
+#         # print(im.format, im.size, im.mode)
+#     except:
+#         print("cannot read ", gv["outputfilename"], ".  ", gv["imagefileextension"], " file not written")
+#         return False
+#     outfn = fn + gv["imagefileextension"]
+#     try:
+#         im.save(outfn)
+#     except IOError:
+#         print("cannot convert", gv["outputfilename"], " to", gv["imagefileextension"])
+#         return False
+#     im.close()
+#     os.remove(gv["outputfilename"])
+#     return True
+
 def writeimagefile():
     fn, tempext = os.path.splitext(gv["outputfilename"])
     if gv["widthscalar"] < 1:
@@ -2109,19 +2111,34 @@ def writeimagefile():
         im = Image.open(gv["outputfilename"])
         im.load(scale=gv["widthscalar"])
         # print(im.format, im.size, im.mode)
-    except:
-        print("cannot read ", gv["outputfilename"], ".  ", gv["imagefileextension"], " file not written")
+    except Exception as e:
+        print(f"Error reading {gv['outputfilename']}: {e}")
+        print(f"Detailed error type: {type(e).__name__}")
+        print(f"{gv['imagefileextension']} file not written")
+        
+        # Additional diagnostic information
+        if hasattr(Image, 'registered_extensions'):
+            print(f"Supported formats: {Image.registered_extensions()}")
+        else:
+            print("PIL registered extensions information not available")
+            
         return False
+    
     outfn = fn + gv["imagefileextension"]
     try:
         im.save(outfn)
-    except IOError:
-        print("cannot convert", gv["outputfilename"], " to", gv["imagefileextension"])
+    except Exception as e:
+        print(f"Error converting {gv['outputfilename']} to {gv['imagefileextension']}: {e}")
+        print(f"Detailed error type: {type(e).__name__}")
         return False
-    im.close()
-    os.remove(gv["outputfilename"])
+    
+    try:
+        im.close()
+        os.remove(gv["outputfilename"])
+    except Exception as e:
+        print(f"Warning: Could not clean up temporary file: {e}")
+    
     return True
-
 
 
 
@@ -2129,6 +2146,13 @@ def writeimagefile():
 ##////////////// MAIN PROGRAM ///////////////////////////////////////////////////////
 ##***********************************************************************************
 
+def update_globals_from_args(args):
+    """Update global variables from parsed arguments"""
+    global gv, numpops
+    
+    # Transfer all attributes from args to gv
+    for attr in vars(args):
+        gv[attr] = getattr(args, attr)
 
 def dostuff(args):
     global gv
@@ -2136,10 +2160,12 @@ def dostuff(args):
     setdefaults()
 
     ##////////////// get info from the command line ///////////////////
-    cmdstr = scancommandline(args)
+    parsed_args, cmdstr = parse_arguments(args)
+    
+    # Update globals with parsed arguments
+    update_globals_from_args(parsed_args)
 
     ##////////////// get info from the input file (i.e. the IM results files) ///////////////////
-
     if gv["imagefileextension"] != "":
         tempname = gv["outputfilename"][0:-4] + gv["imagefileextension"]
     else:
@@ -2168,7 +2194,7 @@ def dostuff(args):
     w("%%legal size in landscape is 792x612 set bounding box with 0.5inch margins")
     w("%%the lower corner is at 36 36, x dim is 720 wide, y dim is 540 hi")
     w("%%%%BoundingBox: %d %d  %d  %d" % (int(gv["fixedLL"][0]), int(gv["fixedLL"][1]), int(gv["fixedUR"][0]), int(gv["fixedUR"][1])))
-    w("%%%%IMfig program author: Jody Hey   Copyright 2009-2018")
+    w("%%%%IMfig program author: Jody Hey   Copyright 2009-{}".format(releaseyear))
     w("%%%%Command line for IMfig program that generated this file: %s" % cmdstr)
 
     #### useful for debugging, include this DrawAnX function in the code
@@ -2199,7 +2225,7 @@ def dostuff(args):
 def writecaption(args):
     fn = gv["outputfilename"][0:-4] + "_caption.txt"
     f = open(fn, 'w')
-    f.write("IMfig program Copyright 2009-2018  Jody Hey\n")
+    f.write("IMfig program Copyright 2009-{}  Jody Hey\n".format(releaseyear))
     f.write("command line string: %s\n\n"%' '.join(args))
     s = ""
     if gv["imaversion"] == 3:
@@ -2241,7 +2267,7 @@ def writecaption(args):
     else:
         s += "\n\nHey J. 2010. The Divergence of Chimpanzee Species and Subspecies as Revealed in Multipopulation Isolation-with-Migration Analyses. Mol Biol Evol 27:921-933.\n"
     if gv["moption"].upper() == 'S':
-        s += "Nielsen R, Wakeley J. (21297244 co-authors). 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
+        s += "Nielsen R, Wakeley J. 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
     f.write("%s"%s)
     print("caption file written")
     f.close()
@@ -2260,11 +2286,17 @@ def writecaption(args):
 ##sys.argv = cmdstr.split()
 ## -----------
 
-print("IMfig program. Copyright 2009-2018  Jody Hey  Release Date %s"%releasedate)
-if len(sys.argv) <= 1 or sys.argv[1].upper() == "HELP" or sys.argv[1].upper() == 'H' or sys.argv[1].upper() == "-HELP" or sys.argv[1].upper() == '-H':  # no arguments or only help or h
-    printcommandset()
+if __name__ == "__main__":
+    print("IMfig program. Copyright 2009-{}  Jody Hey  Release Date {}".format(releaseyear,releasedate))
+    
+    if len(sys.argv) <= 1:
+        # No arguments provided, show help
+        import argparse
+        parser = argparse.ArgumentParser(
+            description=f"IMfig program. Copyright 2009-{2025} Jody Hey. Release Date {releasedate}")
+        parser.parse_args(["-h"])
+    else:
+        dostuff(sys.argv[1:])
+        writecaption(sys.argv[1:])
     # end of execution
-else:
-    dostuff(sys.argv[1:])
-    writecaption(sys.argv[1:])
-    # end of execution
+
