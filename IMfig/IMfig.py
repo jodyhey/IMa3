@@ -1,4 +1,6 @@
 """
+    5/5/2025  replaced global gv dictionary with args passed to functions 
+    
     Copyright 2009-2025  Jody Hey
     IMfig makes an image file containing a figure of the population phylogeny
         in an Isolation-with-Migration framework
@@ -7,13 +9,13 @@
     If desired IMfig can be run from within an editing environment
         by setting 'cmdstr' (see bottom of this file)
     Check releasedate.
-    Tested using python 3.6  but may run ok in python 2.7
+    Last tested on python 3.10  but used to run fine on 3.6
     Read the documentation for details on running the program
 
-
-IMfig program. Copyright 2009-2025  Jody Hey  Release Date Apr 18, 2025
-usage: IMfig.py [-h] -i IMFILENAME [-a] [-b POPBOXSPACEADJ] [-c {j,p,n}] [-d] [-e] [-f FONT] [-g GLOBALSCALE] [-j ARROWHEIGHTADJ] [-k] [-l HEIGHTSCALE] [-m MOPTION] [-n ALTNAMEFILENAME] [-o OUTPUTFILENAME]
-                [-p FONTSIZE] [-q] [-r] [-s] [-t LASTT_LOWER_Y] [-u] [-v] [-w WIDTHSCALAR] [-x XADJUST] [-y LOCALYSCALE] [-z]
+usage: temp.py [-h] -i IMFILENAME [-a] [-b POPBOXSPACEADJ] [-c {j,p,n}] [-d] [-e] [-f FONT] [-g GLOBALSCALE]
+               [-j ARROWHEIGHTADJ] [-k] [-l HEIGHTSCALE] [-m MOPTION] [-n ALTNAMEFILENAME]
+               [-o OUTPUTFILENAME] [-p FONTSIZE] [-q] [-r] [-s] [-t LASTT_LOWER_Y] [-u] [-v]
+               [-w WIDTHSCALAR] [-x XADJUST] [-y LOCALYSCALE] [-z]
 
 IMfig program. Copyright 2009-2025 Jody Hey. Release Date Apr 18, 2025
 
@@ -72,14 +74,17 @@ options:
                         expand/shrink width of plot by a positive scalar, >1 means wider, <1 means narrower
   -y LOCALYSCALE, --height-adjust LOCALYSCALE
                         adjust height of splittimes, relative to bottom of figure, max = 1.
-  -z, --exclude-ghost   exclude the ghost population from the figure    
+  -z, --exclude-ghost   exclude the ghost population from the figure
 """
 
 import math
 import sys
 import os
 import string
+import traceback 
 from pathlib import Path
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Union, TextIO
 # some users won't have colormath
 try:
     from colormath.color_objects import LabColor, sRGBColor
@@ -89,7 +94,6 @@ try:
 except ImportError:
     check_colormath = False
 
-
 ## some users won't have PIL
 check_PIL = False
 try:
@@ -98,20 +102,180 @@ try:
 except ImportError:
     check_PIL = False
 
-releaseyear = "2025"
-releasedate = "Apr 18, 2025"
+# These constants are still at the top level of the module since they aren't 
+# configuration parameters that change during execution
+RELEASE_YEAR = "2025"
+RELEASE_DATE = "May 5, 2025"
 
-# global variables.  gv is a dictionary that holds nearly all of them
-gv = {}  # dictionary to hold the many global constants, 'gv' for global variables
-numpops = 0  # widely used global, gets reset when reading file
+# Constants related to chart generation - these could potentially move to the Config class
+# if they might need to be adjusted during execution
+ARROWHEAD_WIDTH_DEFAULT = 0.01  # arrow size
+POPBOX_SPACE_DEFAULT = 0.1  # spacing between population boxes
+CURVEHEIGHT_DEFAULT = 0.03  # curvature of migration arrows
+TFACTOR = 1.0  # a fudge factor for moving things to the right of splittime arrows
 
-# constants that don't change (some can be adjusted in effect by multiplying by scalars given by user)
-arrowheadwidthdefault = 0.01  # arrow size
-popboxspacedefault = 0.1  # spacing between population boxes
-curveheightdefault = 0.03  # curvature of migration arrows
-tfactor = 1.0  # a fudge factor for moving things to the right of splittime arrows
-min2NM = 0.0  # not sure why this was 0.0005 # the smallest value plotted by IM programs for 2NM
+# The number of populations will still be a global variable as it's set during 
+# file parsing and is widely used
+numpops = 0
 
+@dataclass
+class Config:
+    """
+    Class to hold all configuration parameters for IMfig.
+    Replaces the global variables dictionary approach.
+    """
+    # Basic configuration
+    label_a_pops: bool = False
+    simplecolor: bool = False
+    rgbcolor: bool = False
+    dosquare: bool = False
+    eventimes: bool = False
+    popboxcintervalboxes: bool = True
+    popboxcintervalarrows: bool = True
+    imfilename: str = "im_eps.txt"
+    outputfilename: str = "imfig_output.eps"
+    globalscale: float = 1.0
+    font: str = "Arial"
+    bifont: str = "Arial-BoldItalic"
+    fontsize: int = 14
+    fontfixed: bool = False
+    line0y: float = 0.95
+    lineINFy: float = 0.1
+    localxscale: float = -1
+    localyscale: float = -1
+    arrowheightadj: float = 1.0
+    maximumxpoint: float = 756.1
+    maximumypoint: float = 576.1
+    lastt_lower_y: float = -1
+    set_lastt_lower_y: bool = True
+    xadjust: Optional[float] = None
+    heightscale: Optional[float] = None
+    
+    # Color settings
+    blue: List[float] = field(default_factory=lambda: [0, 0, 1])
+    red: List[float] = field(default_factory=lambda: [1, 0, 0])
+    black: List[float] = field(default_factory=lambda: [0, 0, 0])
+    darkgreen: List[float] = field(default_factory=lambda: [0, 0.58823, 0.19607])
+    graylevel: float = 0.6
+    
+    # Layout settings
+    popboxspaceadj: float = 1.0
+    moption: Union[str, float] = 's'
+    skipdemographicscaling: bool = False
+    anglenames: bool = False
+    dashinterval: int = 3
+    
+    # Names and file handling
+    usealtnames: bool = False
+    imagefileextension: str = ""
+    altnamefilename: str = ""
+    altpopnames: List[str] = field(default_factory=list)
+    widthscalar: int = -1
+    
+    # Ghost population
+    excludeghost: bool = False
+    useghost: bool = False
+    
+    # IMa version
+    imaversion: int = 3
+    newercode: bool = False
+    
+    # Fixed dimensions
+    fixedLL: List[float] = field(default_factory=lambda: [36.1, 36.1])
+    fixedUR: List[float] = field(default_factory=lambda: [756.1, 576.1])
+    
+    # Output file handle - not initialized in the constructor
+    epsf: Optional[TextIO] = None
+    
+    def adjust_scales(self):
+        """
+        Set the scale values based on the current configuration.
+        This replaces the setbasexyscale function.
+        """
+        # Set fixed dimensions
+        minimumpoint = 36.1  # Minimum x and y points
+        self.fixedLL = [minimumpoint, minimumpoint]
+        
+        # Adjust x scale if needed
+        if self.xadjust is not None:
+            if self.xadjust > 1.0:
+                self.maximumxpoint = 756.1 * self.xadjust
+                self.localxscale = -1
+            else:
+                self.localxscale = self.xadjust
+                self.maximumxpoint = 756.1
+        
+        # Adjust for square format
+        if self.dosquare:
+            self.maximumxpoint = 576.1
+        
+        # Adjust for height scale
+        if self.heightscale is not None:
+            self.maximumypoint = 576.1 * self.heightscale
+        
+        # Set the upper right point
+        self.fixedUR = [self.maximumxpoint, self.maximumypoint]
+    
+    def update_from_args(self, args):
+        """
+        Update configuration from parsed command line arguments.
+        This replaces the global update_globals_from_args function.
+        """
+        # Handle special cases before general attribute transfer
+        self.fontfixed = False
+        if hasattr(args, 'fontsize') and args.fontsize is not None:
+            self.fontfixed = True
+        
+        self.usealtnames = False
+        if hasattr(args, 'altnamefilename') and args.altnamefilename is not None:
+            self.usealtnames = True
+            self.altnamefilename = args.altnamefilename
+        
+        self.set_lastt_lower_y = True
+        if hasattr(args, 'lastt_lower_y') and args.lastt_lower_y is not None:
+            self.set_lastt_lower_y = False
+            self.lastt_lower_y = args.lastt_lower_y
+        
+        self.popboxcintervalboxes = True
+        if hasattr(args, 'no_popboxcintervalboxes') and args.no_popboxcintervalboxes:
+            self.popboxcintervalboxes = False
+        
+        self.popboxcintervalarrows = True
+        if hasattr(args, 'no_popboxcintervalarrows') and args.no_popboxcintervalarrows:
+            self.popboxcintervalarrows = False
+        
+        # Process image format
+        self.imagefileextension = ""
+        if hasattr(args, 'imageformat') and args.imageformat is not None:
+            if args.imageformat == 'j':
+                self.imagefileextension = ".jpg"
+            elif args.imageformat == 'p':
+                self.imagefileextension = ".pdf"
+            elif args.imageformat == 'n':
+                self.imagefileextension = ".png"
+        
+        # Transfer general attributes 
+        for key, value in vars(args).items():
+            if hasattr(self, key) and value is not None:
+                setattr(self, key, value)
+        
+        # Post-processing
+        if self.anglenames:
+            self.line0y = 0.88
+        
+        # Set bifont based on font
+        self.bifont = self.font + "-BoldItalic"
+        
+        # Convert moption to float if it's a number
+        if self.moption not in ['x', 'a', 's', 'S']:
+            try:
+                self.moption = float(self.moption)
+            except ValueError:
+                self.moption = 's'  # Default if conversion fails
+        
+        # Ensure output has .eps extension
+        if not self.outputfilename.lower().endswith('.eps'):
+            self.outputfilename += '.eps'
 
 ##***********************************************************************************
 ##////////////// FUNCTIONS FOR GENERATING EPS FILE   ////////////////////////////////
@@ -126,91 +290,91 @@ min2NM = 0.0  # not sure why this was 0.0005 # the smallest value plotted by IM 
 ## all conversions to the absolute scale are handled by going thru apoint()
 
 
-def w(s):
+def w(args, s):
     """
-        simple function to make it easier to print to the eps file without having to repeat code text
+    Simple function to make it easier to write to the eps file without having to repeat code text
     """
-    gv["epsf"].write(s + "\n")
+    args.epsf.write(s + "\n")
 
 
-def apoint(rpoint):
+def apoint(args, rpoint):
     """
-        rpoint is a list of length 2, convert a relative point to an absolute point
+    rpoint is a list of length 2, convert a relative point to an absolute point
 
-        x value is in position 0, y value in position 1
+    x value is in position 0, y value in position 1
 
-        this function handles all conversions from relative to absolute scales
-        all the rest of the code assumes coordinates from 0 to 1, on both x and y axes
+    this function handles all conversions from relative to absolute scales
+    all the rest of the code assumes coordinates from 0 to 1, on both x and y axes
 
-        some other global variables that are used here:
-            fixedLL is the lower left point of the plot - no values to left or below this.
-            fixedUR is the upper right point - not values above or to the right of this.
-            globalscale is an overall scalar of plot size
-            localxscale is an x dimensional scalar of plot size
-                so the x dimension can be changed without affecting the y dimension
+    some other configuration parameters that are used here:
+        fixedLL is the lower left point of the plot - no values to left or below this.
+        fixedUR is the upper right point - not values above or to the right of this.
+        globalscale is an overall scalar of plot size
+        localxscale is an x dimensional scalar of plot size
+            so the x dimension can be changed without affecting the y dimension
     """
-    tempy = gv["fixedLL"][1] + gv["globalscale"] * rpoint[1] * (gv["fixedUR"][1] - gv["fixedLL"][1])
-    if gv["localxscale"] != -1:
-        tempx = gv["fixedLL"][0] + gv["localxscale"] * gv["globalscale"] * rpoint[0] * (gv["fixedUR"][0] - gv["fixedLL"][0])
+    tempy = args.fixedLL[1] + args.globalscale * rpoint[1] * (args.fixedUR[1] - args.fixedLL[1])
+    if args.localxscale != -1:
+        tempx = args.fixedLL[0] + args.localxscale * args.globalscale * rpoint[0] * (args.fixedUR[0] - args.fixedLL[0])
     else:
-        tempx = gv["fixedLL"][0] + gv["globalscale"] * rpoint[0] * (gv["fixedUR"][0] - gv["fixedLL"][0])
-    if tempx - gv["fixedUR"][0] > 0 and tempx - gv["fixedUR"][0] < 1e-7:
-        tempx = gv["fixedUR"][0]
-    if tempx > gv["fixedUR"][0]:
-        print("problem x value : ", tempx, " max x allowed : ", gv["fixedUR"][0])
+        tempx = args.fixedLL[0] + args.globalscale * rpoint[0] * (args.fixedUR[0] - args.fixedLL[0])
+    if tempx - args.fixedUR[0] > 0 and tempx - args.fixedUR[0] < 1e-7:
+        tempx = args.fixedUR[0]
+    if tempx > args.fixedUR[0]:
+        print("problem x value : ", tempx, " max x allowed : ", args.fixedUR[0])
     return [tempx, tempy]
 
 
-def rapoint(rpoint):
+def rapoint(args, rpoint):
     """ relative point
         this is called from a function where the scale has been reset
     """
-    return [rpoint[0] * gv["globalscale"] * (gv["fixedUR"][0] - gv["fixedLL"][0]),
-            rpoint[1] * gv["globalscale"] * (gv["fixedUR"][1] - gv["fixedLL"][1])]
+    return [rpoint[0] * args.globalscale * (args.fixedUR[0] - args.fixedLL[0]),
+            rpoint[1] * args.globalscale * (args.fixedUR[1] - args.fixedLL[1])]
 
 
-def textwide(s, tf):
+def textwide(args, s, tf):
     """ approx width of text """
     width = 350  # default ok for Arial or Helvetica
-    if gv["font"] == "Times-roman":
+    if args.font == "Times-roman":
         width = 330
-    if gv["font"] == "Courier":
+    if args.font == "Courier":
         width = 390
-    if gv["fontfixed"] is False:
-        localfontsize = int(gv["fontsize"] * gv["globalscale"])
+    if args.fontfixed is False:
+        localfontsize = int(args.fontsize * args.globalscale)
     else:
-        localfontsize = int(gv["fontsize"])
-    return tf * localfontsize * len(s) * width / (1000 * (gv["fixedUR"][0] - gv["fixedLL"][0]))
+        localfontsize = int(args.fontsize)
+    return tf * localfontsize * len(s) * width / (1000 * (args.fixedUR[0] - args.fixedLL[0]))
 
-def dotext(rpoint, text, angle, bi):
+
+def dotext(args, rpoint, text, angle, bi):
     """
-        print text beginning at rpoint at angle
-        bi is a boolean, True indicates  bold italic font
-        font and bifont are global
+    Print text beginning at rpoint at angle
+    bi is a boolean, True indicates bold italic font
+    font and bifont are global
     """
-##    w("/Arial findfont")
     if bi:
-        w("/%s findfont" % gv["bifont"])
+        w(args, "/%s findfont" % args.bifont)
     else:
-        w("/%s findfont" % gv["font"])
-    if gv["fontfixed"] is False:
-        localfontsize = int(gv["fontsize"] * gv["globalscale"])
+        w(args, "/%s findfont" % args.font)
+    if args.fontfixed is False:
+        localfontsize = int(args.fontsize * args.globalscale)
     else:
-        localfontsize = int(gv["fontsize"])
-    w("%d scalefont" % localfontsize)
-    w("setfont")
-    w("newpath")
-    p = apoint(rpoint)
+        localfontsize = int(args.fontsize)
+    w(args, "%d scalefont" % localfontsize)
+    w(args, "setfont")
+    w(args, "newpath")
+    p = apoint(args, rpoint)
     if angle != 0:
-        w("gsave")
-        w("%d %d translate" % (p[0], p[1]))
-        w("%d  rotate" % angle)
-        w("0  0 moveto")
-        w("(" + text + ") show")
-        w("grestore")
+        w(args, "gsave")
+        w(args, "%d %d translate" % (p[0], p[1]))
+        w(args, "%d  rotate" % angle)
+        w(args, "0  0 moveto")
+        w(args, "(" + text + ") show")
+        w(args, "grestore")
     else:
-        w("%d %d moveto" % (p[0], p[1]))
-        w("(" + text + ") show")
+        w(args, "%d %d moveto" % (p[0], p[1]))
+        w(args, "(" + text + ") show")
 
 
 def curvecontrol(p1, p2, u_or_d):
@@ -271,20 +435,20 @@ def curvecontrol(p1, p2, u_or_d):
     return cp1, cp2
 
 
-def calccdim(cdimval, cbox):
+def calccdim(args, cdimval, cbox):
     ll = cbox[0]
     ur = cbox[1]
     curvesizedefine = 0.02
     if cdimval == -1:
-        cdimval = (gv["fixedUR"][0] - gv["fixedLL"][0]) * curvesizedefine
-    lla = apoint(ll)
-    ura = apoint(ur)
+        cdimval = (args.fixedUR[0] - args.fixedLL[0]) * curvesizedefine
+    lla = apoint(args, ll)
+    ura = apoint(args, ur)
     if ura[0] - lla[0] < 2 * cdimval or ura[1] - lla[1] < 2 * cdimval:
         cdimval = min(ura[0] - lla[0], ura[1] - lla[1]) / 2.0
     return cdimval
 
 
-def curvebox(cdim, cbox, width, color, grayamount, popnum, dash, poptree):
+def curvebox(args, cdim, cbox, width, color, grayamount, popnum, dash, poptree):
     """
         creates a box with curved corners, size of the curve set by curvesize
         if dash==0 and rgbcolor is True, fills the box with a lighter version of
@@ -292,19 +456,19 @@ def curvebox(cdim, cbox, width, color, grayamount, popnum, dash, poptree):
         returns cdim which has something to do with the size of the box
     """
     if dash > 0:
-        w("[%d %d] 0 setdash" % (dash, dash))
+        w(args, "[%d %d] 0 setdash" % (dash, dash))
     ll = cbox[0]
     ur = cbox[1]
     curvesizedefine = 0.02
     if cdim == -1:
-        cdim = (gv["fixedUR"][0] - gv["fixedLL"][0]) * curvesizedefine
-    lla = apoint(ll)
-    ura = apoint(ur)
+        cdim = (args.fixedUR[0] - args.fixedLL[0]) * curvesizedefine
+    lla = apoint(args, ll)
+    ura = apoint(args, ur)
     if ura[0] - lla[0] < 2 * cdim or ura[1] - lla[1] < 2 * cdim:
         cdim = min(ura[0] - lla[0], ura[1] - lla[1]) / 2.0
     ula = [lla[0], ura[1]]
     lra = [ura[0], lla[1]]
-    if gv["rgbcolor"]:
+    if args.rgbcolor:
         boxcolorstring = ("%f %f %f setrgbcolor" %
                           (poptree[popnum][5][0], poptree[popnum][5][1], poptree[popnum][5][2]))
         lightcolor = []
@@ -313,8 +477,8 @@ def curvebox(cdim, cbox, width, color, grayamount, popnum, dash, poptree):
             lightcolor.append(1.0 - (0.1 * (1.0 - poptree[popnum][5][ii])))
         lightboxfillcolorstring = "%f %f %f setrgbcolor" % (lightcolor[0], lightcolor[1], lightcolor[2])
     else:
-        if color != gv["black"]:
-            color = gv["blue"]
+        if color != args.black:
+            color = args.blue
             gcolor = []
             for i in range(3):
                 if color[i] == 0:
@@ -325,103 +489,103 @@ def curvebox(cdim, cbox, width, color, grayamount, popnum, dash, poptree):
         else:
             boxcolorstring = "%f setgray" % grayamount
 
-    w("newpath")
-    w("%d  %d  moveto" % (lla[0] + cdim, lla[1]))
+    w(args, "newpath")
+    w(args, "%d  %d  moveto" % (lla[0] + cdim, lla[1]))
     cp1 = [lra[0] - cdim, lra[1]]
     cp2 = [lra[0], lra[1] + cdim]
-    w("%d  %d  lineto" % (cp1[0], cp1[1]))
+    w(args, "%d  %d  lineto" % (cp1[0], cp1[1]))
     ccpoints = curvecontrol(cp1, cp2, 0)
-    w("%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
+    w(args, "%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
     cp1 = [ura[0], ura[1] - cdim]
     cp2 = [ura[0] - cdim, ura[1]]
-    w("%d  %d  lineto" % (cp1[0], cp1[1]))
+    w(args, "%d  %d  lineto" % (cp1[0], cp1[1]))
     ccpoints = curvecontrol(cp1, cp2, 1)
-    w("%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
+    w(args, "%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
     cp1 = [ula[0] + cdim, ula[1]]
     cp2 = [ula[0], ula[1] - cdim]
-    w("%d  %d  lineto" % (cp1[0], cp1[1]))
+    w(args, "%d  %d  lineto" % (cp1[0], cp1[1]))
     ccpoints = curvecontrol(cp1, cp2, 1)
-    w("%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
+    w(args, "%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
     cp1 = [lla[0], lla[1] + cdim]
     cp2 = [lla[0] + cdim, lla[1]]
-    w("%d  %d  lineto" % (cp1[0], cp1[1]))
+    w(args, "%d  %d  lineto" % (cp1[0], cp1[1]))
     ccpoints = curvecontrol(cp1, cp2, 0)
-    w("%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
-    w("closepath")
-    w("gsave")
-    if gv["rgbcolor"] and dash == 0:  # fill the box with a lighter version of the color used for the lines of the box
-        w(lightboxfillcolorstring)
-        w("fill")
-        w("grestore")
+    w(args, "%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
+    w(args, "closepath")
+    w(args, "gsave")
+    if args.rgbcolor and dash == 0:  # fill the box with a lighter version of the color used for the lines of the box
+        w(args, lightboxfillcolorstring)
+        w(args, "fill")
+        w(args, "grestore")
     width = float(width)
-    w("%f setlinewidth" % (width * gv["globalscale"]))
-    w(boxcolorstring)
-    w("stroke")
-    if gv["simplecolor"] or gv["rgbcolor"]:
-        w("0 0 0  setrgbcolor")
+    w(args, "%f setlinewidth" % (width * args.globalscale))
+    w(args, boxcolorstring)
+    w(args, "stroke")
+    if args.simplecolor or args.rgbcolor:
+        w(args, "0 0 0  setrgbcolor")
     else:
-        w("0 setgray")
+        w(args, "0 setgray")
     if dash > 0:
-        w("[] 0 setdash")
+        w(args, "[] 0 setdash")
     return cdim
 
 
-def aline(p, width, dash, grayamount):
+def aline(args, p, width, dash, grayamount):
     """ p is a list of points in relative space (0-1)
         dash is the spacing (in point scale) of dashes in the line
         if dash is zero there is no dashing """
     if grayamount > 0:
-        w("%f setgray" % grayamount)
+        w(args, "%f setgray" % grayamount)
     ap = []
     for i in range(len(p)):
-        ap.append(apoint(p[i]))
+        ap.append(apoint(args, p[i]))
     if dash > 0:
-        w("[%d %d] 0 setdash" % (dash, dash))
+        w(args, "[%d %d] 0 setdash" % (dash, dash))
 
-    w("%d %d moveto" % (ap[0][0], ap[0][1]))
+    w(args, "%d %d moveto" % (ap[0][0], ap[0][1]))
     for j in range(1, len(p)):
-        w("%d %d lineto" % (ap[j][0], ap[j][1]))
-    width *= gv["globalscale"]
-    w("%f setlinewidth" % width)
-    w("stroke")
-    w("[ ] 0 setdash")
+        w(args, "%d %d lineto" % (ap[j][0], ap[j][1]))
+    width *= args.globalscale
+    w(args, "%f setlinewidth" % width)
+    w(args, "stroke")
+    w(args, "[ ] 0 setdash")
     if grayamount > 0:
-        w("0 setgray")
+        w(args, "0 setgray")
 
 
-def arrowhead(head, headwidth, angle):
+def arrowhead(args, head, headwidth, angle):
     """ draw arrowhead width on the same scale as points in head
         head is the center of the arrowhead
         angle = 0 has the arrow pointing to the right
     """
-    w("%% begin arrowhead")
-    holdhead = apoint(head)
+    w(args, "%% begin arrowhead")
+    holdhead = apoint(args, head)
     head = [0, 0]
-    tip = rapoint([head[0] + headwidth, head[1]])
-    p1 = rapoint([head[0] - headwidth, head[1] + headwidth])
-    p2 = rapoint([head[0] - headwidth, head[1] - headwidth])
-    c1 = rapoint([head[0], head[1] - headwidth / 2])
-    c2 = rapoint([head[0], head[1] + headwidth / 2])
-    w("gsave")
-    w("%d %d translate" % (holdhead[0], holdhead[1]))
-    w("%d  rotate" % angle)
-    w("%d %d moveto" % (p1[0], p1[1]))
-    w("%d %d lineto" % (tip[0], tip[1]))
-    w("%d %d lineto" % (p2[0], p2[1]))
-    w("%d %d %d %d %d %d curveto" % (c1[0], c1[1], c2[0], c2[1], p1[0], p1[1]))
-    w("closepath")
-    w("fill")
-    w("grestore")
-    w("%% end arrowhead")
+    tip = rapoint(args, [head[0] + headwidth, head[1]])
+    p1 = rapoint(args, [head[0] - headwidth, head[1] + headwidth])
+    p2 = rapoint(args, [head[0] - headwidth, head[1] - headwidth])
+    c1 = rapoint(args, [head[0], head[1] - headwidth / 2])
+    c2 = rapoint(args, [head[0], head[1] + headwidth / 2])
+    w(args, "gsave")
+    w(args, "%d %d translate" % (holdhead[0], holdhead[1]))
+    w(args, "%d  rotate" % angle)
+    w(args, "%d %d moveto" % (p1[0], p1[1]))
+    w(args, "%d %d lineto" % (tip[0], tip[1]))
+    w(args, "%d %d lineto" % (p2[0], p2[1]))
+    w(args, "%d %d %d %d %d %d curveto" % (c1[0], c1[1], c2[0], c2[1], p1[0], p1[1]))
+    w(args, "closepath")
+    w(args, "fill")
+    w(args, "grestore")
+    w(args, "%% end arrowhead")
 
 
-def arrow(head, tail, direc, color):
+def arrow(args, head, tail, direc, color):
     """
         draw an arrow. head and tail are points, width is on the same scale
         direc = 0 right, 1 up, 2 left, 3 down
         arrow is gray
     """
-    headwidth = arrowheadwidthdefault * gv["arrowheightadj"]
+    headwidth = ARROWHEAD_WIDTH_DEFAULT * args.arrowheightadj
     if (direc == 0):
         headadj = [head[0] - headwidth, head[1]]
     if (direc == 1):
@@ -430,38 +594,38 @@ def arrow(head, tail, direc, color):
         headadj = [head[0] + headwidth, head[1]]
     if (direc == 3):
         headadj = [head[0], head[1] + headwidth]
-    if color != gv["black"]:
-        color = gv["blue"]
+    if color != args.black:
+        color = args.blue
         gcolor = []
         for i in range(3):
             if color[i] == 0:
-                gcolor.append(gv["graylevel"])
+                gcolor.append(args.graylevel)
             else:
                 gcolor.append(color[i])
-        w("%f %f %f setrgbcolor" % (gcolor[0], gcolor[1], gcolor[2]))
+        w(args, "%f %f %f setrgbcolor" % (gcolor[0], gcolor[1], gcolor[2]))
     else:
-        w("%f setgray" % gv["graylevel"])
-    arrowhead(headadj, headwidth, direc * 90)
-    ahead = apoint(headadj)
-    atail = apoint(tail)
-    w("%d %d moveto" % (ahead[0], ahead[1]))
-    w("%d %d lineto" % (atail[0], atail[1]))
-    w("%f setlinewidth" % (2 * gv["globalscale"]))
-    w("stroke")
-    if gv["simplecolor"] or gv["rgbcolor"]:
-        w("0 0 0  setrgbcolor")
+        w(args, "%f setgray" % args.graylevel)
+    arrowhead(args, headadj, headwidth, direc * 90)
+    ahead = apoint(args, headadj)
+    atail = apoint(args, tail)
+    w(args, "%d %d moveto" % (ahead[0], ahead[1]))
+    w(args, "%d %d lineto" % (atail[0], atail[1]))
+    w(args, "%f setlinewidth" % (2 * args.globalscale))
+    w(args, "stroke")
+    if args.simplecolor or args.rgbcolor:
+        w(args, "0 0 0  setrgbcolor")
     else:
-        w("0 setgray")
+        w(args, "0 setgray")
 
 
-def migrationstraightarrow(val2NM, head, tail, direc, color):
+def migrationstraightarrow(args, val2NM, head, tail, direc, color):
     """
         draw an arrow. head and tail are points, width is on the same scale
         direc = 0 right, 1 up, 2 left, 3 down
         arrow is gray
     """
-    headwidth = arrowheadwidthdefault * 1.5 * gv["arrowheightadj"]
-    headwidth = arrowheadwidthdefault * gv["arrowheightadj"]
+    headwidth = ARROWHEAD_WIDTH_DEFAULT * 1.5 * args.arrowheightadj
+    headwidth = ARROWHEAD_WIDTH_DEFAULT * args.arrowheightadj
     if (direc == 0):
         headadj = [head[0] - headwidth, head[1]]
     if (direc == 1):
@@ -470,20 +634,20 @@ def migrationstraightarrow(val2NM, head, tail, direc, color):
         headadj = [head[0] + headwidth, head[1]]
     if (direc == 3):
         headadj = [head[0], head[1] + headwidth]
-    if gv["simplecolor"] or gv["rgbcolor"]:
-        w("%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
+    if args.simplecolor or args.rgbcolor:
+        w(args, "%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
     else:
-        w("0 0 0 setrgbcolor")
-    arrowhead(headadj, headwidth, direc * 90)
-    ahead = apoint(headadj)
-    atail = apoint(tail)
-    w("%d %d moveto" % (ahead[0], ahead[1]))
-    w("%d %d lineto" % (atail[0], atail[1]))
-    w("%f setlinewidth" % (2 * gv["globalscale"]))
-    w("stroke")
-    if gv["simplecolor"] or gv["rgbcolor"]:
-        w("0 0 0  setrgbcolor")
-    text2NMwidth = textwide(val2NM, 1.5)
+        w(args, "0 0 0 setrgbcolor")
+    arrowhead(args, headadj, headwidth, direc * 90)
+    ahead = apoint(args, headadj)
+    atail = apoint(args, tail)
+    w(args, "%d %d moveto" % (ahead[0], ahead[1]))
+    w(args, "%d %d lineto" % (atail[0], atail[1]))
+    w(args, "%f setlinewidth" % (2 * args.globalscale))
+    w(args, "stroke")
+    if args.simplecolor or args.rgbcolor:
+        w(args, "0 0 0  setrgbcolor")
+    text2NMwidth = textwide(args, val2NM, 1.5)
     if (direc == 0):  # arrow to the right, line is shifted up, text is below line
         if text2NMwidth > abs(tail[0] - headadj[0]):
             textpoint = tail
@@ -494,84 +658,75 @@ def migrationstraightarrow(val2NM, head, tail, direc, color):
             textpoint = headadj
         else:
             textpoint = [(headadj[0] + tail[0]) / 2, headadj[1]]
-    dotext(textpoint, val2NM, 0, True)
+    dotext(args, textpoint, val2NM, 0, True)
 
 
 ## stopped using this 7/9/2018  arrows were taking up too much space and causing headaches over location
 ## switched to migrationstraightarrow()
+# def migrationcurvearrow(args, val2NM, head, tail, direc, color):
+#     """ direct can be 0 or 2 (right or left)  if 0 curveheight is positive and curve goes up from
+#         the tail and then down to the head
+#         if direc is 2  then curve is interpreted to be negative and curve goes down from the tail
+#         and then up to the head """
+#     w(args, "%% BEGIN MIGRATION ARROW: %s" % val2NM)
+#     curveheight = CURVEHEIGHT_DEFAULT
+#     c2height = ARROWHEAD_WIDTH_DEFAULT
+#     headwidth = c2height * 1.5 * args.arrowheightadj
+#     width = 3.5
+#     if (direc == 0):  # arrow to the right, line is shifted up, text is below line
+#         textpoint = [tail[0], tail[1] - curveheight]
+#         cheadadj = [head[0] - headwidth, head[1] + c2height]
+#         ctail = [tail[0], tail[1] + c2height]
+#         arrowheadpoint = [cheadadj[0], head[1] + c2height / 1.2]
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
+#         arrowhead(args, arrowheadpoint, headwidth, 330)        # head tilted down to the right
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "0 0 0 setrgbcolor")
+#         if abs(cheadadj[0] - ctail[0]) > 0:
+#             curveheightmultiplier = math.pow(abs(cheadadj[0] - ctail[0]) / 0.15, 0.1)
+#         else:
+#             curveheightmultiplier = 1
+#         cp1 = [ctail[0] + (cheadadj[0] - ctail[0]) * 0.8, cheadadj[1] + curveheight * curveheightmultiplier]
+#         cp2 = [ctail[0] + (cheadadj[0] - ctail[0]) * 0.2, cheadadj[1] + curveheight * curveheightmultiplier]
+#         textpoint = [cp2[0], cheadadj[1] - curveheight / 3]
+#     if (direc == 2):   # arrow to the left, line is shifted down, text is above line
+#         cheadadj = [head[0] + headwidth, head[1]]
+#         textpoint = [cheadadj[0] + c2height, cheadadj[1]]
+#         ctail = tail
+#         arrowheadpoint = [cheadadj[0], cheadadj[1] + c2height / 3.5]
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
+#         arrowhead(args, arrowheadpoint, headwidth, 150)       # head tilted up to the left
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "0 0 0 setrgbcolor")
+#         if abs(cheadadj[0] - ctail[0]) > 0:
+#             curveheightmultiplier = math.pow(abs(cheadadj[0] - ctail[0]) / 0.15, 0.1)
+#         else:
+#             curveheightmultiplier = 1
 
+#         cp1 = [cheadadj[0] + (ctail[0] - cheadadj[0]) * 0.2, cheadadj[1] - curveheight * curveheightmultiplier]
+#         cp2 = [cheadadj[0] + (ctail[0] - cheadadj[0]) * 0.8, cheadadj[1] - curveheight * curveheightmultiplier]
+#         textpoint = [cp1[0], cheadadj[1] - curveheight / 3]
 
-def migrationcurvearrow(val2NM, head, tail, direc, color):
-    """ direct can be 0 or 2 (right or left)  if 0 curveheight is positive and curve goes up from
-        the tail and then down to the head
-        if direc is 2  then curve is interpreted to be negative and curve goes down from the tail
-        and then up to the head """
-    w("%% BEGIN MIGRATION ARROW: %s" % val2NM)
-    curveheight = curveheightdefault
-    c2height = arrowheadwidthdefault
-    headwidth = c2height * 1.5 * gv["arrowheightadj"]
-    width = 3.5
-    if (direc == 0):  # arrow to the right, line is shifted up, text is below line
-        textpoint = [tail[0], tail[1] - curveheight]
-        cheadadj = [head[0] - headwidth, head[1] + c2height]
-        ctail = [tail[0], tail[1] + c2height]
-        arrowheadpoint = [cheadadj[0], head[1] + c2height / 1.2]
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
-        arrowhead(arrowheadpoint, headwidth, 330)        # head tilted down to the right
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("0 0 0 setrgbcolor")
-        if abs(cheadadj[0] - ctail[0]) > 0:
-            curveheightmultiplier = math.pow(abs(cheadadj[0] - ctail[0]) / 0.15, 0.1)
-        else:
-            curveheightmultiplier = 1
-        cp1 = [ctail[0] + (cheadadj[0] - ctail[0]) * 0.8, cheadadj[1] + curveheight * curveheightmultiplier]
-        cp2 = [ctail[0] + (cheadadj[0] - ctail[0]) * 0.2, cheadadj[1] + curveheight * curveheightmultiplier]
-        textpoint = [cp2[0], cheadadj[1] - curveheight / 3]
-    if (direc == 2):   # arrow to the left, line is shifted down, text is above line
-        cheadadj = [head[0] + headwidth, head[1]]
-        textpoint = [cheadadj[0] + c2height, cheadadj[1]]
-        ctail = tail
-        arrowheadpoint = [cheadadj[0], cheadadj[1] + c2height / 3.5]
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
-        arrowhead(arrowheadpoint, headwidth, 150)       # head tilted up to the left
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("0 0 0 setrgbcolor")
-        if abs(cheadadj[0] - ctail[0]) > 0:
-            curveheightmultiplier = math.pow(abs(cheadadj[0] - ctail[0]) / 0.15, 0.1)
-        else:
-            curveheightmultiplier = 1
+#     ahead = apoint(args, cheadadj)
+#     atail = apoint(args, ctail)
+#     acp1 = apoint(args, cp1)
+#     acp2 = apoint(args, cp2)
+#     if width > 0:
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
+#         w(args, "%f setlinewidth" % (width * args.globalscale))
+#         w(args, "%d %d moveto" % (ahead[0], ahead[1]))
+#         w(args, "%d %d  %d  %d  %d  %d curveto" % (acp1[0], acp1[1], acp2[0], acp2[1], atail[0], atail[1]))
+#         w(args, "stroke")
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "0 0 0 setrgbcolor")
+#         dotext(args, textpoint, val2NM, 0, True)
+#         if args.simplecolor or args.rgbcolor:
+#             w(args, "0 0 0 setrgbcolor")
+#     w(args, "%% END MIGRATION ARROW")
 
-        cp1 = [cheadadj[0] + (ctail[0] - cheadadj[0]) * 0.2, cheadadj[1] - curveheight * curveheightmultiplier]
-        cp2 = [cheadadj[0] + (ctail[0] - cheadadj[0]) * 0.8, cheadadj[1] - curveheight * curveheightmultiplier]
-        textpoint = [cp1[0], cheadadj[1] - curveheight / 3]
-
-    ahead = apoint(cheadadj)
-    atail = apoint(ctail)
-    acp1 = apoint(cp1)
-    acp2 = apoint(cp2)
-    if width > 0:
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("%f %f %f setrgbcolor" % (color[0], color[1], color[2]))
-        w("%f setlinewidth" % (width * gv["globalscale"]))
-        w("%d %d moveto" % (ahead[0], ahead[1]))
-        w("%d %d  %d  %d  %d  %d curveto" % (acp1[0], acp1[1], acp2[0], acp2[1], atail[0], atail[1]))
-        w("stroke")
-        # stopped using the white line
-        # put a white line down middle of the migration arrow
-##        if gv["simplecolor"] or gv["rgbcolor"]:
-##            w("%f %f %f setrgbcolor" % (255, 255, 255))#0, 0, 0))
-##        w("%f setlinewidth" % 0.5)
-##        w("%d %d moveto" % (ahead[0], ahead[1]))
-##        w("%d %d  %d  %d  %d  %d curveto" % (acp1[0], acp1[1], acp2[0], acp2[1], atail[0], atail[1]))
-##        w("stroke")
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("0 0 0 setrgbcolor")
-        dotext(textpoint, val2NM, 0, True)
-        if gv["simplecolor"] or gv["rgbcolor"]:
-            w("0 0 0 setrgbcolor")
-    w("%% END MIGRATION ARROW")
 
 
 ##***********************************************************************************
@@ -587,30 +742,29 @@ def migrationcurvearrow(val2NM, head, tail, direc, color):
 ##    slist[i][3] - the string used to search the input file, when it is found the function is called
 ##    slist[i][ > 3 ] - the actual information, the types and number of values vary depending on the category of information
 ##      all of the functions (names in slist[i][2] are called with
-##            slist[i][2](imfile, imfileline, slist[i][3], numpops)
+##            slist[i][2](args,imfile, imfileline, slist[i][3], numpops)
 ##        what the function returns is appended to slist[i]
 
 
-def get_input_file_name(f, a, s):
+def get_input_file_name(args,f, a, s):
     # f not used but needed for function to match general function format
     return a[len(s):len(a)].strip()
 
 
-def check_ghost_status(f, a, s):
+def check_ghost_status(args,f, a, s):
     # f, s not used but needed for function to match general function format
-    global gv
-    if gv["newercode"]:
-        gv["useghost"] = (a.find("-j") >= 0) # don't think this is needed, 1 is the default ' and ("1" in a[a.find("-j") + 1:])   # should only be true if -j is there with a 1'
+    if args.newercode:
+        args.useghost = (a.find("-j") >= 0) # don't think this is needed, 1 is the default ' and ("1" in a[a.find("-j") + 1:])   # should only be true if -j is there with a 1'
     else:
-        gv["useghost"] = (a.find("-j") >= 0) and ("4" in a[a.find("-j") + 1:])  # should only be true if -j is there with a 4
+        args.useghost = (a.find("-j") >= 0) and ("4" in a[a.find("-j") + 1:])  # should only be true if -j is there with a 4
 
 
-def get_population_names(f, a, s):
+def get_population_names(args,f, a, s):
     # a, s not used but needed for function to match general function format
     """
         usealtnames and altnamefilename defined previously
     """
-    global gv
+
     aa = f.readline().strip()
     popnamelist = []
     i = 0
@@ -622,20 +776,20 @@ def get_population_names(f, a, s):
         popnamelist.append(popname)
         i += 1
         aa = f.readline().strip()
-    if gv["useghost"] is True and foundghost is False:   # for compatibility with older output files
+    if args.useghost is True and foundghost is False:   # for compatibility with older output files
         popnamelist.append('ghost')
     anames = []
-    if gv["usealtnames"]:
-        for line in open(gv["altnamefilename"], "r"):
+    if args.usealtnames:
+        for line in open(args.altnamefilename, "r"):
             temp = line.strip()
             if len(temp) > 0:
                 anames.append(temp)
         anames = anames[0:len(popnamelist)]
-    gv["altpopnames"] = list(anames)
+    args.altpopnames = list(anames)
     return popnamelist
 
 
-def get_population_tree(f, a, s):
+def get_population_tree(args,f, a, s):
     # s variables is not used but needed for function to match general function format
     """
          a couple possible things to read here
@@ -644,14 +798,14 @@ def get_population_tree(f, a, s):
     while a.find("Population Tree") >= 0:
         if a.find("standard ordering") >= 0:
             tempstring = a.split()[-1]
-        if a.find("Ghost Population") >= 0 and gv["excludeghost"] is False:
-            assert gv["useghost"]
+        if a.find("Ghost Population") >= 0 and args.excludeghost is False:
+            assert args.useghost
             tempstring = a.split()[-1]
         a = f.readline().strip()
     return tempstring
 
 
-def get_popsize_param(f, a, s):
+def get_popsize_param(args,f, a, s):
     # a, s not used but needed for function to match general function format
     """ read the histogram table of marginal distributions for population sizes:
     For each population it reads:
@@ -683,7 +837,7 @@ def get_popsize_param(f, a, s):
     return psp
 
 
-def get_t_param(f, a, s):
+def get_t_param(args,f, a, s):
     # a, s not used but needed for function to match general function format
     """ read the table of marginal distributions for splitting times:
         For each splittingtime it reads:
@@ -714,7 +868,7 @@ def get_t_param(f, a, s):
     return psp
 
 
-def msigvals(ss):
+def msigvals(args,ss):
     """
         get the significance levels for the migration(m) rates
         make a list, each element is a list
@@ -728,7 +882,7 @@ def msigvals(ss):
         if ss[si].find("Migration Rate Parameters") == 0:
             si += 1
             aa = ss[si].split()
-            ainc = 1 if gv["newercode"] else 2
+            ainc = 1 if args.newercode else 2
             for i in range(1, len(aa), ainc):
                 msiglist.append([aa[i]])
             si += 3
@@ -742,10 +896,10 @@ def msigvals(ss):
                     mtemp = 0.0
                 msiglist[nummp + ii].append(mtemp)
                 ii += 1
-            si += 4 if gv["newercode"] else 3
+            si += 4 if args.newercode else 3
             aa = ss[si].split()[1:]
             for i, temp in enumerate(aa):
-                if (gv["moption"] == 's' and temp.count('*') == 0) or (gv["moption"] == 'S' and temp.count('*') <= 1):
+                if (args.moption == 's' and temp.count('*') == 0) or (args.moption == 'S' and temp.count('*') <= 1):
                     msiglist[nummp + i].append('ns')
                 else:
                     msiglist[nummp + i].append('*' * temp.count('*'))
@@ -754,7 +908,7 @@ def msigvals(ss):
     return msiglist
 
 
-def get_2NM(f, a, s):
+def get_2NM(args,f, a, s):
     """
         replaces older code as of 9/18/2017
         reads a chunk of the file from "Marginal Peak Locations and Probabilities"  to "HISTOGRAMS"
@@ -771,11 +925,11 @@ def get_2NM(f, a, s):
         ss.append(f.readline().strip())
         if ss[-1].upper().find("HISTOGRAMS") == 0:
             break
-    msiglist = msigvals(ss)
+    msiglist = msigvals(args,ss)
     si = 0
     psp = []
     nummp = 0
-    ainc = 1 if gv["newercode"] else 2
+    ainc = 1 if args.newercode else 2
     while si < len(ss):
         if ss[si].upper().find("POPULATION MIGRATION (2NM) TERMS") == 0:
             si += 1
@@ -804,7 +958,7 @@ def get_2NM(f, a, s):
     return psp
 
 
-def get_demog_scales(f, a, s):
+def get_demog_scales(args,f, a, s):
     psp = [0, 0, 0]
     for i in range(10):  # go down several lines and look for the necessary information, very crude and
         aa = f.readline().split()
@@ -906,7 +1060,7 @@ def removeghost(slist, scaledpop, scaledtime):
     return slist, scaledpop, scaledtime
 
 
-def readimfile():
+def readimfile(args):
     """
         gets info from the input file
         returns all information in slist
@@ -914,15 +1068,14 @@ def readimfile():
         very kludgy, all sorts of awkward things to deal with IMa2 vs IMa3 differences and to catch wrong kinds of input files
     """
     global numpops
-    global gv
-    imfile = open(Path(gv["imfilename"]), "r")
-    gv["useghost"] = False
+    imfile = open(Path(args.imfilename), "r")
+    args.useghost = False
     imfileline = imfile.readline()
     if "IMa3" == imfileline[0:4]:
-        gv["imaversion"] = 3
+        args.imaversion = 3
     else:
-        gv["imaversion"] = 2
-    gv["newercode"] = False
+        args.imaversion = 2
+    args.newercode = False
     while imfileline != '':
         if imfileline.upper().find("IMa3 program compiled on".upper()) >= 0:
             from datetime import datetime
@@ -931,7 +1084,7 @@ def readimfile():
             # changed ima3 format afer sep 12 2017
             newcodedatetime = datetime.strptime("sep 12 2017", '%b %d %Y')
             filedatetime = datetime.strptime(date, '%b %d %Y')
-            gv["newercode"] = filedatetime >= newcodedatetime
+            args.newercode = filedatetime >= newcodedatetime
         if imfileline.upper().find("Command line string :".upper()) >= 0:
             break
         imfileline = imfile.readline()
@@ -942,7 +1095,7 @@ def readimfile():
              ["population size parameter info", False, get_popsize_param, "MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF POPULATION SIZE AND MIGRATION PARAMETERS"],
              ["splitting time parameter info", False, get_t_param, "MARGINAL DISTRIBUTION VALUES AND HISTOGRAMS OF PARAMETERS IN MCMC"],
              ["migration parameter info", False, get_2NM, "Marginal Peak Locations and Probabilities"],
-             ["demographic scales", gv["skipdemographicscaling"], get_demog_scales, "MARGINAL DISTRIBUTION VALUES IN DEMOGRAPHIC UNITS"]  #,
+             ["demographic scales", args.skipdemographicscaling, get_demog_scales, "MARGINAL DISTRIBUTION VALUES IN DEMOGRAPHIC UNITS"]  #,
 ##             ["parameter priors", False, get_parameter_priors, "Parameter Priors"] \  ignore this I think
              ]
     while imfileline != '':
@@ -962,9 +1115,9 @@ def readimfile():
             checkdone = checkdone and slist[i][1]
             if slist[i][1] is False and imfileline.upper().find(slist[i][3].upper()) >= 0:
                 if slist[i][0] == "ghost status":
-                    slist[i][2](imfile, imfileline, slist[i][3])
+                    slist[i][2](args,imfile, imfileline, slist[i][3])
                 else:
-                    slist[i].append(slist[i][2](imfile, imfileline, slist[i][3]))
+                    slist[i].append(slist[i][2](args,imfile, imfileline, slist[i][3]))
                 slist[i][1] = True
                 if slist[i][0] == "pop names":
                     numpops = len(slist[i][4])
@@ -976,7 +1129,7 @@ def readimfile():
             quit()
     imfile.close()
     (scaledpop, scaledtime) = ([], [])
-    if gv["skipdemographicscaling"]:
+    if args.skipdemographicscaling:
         slist[7][1] = False
     else:
         if len(slist[7]) == 4:
@@ -985,9 +1138,10 @@ def readimfile():
             quit()
         if len(slist[7][4]) == 3:
             (scaledpop, scaledtime) = calc_scaledvals(slist)
-    if gv["excludeghost"] and gv["useghost"]:
+    if args.excludeghost and args.useghost:
         slist, scaledpop, scaledtime = removeghost(slist, scaledpop, scaledtime)
-    return slist, scaledpop, scaledtime
+    return args,slist, scaledpop, scaledtime
+
 
 
 ##***********************************************************************************
@@ -1389,12 +1543,12 @@ def addcolors(poptree):
     return poptree
 
 
-def yline(y, farright, width, dash, grayamount):
+def yline(args,y, farright, width, dash, grayamount):
     """ draw a line at a specific height in relative terms """
-    aline([[0, y], [farright, y]], width, dash, grayamount)
+    aline(args,[[0, y], [farright, y]], width, dash, grayamount)
 
 
-def centerbox(pop, leftpoint, rightpoint, poptree, popxvals):
+def centerbox(args,pop, leftpoint, rightpoint, poptree, popxvals):
     """
         centerbox is a recursive function to find locations of population boxes on the x axis
         pop is the population for which we are finding the left and right sides of the box
@@ -1436,10 +1590,10 @@ def centerbox(pop, leftpoint, rightpoint, poptree, popxvals):
         popxvals[pop][0] = leftpoint
         return popxvals[pop][1] - popxvals[pop][0], leftpoint + (popxvals[pop][1] - popxvals[pop][0]) / 2.0, popxvals, leftpoint, popxvals[pop][1]
     else:
-        popspacer = gv["popboxspaceadj"] * popboxspacedefault
-        (lw, lc, popxvals, leftpoint, rightpoint) = centerbox(poptree[pop][2], leftpoint, rightpoint, poptree, popxvals)
+        popspacer = args.popboxspaceadj * POPBOX_SPACE_DEFAULT
+        (lw, lc, popxvals, leftpoint, rightpoint) = centerbox(args,poptree[pop][2], leftpoint, rightpoint, poptree, popxvals)
         rleftpoint = rightpoint + popspacer
-        (rwidth, rcenter, popxvals, rleftpoint, rightpoint) = centerbox(poptree[pop][3], rleftpoint, rightpoint, poptree, popxvals)
+        (rwidth, rcenter, popxvals, rleftpoint, rightpoint) = centerbox(args,poptree[pop][3], rleftpoint, rightpoint, poptree, popxvals)
         newwidth = lw + popspacer + rwidth
 
         newwidth = popxvals[pop][1] - popxvals[pop][0]
@@ -1477,7 +1631,7 @@ def popadjustx(popxvals, minx_popbox):
     return popxvals
 
 
-def setpopbox(ty, slist, scaledtime, rootpop, poptree):
+def setpopbox(args,ty, slist, scaledtime, rootpop, poptree):
     """popbox[i][0] is the lowerleft point of the box
             popbox[i][0][0] contains the xdimension for the left side of the box
             popbox[i][0][1] contains the y dimension for the bottom of the box
@@ -1497,19 +1651,17 @@ def setpopbox(ty, slist, scaledtime, rootpop, poptree):
     for i in range(numpops - 1):
         wadjust += "00"
     if(scaledtime != []):
-        minx_popbox = textwide(wadjust + "0.00 MYR", tfactor)
+        minx_popbox = textwide(args,wadjust + "0.00 MYR", TFACTOR)
     else:
-        minx_popbox = textwide(wadjust + "0.00 tu", tfactor)
-    minx_popbox /= gv["globalscale"]
-    if gv["localxscale"] > 0:
-        minx_popbox /= gv["localxscale"]
+        minx_popbox = textwide(args,wadjust + "0.00 tu", TFACTOR)
+    minx_popbox /= args.globalscale
+    if args.localxscale > 0:
+        minx_popbox /= args.localxscale
 
     popxvals = []
-## if scaledpop == [] then no text is written on time split line and there is more width to work with
-    for i in range(2 * numpops - 1):
-## left side temporarily at zero, right side temporarily at upper confidence interval
+    for i in range(2 * numpops - 1):   ## left side temporarily at zero, right side temporarily at upper confidence interval
         popxvals.append([0, slist[4][4][i][1]])
-    (width, c, popxvals, leftpoint, rightpoint) = centerbox(rootpop, 0, popxvals[rootpop][1], poptree, popxvals)
+    (width, c, popxvals, leftpoint, rightpoint) = centerbox(args,rootpop, 0, popxvals[rootpop][1], poptree, popxvals)
     popxvals = popadjustx(popxvals, minx_popbox)
     popbox = []
 
@@ -1520,8 +1672,8 @@ def setpopbox(ty, slist, scaledtime, rootpop, poptree):
             maxwide = (popxvals[i][1] + (slist[4][4][i][3] - slist[4][4][i][1]))
     maxwide = maxwide / (1.0 - minx_popbox)
 
-    if gv["localxscale"] > 0:
-        maxwide *= gv["localxscale"]
+    if args.localxscale > 0:
+        maxwide *= args.localxscale
 
     farright = 0
     confint = []
@@ -1535,17 +1687,17 @@ def setpopbox(ty, slist, scaledtime, rootpop, poptree):
         popbox[i][0].append(minx_popbox + popxvals[i][0] / maxwide)
         popbox[i][1].append(minx_popbox + popxvals[i][1] / maxwide)
         if poptree[i][1] == -1:
-            popbox[i][0].append(gv["lineINFy"])
+            popbox[i][0].append(args.lineINFy)
         else:
             popbox[i][0].append(ty[poptree[i][1] - 1][0])
         if poptree[i][0] == 0:
-            popbox[i][1].append(gv["line0y"])
+            popbox[i][1].append(args.line0y)
         else:
             popbox[i][1].append(ty[poptree[i][0] - 1][0])
     return popbox, maxwide, confint, farright
 
 
-def printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, scaledpop, droppops):
+def printpopbox(args,popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, scaledpop, droppops):
     """
         print popbox representing populations in different time periods
 
@@ -1563,58 +1715,57 @@ def printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, sc
         graylevel is global
         dashinterval is global
     """
-    if gv["simplecolor"]:
-        color = gv["blue"]
+    if args.simplecolor:
+        color = args.blue
     else:
-        color = gv["black"]
+        color = args.black
     cdim = []
     for i in range(2 * numpops - 1):
         tempbox = [row[:] for row in popbox[i]] # copy 2d list
         tempbox[1][0] = popbox[i][1][0] - (slist[4][4][i][1] - slist[4][4][i][2]) / maxwide
-        # cdim.append(curvebox(-1, tempbox, 1.5, color, gv["graylevel"], i, gv["dashinterval"], poptree))
-        cdim.append(calccdim(-1, tempbox))
-        w("%%begin box %d" % i)
-        cdimtemp = curvebox(cdim[i], popbox[i], 2.5, color, 0, i, 0, poptree)
-        w("%%done box %d" % i)
+        cdim.append(calccdim(args,-1, tempbox))
+        w(args,"%%begin box %d" % i)
+        cdimtemp = curvebox(args,cdim[i], popbox[i], 2.5, color, 0, i, 0, poptree)
+        w(args,"%%done box %d" % i)
     cdim = []
-    if gv["popboxcintervalboxes"]: # print confidence interval boxes
+    if args.popboxcintervalboxes: # print confidence interval boxes
         for i in range(2 * numpops - 1):
             tempbox = [row[:] for row in popbox[i]] # copy 2d list
             tempbox[1][0] = popbox[i][1][0] - (slist[4][4][i][1] - slist[4][4][i][2]) / maxwide
-            w("%%begin left confidence for box %d" % i)
-            cdim.append(calccdim(-1, tempbox))
-            cdimtemp = curvebox(cdim[i], tempbox, 1.5, color, gv["graylevel"], i, gv["dashinterval"], poptree)
-            w("%%done left confidence for box %d" % i)
+            w(args,"%%begin left confidence for box %d" % i)
+            cdim.append(calccdim(args,-1, tempbox))
+            cdimtemp = curvebox(args,cdim[i], tempbox, 1.5, color, args.graylevel, i, args.dashinterval, poptree)
+            w(args,"%%done left confidence for box %d" % i)
             tempbox = [row[:] for row in popbox[i]] # copy 2d list
             tempbox[1][0] = popbox[i][1][0] + (slist[4][4][i][3] - slist[4][4][i][1]) / maxwide
-            w("%%begin right confidence for box %d" % i)
-            cdimtemp =curvebox(cdim[i], tempbox, 1.5, color, gv["graylevel"], i, gv["dashinterval"], poptree)
-            w("%%done right confidence for box %d" % i)
+            w(args,"%%begin right confidence for box %d" % i)
+            cdimtemp =curvebox(args,cdim[i], tempbox, 1.5, color, args.graylevel, i, args.dashinterval, poptree)
+            w(args,"%%done right confidence for box %d" % i)
     popprintinc = 0.01
-    if gv["usealtnames"]:
-        namelist = gv["altpopnames"]
+    if args.usealtnames:
+        namelist = args.altpopnames
 ##        print(namelist)
-        if gv["useghost"] and gv["excludeghost"] is False and namelist[-1].upper() != "GHOST":
+        if args.useghost and args.excludeghost is False and namelist[-1].upper() != "GHOST":
             assert len(namelist) < numpops
             namelist.append("Ghost")
     else:
         namelist = slist[2][4]
-    if gv["anglenames"]:
+    if args.anglenames:
         angle = 30
     else:
         angle = 0
     for i in range(numpops): # population names are in slist[2][4]
         if poptree[i][1] == 1 and i== droppops[1][1]: # right side of most recent split
-            dotext([popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 2, popbox[i][1][1] + popprintinc], namelist[i], angle, False)
+            dotext(args,[popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 2, popbox[i][1][1] + popprintinc], namelist[i], angle, False)
         else:
             if (popbox[i][1][0] - popbox[i][0][0] > 0.15):  # if a wide box move the text in a bit
-                dotext([popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 4, popbox[i][1][1] + popprintinc], namelist[i], angle, False)
+                dotext(args,[popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 4, popbox[i][1][1] + popprintinc], namelist[i], angle, False)
             else:
-                dotext([popbox[i][0][0], popbox[i][1][1] + popprintinc], namelist[i], angle, False)
+                dotext(args,[popbox[i][0][0], popbox[i][1][1] + popprintinc], namelist[i], angle, False)
     popprintinc = 0.025
-    if gv["label_a_pops"]:
+    if args.label_a_pops:
         for i in range(numpops, 2 * numpops - 1):
-            dotext([max(popbox[i][0][0], popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 2.0 - popprintinc),
+            dotext(args,[max(popbox[i][0][0], popbox[i][0][0] + (popbox[i][1][0] - popbox[i][0][0]) / 2.0 - popprintinc),
                 popbox[i][0][1] + (popbox[i][1][1] - popbox[i][0][1]) / 2.0], "pop #" + str(i), 0, False)
 ## plot the confidence arrows for population boxes
     lastperiod = [0] * (2 * numpops - 1)
@@ -1628,12 +1779,12 @@ def printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, sc
     arrowheights = []
     for i in range(numpops):
         if i == 0:
-            top = gv["line0y"]
+            top = args.line0y
             bot = ty[i][0]
         else:
             top = ty[i - 1][0]
             if i == numpops - 1:
-                bot = gv["lineINFy"]
+                bot = args.lineINFy
             else:
                 bot = ty[i][0]
 
@@ -1642,7 +1793,7 @@ def printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, sc
         else:
             frac = 0.8
         arrowheights.append(top - (top - bot) * frac)
-    if gv["popboxcintervalarrows"]:  # print confidence interval arrows
+    if args.popboxcintervalarrows:  # print confidence interval arrows
         for i in range(2 * numpops - 1):
             period = lastperiod[i]
             arrowheight = max(popbox[i][0][1], arrowheights[period] - periodposcount[period] * 2 * arrowheightinc)
@@ -1650,25 +1801,25 @@ def printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, sc
             tail = [popbox[i][1][0], arrowheight]
             # head is tip of arrow to lower bound of confidence interval
             # if there is not room for the arrowhead, don't print it
-            if tail[0] - head[0] > arrowheadwidthdefault:
-                arrow(head, tail, 2, color)
+            if tail[0] - head[0] > ARROWHEAD_WIDTH_DEFAULT:
+                arrow(args,head, tail, 2, color)
             head = [confint[i][1], arrowheight]
             tail = [popbox[i][1][0], arrowheight]
-            arrow(head, tail, 0, color)
+            arrow(args,head, tail, 0, color)
             periodposcount[period] += 1
     if scaledpop != []:
         ane = scaledpop[rootpop] / 1000
         anes = fround(ane)
-        dotext([0.15, 0.05], " Ancestral Ne (thousands): " + anes, 0, False)
+        dotext(args,[0.15, 0.05], " Ancestral Ne (thousands): " + anes, 0, False)
     else:
-        dotext([0.15, 0.05], " Ancestral 4Nu: " + str(slist[4][4][rootpop][1]), 0, False)
+        dotext(args,[0.15, 0.05], " Ancestral 4Nu: " + str(slist[4][4][rootpop][1]), 0, False)
 
-    if gv["simplecolor"]:
-        w("0 0 0  setrgbcolor")
+    if args.simplecolor:
+        w(args,"0 0 0  setrgbcolor")
     return popbox
 
 
-def set_tlines(ty, slist):
+def set_tlines(args,slist):
     """
         line0y - default relative height of time 0
         eventimes - if True, space split times evenly
@@ -1678,32 +1829,31 @@ def set_tlines(ty, slist):
     for i in range(numpops - 1):
         t.append([slist[5][4][i][1], slist[5][4][i][2], slist[5][4][i][3]])  # [time, upper ci, lower ci]
     ty = []
-    if gv["localyscale"] == -1:
-        yint = gv["line0y"] - gv["lastt_lower_y"]
+    if args.localyscale == -1:
+        yint = args.line0y - args.lastt_lower_y
         for i in range(numpops - 1):
             ty.append([])
-            if gv["eventimes"] == False:
+            if args.eventimes == False:
                 tmax = slist[5][4][numpops - 2][3] # bottom of confidence interval of largest(oldest) t
                 for j in range(3):
-                    ty[i].append(gv["line0y"] - (t[i][j] * yint) / tmax)
+                    ty[i].append(args.line0y - (t[i][j] * yint) / tmax)
             else:
-##                ty[i].append(gv["line0y"] - ((i + 1) / float(numpops + 1) * yint) / tmax)
-                ty[i].append(gv["line0y"] - yint * (i + 1) / float(numpops))
+##                ty[i].append(args.line0y - ((i + 1) / float(numpops + 1) * yint) / tmax)
+                ty[i].append(args.line0y - yint * (i + 1) / float(numpops))
     else:
         timeumean = slist[7][4][1]
         scaleumean = slist[7][4][2]
         for i in range(numpops - 1):
             ty.append([])
             for j in range(3):
-                ty[i].append(gv["line0y"] - (t[i][j] * (scaleumean / timeumean / 1e6) * gv["localyscale"]))
-                if ty[i][j] < gv["lineINFy"]:
+                ty[i].append(args.line0y - (t[i][j] * (scaleumean / timeumean / 1e6) * args.localyscale))
+                if ty[i][j] < args.lineINFy:
                     print(" time line too low in graph, reduce local y scale (-y value) ")
-        gv["lastt_lower_y"] = ty[numpops - 2][2]
-##    print "ty : ", ty
+        args.lastt_lower_y = ty[numpops - 2][2]
     return ty
 
 
-def print_tlines(ty, slist, scaledtime, farright):
+def print_tlines(args,ty, slist, scaledtime, farright):
     """
         print the split time lines and confidence interval lines
         graylevel is global
@@ -1717,42 +1867,40 @@ def print_tlines(ty, slist, scaledtime, farright):
         else:
             yearscaler = 1e6
             yearscalestring = " MYR"
-    if gv["eventimes"] is False:
+    if args.eventimes is False:
         for i in range(numpops - 1):
             if (ty[i][1] > ty[i][0]):
-                yline(ty[i][1], farright, 1, 2, gv["graylevel"])
-            yline(ty[i][0], farright, 0.5, 0, 0)
+                yline(args,ty[i][1], farright, 1, 2, args.graylevel)
+            yline(args,ty[i][0], farright, 0.5, 0, 0)
             if (ty[i][2] < ty[i][0]):
-                yline(ty[i][2], farright, 1, 2, gv["graylevel"])
+                yline(args,ty[i][2], farright, 1, 2, args.graylevel)
             if(scaledtime != []):
                 scaledtime[i] /= yearscaler
                 mtime = round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2))
                 nstr = str(mtime) + yearscalestring
-    #            str(int(round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2)))) + " yrs"
-                dotext([xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
+                dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
             else:
                 nstr = fround(slist[5][4][i][1]) + "tu"
-                dotext([xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
+                dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
             if (ty[i][1] > ty[i][0]):
-                arrow([xinc * (i + 1), ty[i][1]], [xinc * (i + 1), ty[i][0]], 1, gv["black"])
+                arrow(args,[xinc * (i + 1), ty[i][1]], [xinc * (i + 1), ty[i][0]], 1, args.black)
             if (ty[i][2] < ty[i][0]):
-                arrow([xinc * (i + 1), ty[i][2]], [xinc * (i + 1), ty[i][0]], 3, gv["black"])
+                arrow(args,[xinc * (i + 1), ty[i][2]], [xinc * (i + 1), ty[i][0]], 3, args.black)
     else:
         for i in range(numpops - 1):
-            yline(ty[i][0], farright, 0.5, 0, 0)
+            yline(args,ty[i][0], farright, 0.5, 0, 0)
             if(scaledtime != []):
                 scaledtime[i] /= yearscaler
                 mtime = round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2))
                 nstr = str(mtime) + yearscalestring
-    #            str(int(round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2)))) + " yrs"
-                dotext([xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
+                dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
             else:
                 nstr = fround(slist[5][4][i][1]) + "tu"
-                dotext([xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
+                dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
     return ty
 
 
-def print_mcurves(slist, popbox, plist):
+def print_mcurves(args,slist, popbox, plist):
     """migration arrows:
     note - migration arrows are drawn in the forward direction!!
     likelihood ratio=ratio of the highest probability to the probability at 2NM = 0
@@ -1774,17 +1922,17 @@ def print_mcurves(slist, popbox, plist):
     6 log likelihood ratio stat
     also save # events to print in the period"""
     def checkm(val2NM, valm, llr):
-##        return  (gv["moption"] == 'a' and val2NM > min2NM) or (gv["moption"] == 's' and llr >= 2.74)  or val2NM > gv["moption"]
+##        return  (args.moption == 'a' and val2NM > min2NM) or (args.moption == 's' and llr >= 2.74)  or val2NM > args.moption
 ##  can happen that singificant m  is associated with 2NM = 0 (or near).  Catch these cases and do not print
         minsig2NM = 0.001
-        if type(gv["moption"]) is float:
-            return val2NM >= gv["moption"]
+        if type(args.moption) is float:
+            return val2NM >= args.moption
         else:
-            returnval = ((gv["moption"] == 'a' and valm > 0 and val2NM > 0)
-                    or (gv["moption"] == 's' and llr.count('*') > 0 and val2NM >= minsig2NM)
-                    or (gv["moption"] == 'S' and llr.count('*') > 1) and val2NM >= minsig2NM)
+            returnval = ((args.moption == 'a' and valm > 0 and val2NM > 0)
+                    or (args.moption == 's' and llr.count('*') > 0 and val2NM >= minsig2NM)
+                    or (args.moption == 'S' and llr.count('*') > 1) and val2NM >= minsig2NM)
             return returnval
-    if gv["moption"] == 'x':
+    if args.moption == 'x':
         return
     mperiodnum = [0] * (numpops - 1)
     if len(slist[6]) > 4:
@@ -1854,7 +2002,7 @@ def print_mcurves(slist, popbox, plist):
             val2NM = fround(miginfo[i][5])
             if (miginfo[i][6] != 'ns'):
                 val2NM += miginfo[i][6]
-            text2NMwidth = textwide(val2NM, 1.5)
+            text2NMwidth = textwide(args,val2NM, 1.5)
             if direc == 0:
                 tailx = popbox[frompop][1][0] - (popbox[frompop][1][0] - popbox[frompop][0][0]) * wideboxfrac
                 headx = popbox[topop][0][0] + (popbox[topop][1][0] - popbox[topop][0][0]) * wideboxfrac
@@ -1867,14 +2015,14 @@ def print_mcurves(slist, popbox, plist):
                 if (text2NMwidth > abs(tailx - headx)):
                     tailx = popbox[frompop][0][0] + (popbox[frompop][1][0] - popbox[frompop][0][0]) * narrowboxfrac
                     headx = popbox[topop][1][0] - (popbox[topop][1][0] - popbox[topop][0][0]) * narrowboxfrac
-            if gv["rgbcolor"]:
-                migrationstraightarrow(val2NM, [headx, y[i]], [tailx, y[i]], direc, gv["darkgreen"])
+            if args.rgbcolor:
+                migrationstraightarrow(args,val2NM, [headx, y[i]], [tailx, y[i]], direc, args.darkgreen)
             else:
-                migrationstraightarrow(val2NM, [headx, y[i]], [tailx, y[i]], direc, gv["red"])
+                migrationstraightarrow(args,val2NM, [headx, y[i]], [tailx, y[i]], direc, args.red)
 
 
 ##***********************************************************************************
-##////////////// Command line use ///////////////////////////////////////////////////
+##////////////// PARSING and MAIN PROGRAM ///////////////////////////////////////////
 ##***********************************************************************************
 
 def parse_arguments(args=None):
@@ -1885,7 +2033,7 @@ def parse_arguments(args=None):
     import argparse
     
     parser = argparse.ArgumentParser(
-        description=f"IMfig program. Copyright 2009-{releaseyear} Jody Hey. Release Date {releasedate}",
+        description=f"IMfig program. Copyright 2009-{RELEASE_YEAR} Jody Hey. Release Date {RELEASE_DATE}",
         formatter_class=argparse.RawTextHelpFormatter
     )
     
@@ -1896,6 +2044,7 @@ def parse_arguments(args=None):
                         help='include ancestral population #\'s in plot')
     parser.add_argument('-b', '--box-spacing', type=float, default=1.0, dest='popboxspaceadj',
                         help='adjust width spacing of population boxes, values > 0, default = 1')
+    # Add check for PIL before adding image format options
     if check_PIL:
         parser.add_argument('-c', '--convert', choices=['j', 'p', 'n'], dest='imageformat',
                            help='output format, default is eps, see also -w\n'
@@ -1953,350 +2102,185 @@ def parse_arguments(args=None):
                         help='adjust height of splittimes, relative to bottom of figure, max = 1.')
     parser.add_argument('-z', '--exclude-ghost', action='store_true', dest='excludeghost',
                         help='exclude the ghost population from the figure')
+    
     # Parse arguments
     if args is None:
         args = sys.argv[1:]
+    
     parsed_args = parser.parse_args(args)
     cmdstr = " ".join(["IMfig.py"] + args)
     
-    # Set additional values based on parsed args
-    if hasattr(parsed_args, 'fontsize') and parsed_args.fontsize is not None:
-        parsed_args.fontfixed = True
-    else:
-        parsed_args.fontfixed = False
-        parsed_args.fontsize = 14
-    
-    if hasattr(parsed_args, 'altnamefilename') and parsed_args.altnamefilename is not None:
-        parsed_args.usealtnames = True
-    else:
-        parsed_args.usealtnames = False
-    
-    if hasattr(parsed_args, 'lastt_lower_y') and parsed_args.lastt_lower_y is not None:
-        parsed_args.set_lastt_lower_y = False
-    else:
-        parsed_args.set_lastt_lower_y = True
-        parsed_args.lastt_lower_y = -1
-    
-    if hasattr(parsed_args, 'no_popboxcintervalboxes') and parsed_args.no_popboxcintervalboxes:
-        parsed_args.popboxcintervalboxes = False
-    else:
-        parsed_args.popboxcintervalboxes = True
-    
-    if hasattr(parsed_args, 'no_popboxcintervalarrows') and parsed_args.no_popboxcintervalarrows:
-        parsed_args.popboxcintervalarrows = False
-    else:
-        parsed_args.popboxcintervalarrows = True
-    
-    if hasattr(parsed_args, 'xadjust') and parsed_args.xadjust is not None:
-        if parsed_args.xadjust > 1.0:
-            parsed_args.maximumxpoint = 756.1 * parsed_args.xadjust
-            parsed_args.localxscale = -1
-        else:
-            parsed_args.localxscale = parsed_args.xadjust
-            parsed_args.maximumxpoint = 756.1
-    else:
-        parsed_args.localxscale = -1
-        parsed_args.maximumxpoint = 756.1
-    
-    if hasattr(parsed_args, 'heightscale') and parsed_args.heightscale is not None:
-        parsed_args.maximumypoint = 576.1 * parsed_args.heightscale
-    else:
-        parsed_args.maximumypoint = 576.1
-    
-    if hasattr(parsed_args, 'dosquare') and parsed_args.dosquare:
-        parsed_args.maximumxpoint = 576.1
-    
-    if hasattr(parsed_args, 'anglenames') and parsed_args.anglenames:
-        parsed_args.line0y = 0.88
-    else:
-        parsed_args.line0y = 0.95
-    
-    if hasattr(parsed_args, 'widthscalar') and parsed_args.widthscalar is None:
-        parsed_args.widthscalar = -1
-    
-    # Process image format if applicable
-    if check_PIL and hasattr(parsed_args, 'imageformat') and parsed_args.imageformat is not None:
-        if parsed_args.imageformat == 'j':
-            parsed_args.imagefileextension = ".jpg"
-        elif parsed_args.imageformat == 'p':
-            parsed_args.imagefileextension = ".pdf"
-        elif parsed_args.imageformat == 'n':
-            parsed_args.imagefileextension = ".png"
-    else:
-        parsed_args.imagefileextension = ""
-    
-    # Set bifont based on font
-    parsed_args.bifont = parsed_args.font + "-BoldItalic"
-    
-    # Convert moption to float if it's a number
-    if hasattr(parsed_args, 'moption') and parsed_args.moption not in ['x', 'a', 's', 'S']:
-        try:
-            parsed_args.moption = float(parsed_args.moption)
-        except ValueError:
-            parsed_args.moption = 's'  # Default if conversion fails
-    
-    # Constants
-    parsed_args.lineINFy = 0.1
-    parsed_args.blue = [0, 0, 1]
-    parsed_args.red = [1, 0, 0]
-    parsed_args.black = [0, 0, 0]
-    parsed_args.darkgreen = [0, 0.58823, 0.19607]
-    parsed_args.graylevel = 0.6
-    parsed_args.dashinterval = 3
-    parsed_args.imaversion = 3  # Set default, will be updated when reading file
-    
-    # Ensure output has .eps extension
-    if not parsed_args.outputfilename.lower().endswith('.eps'):
-        parsed_args.outputfilename += '.eps'
-    
     return parsed_args, cmdstr
 
-##*************************************************************
-##///////////// default values, basic scale////////////////////
-##*************************************************************
+
+def run_imfig(args, cmdstr):
+    """
+    Main processing function using the configuration object.
+    Replaces the dostuff() function.
+    """
+    global numpops
+    
+    # Get info from the input file
+    print(f"input file: {args.imfilename}")
+    if args.imagefileextension != "":
+        tempname = args.outputfilename[0:-4] + args.imagefileextension
+    else:
+        tempname = args.outputfilename
+    print(f"output file: {tempname}")
+    print("Reading input file...")
+    
+    # Read the input file
+    args,slist, scaledpop, scaledtime = readimfile(args)
+    
+    # Read the tree, set up plist
+    poptree, rootpop, poptreestring, plist, droppops, addpop = poptreeread(slist[3][4])
+    if args.rgbcolor:
+        poptree = addcolors(poptree)
+    
+    # Set scales
+    print("Setting scales...")
+    args.adjust_scales()
+    if args.set_lastt_lower_y:
+        args.lastt_lower_y = 1.0 / (numpops + 1)
+    
+    # Set up time lines
+    ty = set_tlines(args, slist)
+    
+    # Set up population boxes
+    popbox, maxwide, confint, farright = setpopbox(args, ty, slist, scaledtime, rootpop, poptree)
+    
+    # Write the EPS output file
+    args.epsf = open(args.outputfilename, "w")
+    w(args, "%!PS-Adobe-3.0 EPSF-3.0")
+    w(args, "%%legal size in landscape is 792x612 set bounding box with 0.5inch margins")
+    w(args, "%%the lower corner is at 36 36, x dim is 720 wide, y dim is 540 hi")
+    w(args, f"%%BoundingBox: {int(args.fixedLL[0])} {int(args.fixedLL[1])} {int(args.fixedUR[0])} {int(args.fixedUR[1])}")
+    w(args, f"%%IMfig program author: Jody Hey   Copyright 2009-{RELEASE_YEAR}")    
+    w(args, f"%%Command line for IMfig program that generated this file: {cmdstr}")
+    
+    # Generate the figure
+    print("Creating figure...")
+    print("Plotting splitting times...")
+    ty = print_tlines(args, ty, slist, scaledtime, farright)
+    
+    print("Plotting population boxes...")
+    popbox = printpopbox(args, popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, scaledpop, droppops)
+    
+    print("Plotting migration arrows...")
+    print_mcurves(args, slist, popbox, plist)
+    
+    # Close output file
+    args.epsf.close()
+    print("Plot completed")
+    
+    # Convert to image format if requested
+    if args.imagefileextension != "":
+        success = write_image_file(args)
+        if success:
+            print("Image file created")
 
 
-def setbasexyscale():
-    global gv
-    minimumxpoint = minimumypoint = 36.1   # forgot where this came from
-    gv["fixedLL"] = [minimumxpoint, minimumypoint]
-    gv["fixedUR"] = [gv["maximumxpoint"], gv["maximumypoint"]]
-
-
-def setdefaults():
-    global gv
-    gv = {"label_a_pops": False, "simplecolor": False, "dosquare": False,
-        "eventimes": False, "popboxcintervalboxes": True, "popboxcintervalarrows": True, "imfilename": "im_eps.txt", "outputfilename": "imfig_output.eps", "globalscale": 1,
-         "font": "Arial", "bifont": "Arial-BoldItalic", "fontsize": 14, "fontfixed": False,
-         "line0y": 0.95, "lineINFy": 0.1, "localxscale": -1, "localyscale": -1, "arrowheightadj": 1,
-        "maximumxpoint": 756.1, "maximumypoint": 576.1, "lastt_lower_y": -1, "set_lastt_lower_y": True,
-        "blue": [0, 0, 1], "red": [1, 0, 0], "black": [0, 0, 0], "darkgreen": [0, 0.58823, 0.19607], "graylevel": 0.6,
-        "popboxspaceadj": 1.0, "moption": 's', "skipdemographicscaling": False, "rgbcolor": False,
-        "anglenames": False, "dashinterval": 3, "usealtnames": False, "imagefileextension": "", "altnamefilename": "",
-        "altpopnames": [], "widthscalar": -1, "excludeghost": False, "imaversion": 3
-         }
-
-
-##***********************************************************************************
-##////////////// CREATE IMAGE FILE //////////////////////////////////////////////////
-##***********************************************************************************
-
-
-# def writeimagefile():
-#     fn, tempext = os.path.splitext(gv["outputfilename"])
-#     if gv["widthscalar"] < 1:
-#         gv["widthscalar"] = 1
-#     try:
-#         im = Image.open(gv["outputfilename"])
-#         im.load(scale=gv["widthscalar"])
-#         # print(im.format, im.size, im.mode)
-#     except:
-#         print("cannot read ", gv["outputfilename"], ".  ", gv["imagefileextension"], " file not written")
-#         return False
-#     outfn = fn + gv["imagefileextension"]
-#     try:
-#         im.save(outfn)
-#     except IOError:
-#         print("cannot convert", gv["outputfilename"], " to", gv["imagefileextension"])
-#         return False
-#     im.close()
-#     os.remove(gv["outputfilename"])
-#     return True
-
-def writeimagefile():
-    fn, tempext = os.path.splitext(gv["outputfilename"])
-    if gv["widthscalar"] < 1:
-        gv["widthscalar"] = 1
+def write_image_file(args):
+    """Convert EPS file to the specified image format using PIL."""
+    fn, tempext = os.path.splitext(args.outputfilename)
+    if args.widthscalar < 1:
+        args.widthscalar = 1
     try:
-        im = Image.open(gv["outputfilename"])
-        im.load(scale=gv["widthscalar"])
-        # print(im.format, im.size, im.mode)
+        im = Image.open(args.outputfilename)
+        im.load(scale=args.widthscalar)
     except Exception as e:
-        print(f"Error reading {gv['outputfilename']}: {e}")
-        print(f"Detailed error type: {type(e).__name__}")
-        print(f"{gv['imagefileextension']} file not written")
-        
-        # Additional diagnostic information
-        if hasattr(Image, 'registered_extensions'):
-            print(f"Supported formats: {Image.registered_extensions()}")
-        else:
-            print("PIL registered extensions information not available")
-            
+        print("--- An exception occurred ---")
+        print(f"Error reading {args.outputfilename}: {e}")
+        print(f"{args.imagefileextension} file not written")
+        print(f"Exception Type: {type(e)}")
+        print(f"Exception Message: {e}")        
+        # This prints the exception type, message, and the call stack
+        traceback.print_exc(file=sys.stdout) # Print to standard output
+        print("---------------------------")        
         return False
     
-    outfn = fn + gv["imagefileextension"]
+    outfn = fn + args.imagefileextension
     try:
         im.save(outfn)
     except Exception as e:
-        print(f"Error converting {gv['outputfilename']} to {gv['imagefileextension']}: {e}")
-        print(f"Detailed error type: {type(e).__name__}")
+        print(f"Error converting {args.outputfilename} to {args.imagefileextension}: {e}")
         return False
     
     try:
         im.close()
-        os.remove(gv["outputfilename"])
+        os.remove(args.outputfilename)
     except Exception as e:
         print(f"Warning: Could not clean up temporary file: {e}")
     
     return True
 
 
-
-##***********************************************************************************
-##////////////// MAIN PROGRAM ///////////////////////////////////////////////////////
-##***********************************************************************************
-
-def update_globals_from_args(args):
-    """Update global variables from parsed arguments"""
-    global gv, numpops
-    
-    # Transfer all attributes from args to gv
-    for attr in vars(args):
-        gv[attr] = getattr(args, attr)
-
-def dostuff(args):
-    global gv
-
-    setdefaults()
-
-    ##////////////// get info from the command line ///////////////////
-    parsed_args, cmdstr = parse_arguments(args)
-    
-    # Update globals with parsed arguments
-    update_globals_from_args(parsed_args)
-
-    ##////////////// get info from the input file (i.e. the IM results files) ///////////////////
-    if gv["imagefileextension"] != "":
-        tempname = gv["outputfilename"][0:-4] + gv["imagefileextension"]
-    else:
-        tempname = gv["outputfilename"]
-    print("input file: %s\noutput file %s" % (gv["imfilename"], tempname))
-    print("read inputfile")
-    (slist, scaledpop, scaledtime) = readimfile()
-
-    ##////////////// read the tree, set up plist ///////////////////
-    # plist has the population numbers in each period, in order from left to right as they appear in the plot
-    (poptree, rootpop, poptreestring, plist, droppops, addpop) = poptreeread(slist[3][4])
-    if gv["rgbcolor"]:
-        poptree = addcolors(poptree)
-
-    ##//////////////// set scales ///////////////////////////
-    print("set scales")
-    setbasexyscale()
-    if gv["set_lastt_lower_y"]:
-        gv["lastt_lower_y"] = 1.0 / (numpops + 1)
-    ty = set_tlines(slist, slist)
-    (popbox, maxwide, confint, farright) = setpopbox(ty, slist, scaledtime, rootpop, poptree)
-
-    ##//////////////// write the output file ///////////////////////////
-    gv["epsf"] = open(gv["outputfilename"], "w")
-    w("%!PS-Adobe-3.0 EPSF-3.0")
-    w("%%legal size in landscape is 792x612 set bounding box with 0.5inch margins")
-    w("%%the lower corner is at 36 36, x dim is 720 wide, y dim is 540 hi")
-    w("%%%%BoundingBox: %d %d  %d  %d" % (int(gv["fixedLL"][0]), int(gv["fixedLL"][1]), int(gv["fixedUR"][0]), int(gv["fixedUR"][1])))
-    w("%%%%IMfig program author: Jody Hey   Copyright 2009-{}".format(releaseyear))
-    w("%%%%Command line for IMfig program that generated this file: %s" % cmdstr)
-
-    #### useful for debugging, include this DrawAnX function in the code
-    ##w("/DrawAnX")
-    ##w("{ 3 3 rmoveto -6 -6 rlineto")
-    ##w("0 6 rmoveto 6 -6 rlineto")
-    ##w("0.01 setlinewidth")
-    ##w("stroke } def")
-    #### use by calling and passing x and y values
-    ####e.g. w("%f %f moveto DrawAnX" % (point[0], point[1]))
-
-    print("make figure")
-    print("splitting times")
-    ty = print_tlines(ty, slist, scaledtime, farright)
-    print("population boxes")
-    popbox = printpopbox(popbox, maxwide, confint, slist, plist, rootpop, poptree, ty, scaledpop, droppops)
-    print("migration arrows")
-    print_mcurves(slist, popbox, plist)
-    gv["epsf"].close()
-    print("plot completed")
-    if gv["imagefileextension"] != "":
-        success = writeimagefile()
-        if success:
-            print("image file created")
-    return
-
-
-def writecaption(args):
-    fn = gv["outputfilename"][0:-4] + "_caption.txt"
-    f = open(fn, 'w')
-    f.write("IMfig program Copyright 2009-{}  Jody Hey\n".format(releaseyear))
-    f.write("command line string: %s\n\n"%' '.join(args))
-    s = ""
-    if gv["imaversion"] == 3:
-        s += "Figure ?. A representation of an estimated Isolation with Migration model generated by IMa3 and the IMfig program (Hey et al., 2018). "
-    else:
-        s += "Figure ?. A representation of an estimated Isolation with Migration model generated by IMa2 and the IMfig program (Hey 2010). "
-    s += "The phylogeny is depicted as a series of boxes organized hierarchically, with ancestor boxes positioned in between the corresponding descendants, and the width of boxes proportional to estimated Ne."
-    if gv["popboxcintervalboxes"]:
-        s += " 95% confidence intervals for each Ne value are shown as dashed lines to the right of the left side of the corresponding population box. "
-        if gv["popboxcintervalarrows"]:
-            s += " Gray arrows to the 95% Ne intervals are also shown extending to the left and right of the right boundary of each population box.  "
-    elif gv["popboxcintervalarrows"]:
-        s += " 95% confidence intervals for Ne values are shown as gray arrows extending to the left and right of the right boundary of each population box.  "
-    s += "Splitting times"
-    if gv["eventimes"]:
-        s += ", positioned at even intervals, "
-    s += " are depicted as solid horizontal lines, with text values on the left. "
-    if not gv["eventimes"]:
-        s += "Confidence intervals for splitting times are shown as vertical gray arrows on the left, and parallel dashed lines. "
-    if gv["moption"] != 'x':
-        s += "Migration arrows (if shown) indicate estimated 2Nm values from one population to another over the time interval when both populations exist. "
-        s += "Arrows are shown only for estimated migration rates  "
-        if gv["moption"] == 's':
-            s += "that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.05 level (* p < 0.05, ** p< 0.01, *** p < 0.001). "
+def write_caption(args, cmdstr):
+    """Write a caption file for the generated figure."""
+    fn = args.outputfilename[0:-4] + "_caption.txt"
+    with open(fn, 'w') as f:
+        f.write(f"IMfig program Copyright 2009-{RELEASE_YEAR} Jody Hey\n")
+        f.write(f"command line string: {cmdstr}\n\n")
+        s = ""
+        if args.imaversion == 3:
+            s += "Figure ?. A representation of an estimated Isolation with Migration model generated by IMa3 and the IMfig program (Hey et al., 2018). "
         else:
-            if gv["moption"] == 'S':
-                s += " that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.01 level (** p< 0.01, *** p < 0.001). "
+            s += "Figure ?. A representation of an estimated Isolation with Migration model generated by IMa2 and the IMfig program (Hey 2010). "
+        s += "The phylogeny is depicted as a series of boxes organized hierarchically, with ancestor boxes positioned in between the corresponding descendants, and the width of boxes proportional to estimated Ne."
+        if args.popboxcintervalboxes:
+            s += " 95% confidence intervals for each Ne value are shown as dashed lines to the right of the left side of the corresponding population box. "
+            if args.popboxcintervalarrows:
+                s += " Gray arrows to the 95% Ne intervals are also shown extending to the left and right of the right boundary of each population box.  "
+        elif args.popboxcintervalarrows:
+            s += " 95% confidence intervals for Ne values are shown as gray arrows extending to the left and right of the right boundary of each population box.  "
+        s += "Splitting times"
+        if args.eventimes:
+            s += ", positioned at even intervals, "
+        s += " are depicted as solid horizontal lines, with text values on the left. "
+        if not args.eventimes:
+            s += "Confidence intervals for splitting times are shown as vertical gray arrows on the left, and parallel dashed lines. "
+        if args.moption != 'x':
+            s += "Migration arrows (if shown) indicate estimated 2Nm values from one population to another over the time interval when both populations exist. "
+            s += "Arrows are shown only for estimated migration rates  "
+            if args.moption == 's':
+                s += "that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.05 level (* p < 0.05, ** p< 0.01, *** p < 0.001). "
             else:
-                if gv["moption"] != 'a':
-                    s += " that are above %.3f. "%gv["moption"]
-    if gv["useghost"] and gv["excludeghost"]:
-        s += " The ghost population is not shown in this figure. "
-    if gv["label_a_pops"]:
-        s += "Ancestral population numbers are shown in ancestral boxes. "
-    if gv["skipdemographicscaling"]:
-        s += " Population size (Ne) and splitting times values are scaled by the geometric mean of the mutation rates of the loci used for the analysis. "
-    if gv["imaversion"] == 3:
-        s += "\n\nHey J, Chung Y, Sethuraman A, Lachance J, Tishkoff SA, Soudsa VC, Wang Y. 2018. Phylogeny Estimation by Integration over Isolation with Migration Models. Mol Biol Evol in press.\n"
-    else:
-        s += "\n\nHey J. 2010. The Divergence of Chimpanzee Species and Subspecies as Revealed in Multipopulation Isolation-with-Migration Analyses. Mol Biol Evol 27:921-933.\n"
-    if gv["moption"].upper() == 'S':
-        s += "Nielsen R, Wakeley J. 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
-    f.write("%s"%s)
-    print("caption file written")
-    f.close()
+                if args.moption == 'S':
+                    s += " that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.01 level (** p< 0.01, *** p < 0.001). "
+                else:
+                    if args.moption != 'a':
+                        s += f" that are above {args.moption:.3f}. "
+        if args.useghost and args.excludeghost:
+            s += " The ghost population is not shown in this figure. "
+        if args.label_a_pops:
+            s += "Ancestral population numbers are shown in ancestral boxes. "
+        if args.skipdemographicscaling:
+            s += " Population size (Ne) and splitting times values are scaled by the geometric mean of the mutation rates of the loci used for the analysis. "
+        if args.imaversion == 3:
+            s += "\n\nHey J, Chung Y, Sethuraman A, Lachance J, Tishkoff SA, Soudsa VC, Wang Y. 2018. Phylogeny Estimation by Integration over Isolation with Migration Models. Mol Biol Evol in press.\n"
+        else:
+            s += "\n\nHey J. 2010. The Divergence of Chimpanzee Species and Subspecies as Revealed in Multipopulation Isolation-with-Migration Analyses. Mol Biol Evol 27:921-933.\n"
+        if args.moption.upper() == 'S':
+            s += "Nielsen R, Wakeley J. 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
+        f.write(s)
+    print("Caption file written")
 
-##***********************************************************************************
-##////////////// MAIN PROGRAM ///////////////////////////////////////////////////////
-##***********************************************************************************
 
-##This program can be run from the command line (see user manual)
-##Alternatively, if desired the user can uncomment this block and define the working directory and 'cmdstr':
 
-## -- comment this block out when running from the command line --
-##import os
-##os.chdir(r"E:\genemod\ML-MCMC\SEAI\IMa3_work\IMfig\testbedwork")  # directory where the input file is located
-##cmdstr = r"IMfig.py -iBaHzSwYr_200loci_mode3ghost_j1_mp5.out -odebugBaHzSwYr_200loci_mode3ghost_j1_mp5.eps -ms -v -e"
-##sys.argv = cmdstr.split()
-## -----------
-
-if __name__ == "__main__":
-    print("IMfig program. Copyright 2009-{}  Jody Hey  Release Date {}".format(releaseyear,releasedate))
+if __name__ == "__main__":    
+    """Main entry point for the IMfig program."""
+    print(f"IMfig program. Copyright 2009-{RELEASE_YEAR} Jody Hey Release Date {RELEASE_DATE}")
     
-    if len(sys.argv) <= 1:
-        # No arguments provided, show help
-        import argparse
-        parser = argparse.ArgumentParser(
-            description=f"IMfig program. Copyright 2009-{2025} Jody Hey. Release Date {releasedate}")
-        parser.parse_args(["-h"])
-    else:
-        dostuff(sys.argv[1:])
-        writecaption(sys.argv[1:])
-    # end of execution
+    parsed_args, cmdstr = parse_arguments(sys.argv[1:])
+    
+    # Create configuration object
+    args = Config()
+    args.update_from_args(parsed_args)
+    
+    # Process the input file and generate the figure
+    run_imfig(args, cmdstr)
+    
+    # Write caption
+    write_caption(args, cmdstr)
+
 
