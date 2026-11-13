@@ -70,8 +70,10 @@
       only commits to github that will be done will be release versions  (i.e. #define IMA3RELEASE)
  */
 
-#define IMA3RELEASEVERSION  "1.13"  // update only when a release is made 
-/* set to 1.13 on 5/24/2023   fixed bug in reading prior file */ 
+#define IMA3RELEASEVERSION  "1.14"  // update only when a release is made
+/* set to 1.14 on 11/13/2026  fixed MPI hang with many chains (chains identified by heating-ladder position, not beta value),
+     checks on heating values and on mcf restart files, missing-migration-prior check, -x topology prior buffer fixes, IMfig.py fixes */
+/* set to 1.13 on 5/24/2023   fixed bug in reading prior file */
 /* set to 1.12 on 9/23/2021  added the counter to population sliding update */
 /* set to 1.11 on 3/21/2019   turned on prior ratio heating as the default, set swapchain interval to every 5th step  */ 
 /* set to 1.1 on 3/5/2019,  fixed the prior beta bug  */ 
