@@ -33,6 +33,11 @@
 #include <fstream>
 #include <stack>
 #include <sstream>
+// A12 fix 11/13/2026: Visual Studio before 2015 (_MSC_VER 1900) has no snprintf. _snprintf_s with
+// _TRUNCATE behaves like snprintf for our use: it never writes past n bytes and always ends with a 0.
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define snprintf(buf, n, ...) _snprintf_s(buf, n, _TRUNCATE, __VA_ARGS__)
+#endif
 
 
 /***********************************************/

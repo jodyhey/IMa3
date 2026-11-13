@@ -424,6 +424,27 @@ setheat (double hval1, double hval2, int heatmode, int currentid)
     assert (nearlyequaldouble(allbetas[numchainstotal-1],0.0,1e-10)); //should be very close to 0
     allbetas[numchainstotal-1] = allbetas[numchainstotal-2]* CHAIN0FRAC;  // for some reason the last chain causes problems with doing thermodynamic integration
   }
+  /* M1 fix 11/13/2026: check the heating ladder. Chains are identified by ladder position, so equal
+     values are safe, but they are wasted chains: with many chains, geometric heating rounds
+     1 - (a tiny number) to the same double, and often to exactly 1.0 */
+  {
+    int numequal = 0, numcold = 1;
+    for (int k = 1; k < numchainstotal; k++)
+    {
+      if (!(allbetas[k] <= allbetas[k-1]))  // also catches NaN
+        IM_err (IMERR_COMMANDLINEHEATINGTERMS, "heating values (betas) must decrease along the chain ladder: chain %d beta %.17g, chain %d beta %.17g. Check the -h terms", k-1, allbetas[k-1], k, allbetas[k]);
+      if (allbetas[k] == allbetas[k-1])
+        numequal += 1;
+      if (allbetas[k] == 1.0)
+        numcold += 1;
+    }
+    if (numequal > 0 && currentid == HEADNODE)
+    {
+      printf ("\nWARNING: %d of the %d chains have the same heating value (beta) as the next colder chain, and %d chains have beta = 1.0 (floating-point rounding with this many chains).\n", numequal, numchainstotal, numcold);
+      printf ("  These chains duplicate others and add little. Consider a larger -ha value (e.g. 0.99 or above) or fewer chains.\n\n");
+      fflush (stdout);
+    }
+  }
   int i = 0;
   for (ci = currentid * numchainspp; ci < currentid * numchainspp + numchainspp; ci++)
   {
@@ -599,7 +620,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
      if so, and this is not head node, send procIdForA to the head node */
     for (y = 0; y < numchainspp; y++)  
     {  
-			   if (beta[y] == abeta) // can only be true if chain sa is on the current processor 
+			   if (C[y]->currallbetapos == sa) // M1 fix 11/13/2026: match chain by ladder position, not beta value (equal betas caused MPI hangs). can only be true if chain sa is on the current processor 
       {
         /* at this point y is the chain number on the current node for abeta, */
 				    procIdForA = currentid;
@@ -617,7 +638,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
     /* now do the same thing for bbeta */
 		  for (y = 0; y < numchainspp; y++)  // see if bbeta is the beta for one of the chains in the current processor, if so and this is not head node, send procIdForB to the head node
     { 
-			   if (beta[y] == bbeta)   // true if chain sb is on the current processor 
+			   if (C[y]->currallbetapos == sb)   // M1 fix 11/13/2026: by position, not value. true if chain sb is on the current processor 
       {
         /* at this point y is the chain number on the current node for bbeta, */
 				    procIdForB = currentid;
@@ -843,7 +864,7 @@ swapchains_bwprocesses(int currentid, int swaptries,int *numattemptwithin,int *n
 					         swapcount[q][p]++;
 				        }
 				        swapvar = 1;
-            if ((abeta == 1.0 || bbeta == 1.0) && treematch ==0)  
+            if ((a_allbetapos == 0 || b_allbetapos == 0) && treematch ==0)  // M1 fix 11/13/2026: cold chain is position 0  
             {
               chain0topolswaps +=1;  // only count this once per swap,  so count it when current node is for A chain 
               //printf("1 ");
@@ -965,14 +986,14 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       } while (betai == betaj || betaj < 0 || betaj >= numchainstotal);  // 2nd random chain index different from first,  but not too far away */
 	     for (ci = 0; ci < numchainstotal; ci++) 
       {
-		      if (allbetas[betai] == beta[ci])
+		      if (C[ci]->currallbetapos == betai) // M1 fix 11/13/2026
         {
 			       break;
 		      }
 	     }
 	     for (cj = 0; cj < numchainstotal; cj++) 
       { 
-        if (allbetas[betaj] == beta[cj])
+        if (C[cj]->currallbetapos == betaj) // M1 fix 11/13/2026
         {
           break;
         }
@@ -1027,7 +1048,7 @@ swapchains (int nargs, ...)    // used for swaps between chains on the same proc
       if (C[ci]->poptreenum != C[cj]->poptreenum)
       {
         assert(strcmp(C[ci]->chainpoptreestring,C[cj]->chainpoptreestring)!=0);
-        if (beta[ci] == 1.0 || beta[cj] == 1.0)
+        if (C[ci]->currallbetapos == 0 || C[cj]->currallbetapos == 0) // M1 fix 11/13/2026: cold chain is position 0
         {
           chain0topolswaps +=1;
         }

@@ -1174,7 +1174,7 @@ checkpoptree(ci,1);
     if (*topolchange)
     {
       totaltopolupdates += 1;
-      if (beta[ci] == 1.0)
+      if (C[ci]->currallbetapos == 0) // M1 fix 11/13/2026: cold chain is ladder position 0
         chain0topolupdates += 1;
     }
     C[ci]->branchslideinfo.recentaccp += 1;

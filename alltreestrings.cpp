@@ -827,7 +827,7 @@ void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreest
   int i,j, totaltreecount = 0;
   double ppcp;
   char poptreetabletitle[100];
-  char temppriorstring[8];
+  char temppriorstring[32];  // A12 fix 11/12/2026: was [8], too small for "%.5g" values such as 2.4692e-05
 
   for (i=0;i<numpoptopologies;i++)
     totaltreecount += poptopologycounts[i];
@@ -852,9 +852,9 @@ void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreest
         ppcp = fa[j].ppcp;
       if (usetopologypriors)
         //temp1 = exp(topologypriors[i]);
-        sprintf(temppriorstring,"%.5g",exp(topologypriors[i]));
+        snprintf(temppriorstring,sizeof(temppriorstring),"%.5g",exp(topologypriors[i]));
       else
-        sprintf(temppriorstring,"1.0");
+        snprintf(temppriorstring,sizeof(temppriorstring),"1.0");
       FP "%s\t%s\t%d\t%d\t%.6f\t%.7f\n",alltreestrings[i],temppriorstring,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
     }
     FP "\n");
@@ -872,9 +872,9 @@ void printallpoptreesamples (FILE * outfile, int *poptopologycounts,foralltreest
       else
         ppcp = fa[j].ppcp;
       if (usetopologypriors)
-        sprintf(temppriorstring,"%.5g",exp(topologypriors[i]));
+        snprintf(temppriorstring,sizeof(temppriorstring),"%.5g",exp(topologypriors[i]));
       else
-        sprintf(temppriorstring,"1.0");
+        snprintf(temppriorstring,sizeof(temppriorstring),"1.0");
       FP "%s\t%s\t%s\t%d\t%d\t%.6f\t%.7f\n",alltreestrings_noghost[i],alltreestrings[i],temppriorstring,poptreeproposed[i],poptopologycounts[i],poptopologycounts[i]/ (double) totaltreecount,ppcp);
     }
     FP "\n");
@@ -1038,10 +1038,11 @@ double calctopologyprior(char *treestring, forpriorxsort  *priorxarray)
   ti = 0;
   for (ti = 0;ti < numnodes; ti++)
   {
-    while (strlen(tree_nodes[ti]) > strlen(priorxarray[xi].nodestr)  && xi < numtopologypriors)
+    // A2 fix 11/12/2026: test the index before reading priorxarray[] (was read past the end of the array)
+    while (xi < numtopologypriors && strlen(tree_nodes[ti]) > strlen(priorxarray[xi].nodestr))
       xi++;
     xxi = xi;
-    while (strlen(tree_nodes[ti]) == strlen(priorxarray[xxi].nodestr)  && xxi < numtopologypriors)
+    while (xxi < numtopologypriors && strlen(tree_nodes[ti]) == strlen(priorxarray[xxi].nodestr))
     {
       if (strcmp(tree_nodes[ti],priorxarray[xxi].nodestr) == 0)
         p += log(priorxarray[xxi].priorxval);

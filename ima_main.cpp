@@ -1687,6 +1687,43 @@ void start (int argc, char *argv[], int currentid)
 #endif
     if (mcffound != mcf0found)
       IM_err (IMERR_MCFREADFAIL, "not all cpus found an MCF file");
+    /* M1 fix 11/13/2026: after loading mcf files, every heating-ladder position must be held by exactly
+       one chain. If not (e.g. -hn or the number of processes differs from the run that wrote the files),
+       chain swapping would wait forever for a chain that no process has. All processes reach this point
+       together and make the same decision, so they all stop with the same message. */
+    if (numchainstotal > 1)
+    {
+      int *localpos = static_cast<int *> (malloc (numchainspp * sizeof (int)));
+      int *allpos = static_cast<int *> (malloc (numchainstotal * sizeof (int)));
+      int *poscount = static_cast<int *> (calloc (numchainstotal, sizeof (int)));
+      int badpos = -1, badcount = 0;
+      for (int k = 0; k < numchainspp; k++)
+        localpos[k] = C[k]->currallbetapos;
+#ifdef MPI_ENABLED
+      if (numprocesses > 1)
+      {
+        rc = MPI_Allgather(localpos, numchainspp, MPI_INT, allpos, numchainspp, MPI_INT, MPI_COMM_WORLD);
+        if (rc != MPI_SUCCESS) MPI_Abort(MPI_COMM_WORLD, rc);
+      }
+      else
+#endif
+        memcpy (allpos, localpos, numchainspp * sizeof (int));
+      for (int k = 0; k < numchainstotal; k++)
+        if (allpos[k] >= 0 && allpos[k] < numchainstotal)
+          poscount[allpos[k]] += 1;
+      for (int k = 0; k < numchainstotal; k++)
+        if (poscount[k] != 1)
+        {
+          badpos = k;
+          badcount = poscount[k];
+          break;
+        }
+      XFREE (localpos);
+      XFREE (allpos);
+      XFREE (poscount);
+      if (badpos >= 0)
+        IM_err (IMERR_MCFREADFAIL, "after reading mcf files, heating position %d is held by %d chains (must be exactly 1). Use the same number of chains (-hn) and processes as the run that wrote the mcf files", badpos, badcount);
+    }
     /* 8/20/2018  changed, move this to end of start() so lasttime is defined no matter what
     if (mcf0found)
     {
@@ -3471,7 +3508,7 @@ void record (int currentid)
   if (modeloptions[POPTREETOPOLOGYUPDATE] == 1  && z >= 0) // should record one tree for every time the CPU with the cold chain comes thru here, 
   {
     poptopologycounts[C[z]->poptreenum] += 1;
-    assert (beta[z] == 1.0);
+    assert (C[z]->currallbetapos == 0); // M1 fix 11/13/2026
   }
   if (modeloptions[POPTREETOPOLOGYUPDATE] == 1) // add the current topology number from the cold chain to poptopologysequence
   {
@@ -3532,7 +3569,7 @@ whichiscoldchain (void)
 	int which = UNDEFINEDINT;
 	for (int i = 0; i < numchainspp; i++) 
  {
-		if (beta[i] == 1.0) 
+		if (C[i]->currallbetapos == 0) // M1 fix 11/13/2026: cold chain is ladder position 0 (several chains can have beta == 1.0)
   {
 			which = i;
    break;

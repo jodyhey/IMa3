@@ -1885,7 +1885,7 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   int counthipcp;
   int numnotproposed = 0;
   //double temp1 = 1.0;
-  char temppriorstring[8];
+  char temppriorstring[32];  // A12 fix 11/12/2026: was [8], too small for "%.5g" values such as 2.4692e-05
   int *set1counts,*set2counts, setl;
   int numpprint;
 
@@ -2053,9 +2053,9 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     {
       if (usetopologypriors)
         //temp1 = exp(topologypriors[fatssarray[i].origi]);
-        sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+        snprintf(temppriorstring,sizeof(temppriorstring),"%.5g",exp(topologypriors[fatssarray[i].origi]));
       else
-        sprintf(temppriorstring,"1.0");
+        snprintf(temppriorstring,sizeof(temppriorstring),"1.0");
       FP "%s\t%s\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
       #ifdef XMLOUTPUT
       ss << fatssarray[i].treestr << "  " << temppriorstring << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
@@ -2079,9 +2079,9 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
     {
       if (usetopologypriors)
         //temp1 = exp(topologypriors[fatssarray[i].origi]);
-        sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+        snprintf(temppriorstring,sizeof(temppriorstring),"%.5g",exp(topologypriors[fatssarray[i].origi]));
       else
-        sprintf(temppriorstring,"1.0");
+        snprintf(temppriorstring,sizeof(temppriorstring),"1.0");
       FP "%s\t%s\t%s\t%d\t%.6f\t%.6f\t%.6f\t%.7f\n",fatssarray[i].treestrnoghost,fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].freqset1,fatssarray[i].freqset2,fatssarray[i].ppcp);
       #ifdef XMLOUTPUT
       ss << fatssarray[i].treestrnoghost << "  " << fatssarray[i].treestr << "  " << temppriorstring << "  " << fatssarray[i].count << "  " << fatssarray[i].freqall << "  " << fatssarray[i].freqset1 << "  " << fatssarray[i].freqset2 << "  " << fatssarray[i].ppcp;
@@ -2117,9 +2117,9 @@ void sort_and_print_alltreestrings(FILE * outfile, int *poptopologycounts, int *
   {
     if (usetopologypriors)
       //temp1 = exp(topologypriors[fatssarray[i].origi]);
-      sprintf(temppriorstring,"%.5g",exp(topologypriors[fatssarray[i].origi]));
+      snprintf(temppriorstring,sizeof(temppriorstring),"%.5g",exp(topologypriors[fatssarray[i].origi]));
     else
-      sprintf(temppriorstring,"1.0");
+      snprintf(temppriorstring,sizeof(temppriorstring),"1.0");
     FP "%s\t%s\t%d\t%.6f\t%.7f\n",fatssarray[i].treestr,temppriorstring,fatssarray[i].count,fatssarray[i].freqall,fatssarray[i].ppcp);
   }
   FP "\n");

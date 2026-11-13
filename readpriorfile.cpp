@@ -378,7 +378,7 @@ void readpriorfile(char priorfilename[],double *popsizepriorvals, double **mprio
     IM_err(IMERR_PRIORFILEVALS,"theta prior not given on command line or in priorfile %s",priorfilename);
   if (tp==0 && tprior < 0.0)
     IM_err(IMERR_PRIORFILEVALS,"splitting time prior not given on command line or in priorfile %s",priorfilename);
-  if (mp==9 && mprior < 0.0)
+  if (mp==0 && mprior < 0.0)  // A1 fix 11/12/2026: was mp==9, which never happens, so a missing migration section went undetected
     IM_err(IMERR_PRIORFILEVALS,"migration prior not given on command line or in priorfile %s",priorfilename);
   XFREE(temppoptree);
   XFREE(priortextline);

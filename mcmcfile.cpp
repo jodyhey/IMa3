@@ -730,7 +730,7 @@ writemcf (char mcffilename[],char commandline[],int mcmcrecords,int mcmcrecords_
     //beta
     if (numchainstotal >  1)
     {
-      i = findallbetasindex(beta[ci]);
+      i = C[ci]->currallbetapos; // M1 fix 11/13/2026: was findallbetasindex(beta[ci]), a lookup by value that picks the wrong index when betas are equal
       aa "allbetaci",0,1,&i);
       aa "currallbetapos",0,1,&C[ci]->currallbetapos);
       assert(i==C[ci]->currallbetapos); // i should be redundant once started using currallbetapos
@@ -999,6 +999,8 @@ void readmcf (char mcffilename[],int *mcmcrecords,double *hilike,double *hiprob,
     if (numchainstotal >  1)
     {
       aa "allbetaci",0,1,&i);
+      if (i < 0 || i >= numchainstotal) // M1 fix 11/13/2026: check the stored ladder position before using it
+        IM_err (IMERR_MCFREADFAIL, "chain %d in mcf file %s has heating position %d, outside 0..%d. The run must use the same number of chains (-hn) and processes as the run that wrote the mcf files", ci, mcffilename, i, numchainstotal-1);
       beta[ci] = allbetas[i];
       aa "currallbetapos",0,1,&C[ci]->currallbetapos);
       assert(i==C[ci]->currallbetapos);

@@ -1,4 +1,8 @@
 """
+    11/13/2026  fixes from the Claude/Codex review (AGREED_IMFIG_RECOMMENDATIONS.md, I1-I10):
+                Ne scaling includes the mutation-scalar mean, ghost detection, end-of-file checks,
+                numeric -m, -y/-d/-e checks, PostScript escaping, alternate-name checks, exit status,
+                option range checks, balanced gsave/grestore, caption wording, -o file name handling
     5/5/2025  replaced global gv dictionary with args passed to functions 
     
     Copyright 2009-2025  Jody Hey
@@ -12,12 +16,12 @@
     Last tested on python 3.10  but used to run fine on 3.6
     Read the documentation for details on running the program
 
-usage: temp.py [-h] -i IMFILENAME [-a] [-b POPBOXSPACEADJ] [-c {j,p,n}] [-d] [-e] [-f FONT] [-g GLOBALSCALE]
+usage: IMfig.py [-h] -i IMFILENAME [-a] [-b POPBOXSPACEADJ] [-c {j,p,n}] [-d] [-e] [-f FONT] [-g GLOBALSCALE]
                [-j ARROWHEIGHTADJ] [-k] [-l HEIGHTSCALE] [-m MOPTION] [-n ALTNAMEFILENAME]
                [-o OUTPUTFILENAME] [-p FONTSIZE] [-q] [-r] [-s] [-t LASTT_LOWER_Y] [-u] [-v]
                [-w WIDTHSCALAR] [-x XADJUST] [-y LOCALYSCALE] [-z]
 
-IMfig program. Copyright 2009-2025 Jody Hey. Release Date Apr 18, 2025
+IMfig program. Copyright 2009-2026 Jody Hey. Release Date November 13, 2026
 
 options:
   -h, --help            show this help message and exit
@@ -104,8 +108,8 @@ except ImportError:
 
 # These constants are still at the top level of the module since they aren't 
 # configuration parameters that change during execution
-RELEASE_YEAR = "2025"
-RELEASE_DATE = "May 5, 2025"
+RELEASE_YEAR = "2026"
+RELEASE_DATE = "November 13, 2026"
 
 # Constants related to chart generation - these could potentially move to the Config class
 # if they might need to be adjusted during execution
@@ -117,6 +121,19 @@ TFACTOR = 1.0  # a fudge factor for moving things to the right of splittime arro
 # The number of populations will still be a global variable as it's set during 
 # file parsing and is widely used
 numpops = 0
+
+
+class IMfigError(Exception):
+    """An input-file or option problem. The main program prints the message and exits with status 1."""
+
+
+def imfig_error(msg):
+    raise IMfigError(msg)
+
+
+def ps_escape(text):
+    """ I6: make text safe inside a PostScript string: escape backslash and both parentheses """
+    return str(text).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
 
 @dataclass
 class Config:
@@ -175,6 +192,10 @@ class Config:
     # Ghost population
     excludeghost: bool = False
     useghost: bool = False
+
+    # IMa3 model options (-j digits) read from the input file, and why migration arrows are not drawn
+    modeloptions: str = ""
+    nomigarrowsreason: str = ""
     
     # IMa version
     imaversion: int = 3
@@ -266,16 +287,61 @@ class Config:
         # Set bifont based on font
         self.bifont = self.font + "-BoldItalic"
         
-        # Convert moption to float if it's a number
+        # -m is a mode letter or a numeric 2NM threshold (I9: a bad value is an error, not silently 's')
         if self.moption not in ['x', 'a', 's', 'S']:
             try:
                 self.moption = float(self.moption)
             except ValueError:
-                self.moption = 's'  # Default if conversion fails
-        
-        # Ensure output has .eps extension
-        if not self.outputfilename.lower().endswith('.eps'):
+                imfig_error("-m must be x, a, s, S or a number, not '%s'" % self.moption)
+            if not math.isfinite(self.moption) or self.moption < 0:
+                imfig_error("-m threshold must be a number >= 0, not %s" % self.moption)
+
+        self.check_numeric_options()
+
+        # I5: -y places split times on the demographic (years) scale, so it needs demographic scaling,
+        # and it cannot be combined with evenly spaced split times
+        if self.localyscale != -1 and self.skipdemographicscaling:
+            imfig_error("-y uses the demographic time scale and cannot be used with -d")
+        if self.localyscale != -1 and self.eventimes:
+            imfig_error("-y (split times on the demographic scale) and -e (evenly spaced split times) cannot be used together")
+
+        # Output file name. -o is a name stem or a name ending in .eps.
+        # A name ending in .pdf, .png, .jpg or .jpeg makes that kind of image file (the same as -c).
+        fmt_of_ext = {'.pdf': 'p', '.png': 'n', '.jpg': 'j', '.jpeg': 'j'}
+        cformat = getattr(args, 'imageformat', None)
+        root, ext = os.path.splitext(self.outputfilename)
+        if ext.lower() in fmt_of_ext:
+            if not check_PIL:
+                imfig_error("making a %s file needs the Pillow (PIL) package; use an output name ending in .eps" % ext)
+            if cformat is not None and cformat != fmt_of_ext[ext.lower()]:
+                imfig_error("output name %s does not match the -c %s image format" % (self.outputfilename, cformat))
+            self.imagefileextension = ext
+            self.outputfilename = root + '.eps'
+        elif ext.lower() != '.eps':
             self.outputfilename += '.eps'
+
+    def check_numeric_options(self):
+        """ I9: check numeric option values before anything is drawn """
+        def bad(opt, val, rule):
+            imfig_error("%s %s : the value must be %s" % (opt, val, rule))
+        def ok(v):
+            return v is not None and math.isfinite(v)
+        if not (ok(self.globalscale) and 0 < self.globalscale <= 1):
+            bad('-g', self.globalscale, "greater than 0 and at most 1")
+        for opt, val in (('-b', self.popboxspaceadj), ('-j', self.arrowheightadj)):
+            if not (ok(val) and val > 0):
+                bad(opt, val, "greater than 0")
+        for opt, val in (('-x', self.xadjust), ('-l', self.heightscale)):
+            if val is not None and not (ok(val) and val > 0):
+                bad(opt, val, "greater than 0")
+        if self.fontfixed and not (ok(self.fontsize) and self.fontsize > 0):
+            bad('-p', self.fontsize, "greater than 0")
+        if not self.set_lastt_lower_y and not (ok(self.lastt_lower_y) and 0 < self.lastt_lower_y < 1):
+            bad('-t', self.lastt_lower_y, "between 0 and 1")
+        if self.localyscale != -1 and not (ok(self.localyscale) and 0 < self.localyscale <= 1):
+            bad('-y', self.localyscale, "greater than 0 and at most 1")
+        if self.widthscalar != -1 and self.widthscalar < 1:
+            bad('-w', self.widthscalar, "a whole number of at least 1")
 
 ##***********************************************************************************
 ##////////////// FUNCTIONS FOR GENERATING EPS FILE   ////////////////////////////////
@@ -365,6 +431,7 @@ def dotext(args, rpoint, text, angle, bi):
     w(args, "setfont")
     w(args, "newpath")
     p = apoint(args, rpoint)
+    text = ps_escape(text)  # I6
     if angle != 0:
         w(args, "gsave")
         w(args, "%d %d translate" % (p[0], p[1]))
@@ -512,8 +579,8 @@ def curvebox(args, cdim, cbox, width, color, grayamount, popnum, dash, poptree):
     ccpoints = curvecontrol(cp1, cp2, 0)
     w(args, "%d %d %d %d %d  %d  curveto" % (ccpoints[0][0], ccpoints[0][1], ccpoints[1][0], ccpoints[1][1], cp2[0], cp2[1]))
     w(args, "closepath")
-    w(args, "gsave")
     if args.rgbcolor and dash == 0:  # fill the box with a lighter version of the color used for the lines of the box
+        w(args, "gsave")  # I10: gsave only when it is matched by the grestore below
         w(args, lightboxfillcolorstring)
         w(args, "fill")
         w(args, "grestore")
@@ -746,6 +813,14 @@ def migrationstraightarrow(args, val2NM, head, tail, direc, color):
 ##        what the function returns is appended to slist[i]
 
 
+def readline_or_error(f, section):
+    """ I3: read a line; stop with a message, instead of looping or crashing, if the file ends early """
+    line = f.readline()
+    if line == '':
+        imfig_error("the input file ended while reading the section starting '%s'. The file may be incomplete" % section)
+    return line
+
+
 def get_input_file_name(args,f, a, s):
     # f not used but needed for function to match general function format
     return a[len(s):len(a)].strip()
@@ -754,7 +829,15 @@ def get_input_file_name(args,f, a, s):
 def check_ghost_status(args,f, a, s):
     # f, s not used but needed for function to match general function format
     if args.newercode:
-        args.useghost = (a.find("-j") >= 0) # don't think this is needed, 1 is the default ' and ("1" in a[a.find("-j") + 1:])   # should only be true if -j is there with a 1'
+        # I2: in IMa3 only model option 1 (e.g. -j1, -j13) adds a ghost population. Other -j digits are
+        # other model options, and -jh... are hidden options. get_population_names() and
+        # get_population_tree() also check the file itself for a ghost population.
+        args.useghost = False
+        args.modeloptions = ""
+        for tok in a[a.find(":") + 1:].split():
+            if tok.startswith("-j") and not tok.lower().startswith("-jh"):
+                args.modeloptions += tok[2:]
+        args.useghost = "1" in args.modeloptions
     else:
         args.useghost = (a.find("-j") >= 0) and ("4" in a[a.find("-j") + 1:])  # should only be true if -j is there with a 4
 
@@ -765,7 +848,7 @@ def get_population_names(args,f, a, s):
         usealtnames and altnamefilename defined previously
     """
 
-    aa = f.readline().strip()
+    aa = readline_or_error(f, s).strip()
     popnamelist = []
     i = 0
     foundghost = False
@@ -776,16 +859,20 @@ def get_population_names(args,f, a, s):
         popnamelist.append(popname)
         i += 1
         aa = f.readline().strip()
+    if foundghost:
+        args.useghost = True   # I2: the file lists a ghost population
     if args.useghost is True and foundghost is False:   # for compatibility with older output files
         popnamelist.append('ghost')
     anames = []
     if args.usealtnames:
-        for line in open(args.altnamefilename, "r"):
-            temp = line.strip()
-            if len(temp) > 0:
-                anames.append(temp)
-        anames = anames[0:len(popnamelist)]
-    args.altpopnames = list(anames)
+        try:
+            for line in open(args.altnamefilename, "r"):
+                temp = line.strip()
+                if len(temp) > 0:
+                    anames.append(temp)
+        except OSError as e:
+            imfig_error("cannot read alternative names file %s : %s" % (args.altnamefilename, e))
+    args.altpopnames = list(anames)  # checked against the populations in check_altnames()
     return popnamelist
 
 
@@ -799,7 +886,8 @@ def get_population_tree(args,f, a, s):
         if a.find("standard ordering") >= 0:
             tempstring = a.split()[-1]
         if a.find("Ghost Population") >= 0 and args.excludeghost is False:
-            assert args.useghost
+            if not args.useghost:
+                imfig_error("the file has a population tree with a ghost population, but no ghost population was found in the model options or population names")
             tempstring = a.split()[-1]
         a = f.readline().strip()
     return tempstring
@@ -815,11 +903,11 @@ def get_popsize_param(args,f, a, s):
     the HPD95Hi value """
     psp = []
     for i in range(4):
-        aa = f.readline().split()
+        aa = readline_or_error(f, s).split()
     for i in range(2 * numpops - 1):
         psp.append([])
         psp[i].append(aa[i + 1])
-    aa = f.readline().split()
+    aa = readline_or_error(f, s).split()
     while len(aa) > 0:
         while aa.count("#"):
             aa.remove("#")
@@ -833,7 +921,7 @@ def get_popsize_param(args,f, a, s):
         if found:
             for i in range(2 * numpops - 1):
                 psp[i].append(float(aa[i + 1].strip('?#')))
-        aa = f.readline().split()
+        aa = readline_or_error(f, s).split()
     return psp
 
 
@@ -846,9 +934,9 @@ def get_t_param(args,f, a, s):
             the HPD95Lo value
             the HPD95Hi value """
     psp = []
-    aa = f.readline().split()
-    while aa[0] != "Value":
-        aa = f.readline().split()
+    aa = readline_or_error(f, s).split()
+    while len(aa) == 0 or aa[0] != "Value":
+        aa = readline_or_error(f, s).split()
     for i in range(numpops - 1):
         psp.append([])
         psp[i].append(aa[i + 1])
@@ -864,7 +952,7 @@ def get_t_param(args,f, a, s):
         if found:
             for i in range(numpops - 1):
                 psp[i].append(float(aa[i + 1].strip('?#')))
-        aa = f.readline().split()
+        aa = readline_or_error(f, s).split()
     return psp
 
 
@@ -922,7 +1010,7 @@ def get_2NM(args,f, a, s):
     """
     ss = []
     while True:
-        ss.append(f.readline().strip())
+        ss.append(readline_or_error(f, s).strip())
         if ss[-1].upper().find("HISTOGRAMS") == 0:
             break
     msiglist = msigvals(args,ss)
@@ -949,7 +1037,8 @@ def get_2NM(args,f, a, s):
         mn = p[0][p[0].upper().find('M') + 1:]
         i = 0
         while True:
-            assert i < len(msiglist)
+            if i >= len(msiglist):
+                imfig_error("no migration rate (m) parameter matches the 2NM term %s" % p[0])
             if msiglist[i][0][1:] == mn:
                 psp[pi].append(msiglist[i][2])
                 psp[pi].append(msiglist[i][1])
@@ -961,7 +1050,9 @@ def get_2NM(args,f, a, s):
 def get_demog_scales(args,f, a, s):
     psp = [0, 0, 0]
     for i in range(10):  # go down several lines and look for the necessary information, very crude and
-        aa = f.readline().split()
+        aa = readline_or_error(f, s).split()
+        if len(aa) < 4:
+            continue
         if aa[0] == "Generation" and aa[1] == "time":
             psp[0] = float(aa[len(aa) - 1])
         if aa[0] == "Geometric" and aa[3] == "mutation":
@@ -985,9 +1076,12 @@ def calc_scaledvals(slist):
     gentime = slist[7][4][0]
     timeumean = slist[7][4][1]
     scaleumean = slist[7][4][2]
+    if gentime <= 0 or timeumean <= 0 or scaleumean <= 0:
+        imfig_error("generation time or mutation rate values not found in the demographic units section, use -d")
     scaledpop = []
     for i in range(2 * numpops - 1):
-        scaledpop.append(slist[4][4][i][1] / (4.0 * timeumean * gentime))
+        # I1: same conversion as IMa3 (histograms.cpp): q * scaleumean / (4 * timeumean * generation time)
+        scaledpop.append(slist[4][4][i][1] * scaleumean / (4.0 * timeumean * gentime))
     scaledtime = []
     for i in range(numpops - 1):
         scaledtime.append(slist[5][4][i][1] * (scaleumean / timeumean))
@@ -1068,7 +1162,10 @@ def readimfile(args):
         very kludgy, all sorts of awkward things to deal with IMa2 vs IMa3 differences and to catch wrong kinds of input files
     """
     global numpops
-    imfile = open(Path(args.imfilename), "r")
+    try:
+        imfile = open(Path(args.imfilename), "r")
+    except OSError as e:
+        imfig_error("cannot open input file %s : %s" % (args.imfilename, e))
     args.useghost = False
     imfileline = imfile.readline()
     if "IMa3" == imfileline[0:4]:
@@ -1101,13 +1198,11 @@ def readimfile(args):
     while imfileline != '':
         if imfileline.upper().find("LOCATIONS OF PARAMETER ESTIMATES IN THIS FILE".upper()) >= 0:
             while True:
-                imfileline = imfile.readline()
+                imfileline = readline_or_error(imfile, "LOCATIONS OF PARAMETER ESTIMATES IN THIS FILE")
                 if imfileline.upper().find("Hyperparameter".upper()) >= 0:
-                    print("**IMfig error - input while was run using hyperparameters")
-                    quit()
+                    imfig_error("the input file was run using hyperparameters")
                 if imfileline.upper().find("ESTIMATED POSTERIOR PROBABILITIES OF POPULATION TREE TOPOLOGIES".upper()) >= 0:
-                    print("**IMfig error - input while was generated to estimate phyhlogeny")
-                    quit()
+                    imfig_error("the input file was generated to estimate the phylogeny")
                 if imfileline.upper().find("INPUT AND STARTING INFORMATION".upper()) >= 0:
                     break
         checkdone = True
@@ -1125,22 +1220,57 @@ def readimfile(args):
             break
         imfileline = imfile.readline()
         if "**NO DATA **" in imfileline:
-            print("**IMfig error - input while was run without data")
-            quit()
+            imfig_error("the input file was run without data")
     imfile.close()
+    # I2: model options whose parameters IMfig cannot draw (IMa3 files from after 9/12/2017)
+    if args.newercode:
+        if "7" in args.modeloptions:
+            imfig_error("the input file was run with model option -j7 (separate parameters in each period); IMfig cannot draw this model")
+        if "9" in args.modeloptions:
+            args.nomigarrowsreason = "the model has one migration rate for all pairs of populations (-j9)"
+        elif "5" in args.modeloptions:
+            args.nomigarrowsreason = "the model has one migration rate for both directions between each pair of populations (-j5)"
+        if args.nomigarrowsreason and args.moption != 'x':
+            print("IMfig warning: migration arrows are not drawn because " + args.nomigarrowsreason)
+    # I3: every section the figure needs must have been found
+    for item in slist[2:7]:
+        if item[1] is False:
+            imfig_error("section '%s' (%s) not found in input file %s" % (item[3], item[0], args.imfilename))
     (scaledpop, scaledtime) = ([], [])
     if args.skipdemographicscaling:
         slist[7][1] = False
     else:
         if len(slist[7]) == 4:
-            print("**IMfig error - Information in demographic units not found, use -d option")
-##            printcommandset()
-            quit()
+            imfig_error("information in demographic units not found, use the -d option")
         if len(slist[7][4]) == 3:
             (scaledpop, scaledtime) = calc_scaledvals(slist)
     if args.excludeghost and args.useghost:
         slist, scaledpop, scaledtime = removeghost(slist, scaledpop, scaledtime)
+    if args.usealtnames:
+        args.altpopnames = check_altnames(args, slist[2][4])
     return args,slist, scaledpop, scaledtime
+
+
+def check_altnames(args, shownnames):
+    """ I7: match the alternative names to the populations that will be drawn.
+        The file may give names for the sampled populations only, or for the sampled populations
+        followed by the ghost. A missing ghost name becomes 'Ghost'. """
+    anames = list(args.altpopnames)
+    nshown = len(shownnames)
+    ghostshown = args.useghost and not args.excludeghost
+    nsampled = nshown - 1 if ghostshown else nshown
+    if len(anames) < nsampled:
+        imfig_error("alternative names file %s has %d names, but there are %d sampled populations" %
+                    (args.altnamefilename, len(anames), nsampled))
+    if ghostshown and len(anames) == nsampled:
+        anames.append("Ghost")
+    elif args.useghost and args.excludeghost and len(anames) == nsampled + 1:
+        anames = anames[:nsampled]  # the last name is for the ghost, which is not drawn
+    if len(anames) > nshown:
+        print("IMfig warning: alternative names file %s has %d names, only the first %d are used" %
+              (args.altnamefilename, len(anames), nshown))
+        anames = anames[:nshown]
+    return anames
 
 
 
@@ -1606,6 +1736,13 @@ def centerbox(args,pop, leftpoint, rightpoint, poptree, popxvals):
         return newwidth, newcenter, popxvals, leftpoint, rightpoint
 
 
+def round3(val):
+    """ round to 3 significant digits; 0 or less is returned as 0 (log10 would fail) """
+    if val <= 0:
+        return 0
+    return round(val, -int(math.log10(val) - 2))
+
+
 def fround(val):
     """ crude rounding to a couple decimal points for a positive val"""
     if val == 0:
@@ -1743,11 +1880,7 @@ def printpopbox(args,popbox, maxwide, confint, slist, plist, rootpop, poptree, t
             w(args,"%%done right confidence for box %d" % i)
     popprintinc = 0.01
     if args.usealtnames:
-        namelist = args.altpopnames
-##        print(namelist)
-        if args.useghost and args.excludeghost is False and namelist[-1].upper() != "GHOST":
-            assert len(namelist) < numpops
-            namelist.append("Ghost")
+        namelist = args.altpopnames  # already checked in check_altnames()
     else:
         namelist = slist[2][4]
     if args.anglenames:
@@ -1876,7 +2009,7 @@ def print_tlines(args,ty, slist, scaledtime, farright):
                 yline(args,ty[i][2], farright, 1, 2, args.graylevel)
             if(scaledtime != []):
                 scaledtime[i] /= yearscaler
-                mtime = round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2))
+                mtime = round3(scaledtime[i])
                 nstr = str(mtime) + yearscalestring
                 dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
             else:
@@ -1891,7 +2024,7 @@ def print_tlines(args,ty, slist, scaledtime, farright):
             yline(args,ty[i][0], farright, 0.5, 0, 0)
             if(scaledtime != []):
                 scaledtime[i] /= yearscaler
-                mtime = round(scaledtime[i], -int(math.log10(scaledtime[i]) - 2))
+                mtime = round3(scaledtime[i])
                 nstr = str(mtime) + yearscalestring
                 dotext(args,[xinc * (i + 2), ty[i][0] + yinc], nstr, 0, False)
             else:
@@ -1932,7 +2065,7 @@ def print_mcurves(args,slist, popbox, plist):
                     or (args.moption == 's' and llr.count('*') > 0 and val2NM >= minsig2NM)
                     or (args.moption == 'S' and llr.count('*') > 1) and val2NM >= minsig2NM)
             return returnval
-    if args.moption == 'x':
+    if args.moption == 'x' or args.nomigarrowsreason:
         return
     mperiodnum = [0] * (numpops - 1)
     if len(slist[6]) > 4:
@@ -2050,7 +2183,8 @@ def parse_arguments(args=None):
                            help='output format, default is eps, see also -w\n'
                                 '-c j : make a jpeg file\n'
                                 '-c p : make a pdf file\n'
-                                '-c n : make a png file')
+                                '-c n : make a png file\n'
+                                'conversion uses Pillow, which needs Ghostscript installed; the pdf is a bitmap image')
     
     parser.add_argument('-d', '--no-demographic-scale', action='store_true', dest='skipdemographicscaling',
                         help='do not use demographic scale information even if in input file')
@@ -2077,7 +2211,9 @@ def parse_arguments(args=None):
     parser.add_argument('-n', '--alt-names', dest='altnamefilename',
                         help='file with alternative species names')
     parser.add_argument('-o', '--output', default='imfig_output.eps', dest='outputfilename',
-                        help='output file name, default is imfig_output.eps')
+                        help='output file name, default is imfig_output.eps\n'
+                             'a name ending in .pdf, .png, .jpg or .jpeg makes that kind of image file (same as -c)\n'
+                             'any other name gets .eps added')
     parser.add_argument('-p', '--font-size', type=float, dest='fontsize',
                         help='fontsize (default is 14 for full scale, default follows global scale)')
     parser.add_argument('-q', '--no-confidence-interval-boxes', action='store_true', dest='no_popboxcintervalboxes',
@@ -2099,7 +2235,8 @@ def parse_arguments(args=None):
     parser.add_argument('-x', '--width-adjust', type=float, dest='xadjust',
                         help='expand/shrink width of plot by a positive scalar, >1 means wider, <1 means narrower')
     parser.add_argument('-y', '--height-adjust', type=float, default=-1, dest='localyscale',
-                        help='adjust height of splittimes, relative to bottom of figure, max = 1.')
+                        help='adjust height of splittimes, relative to bottom of figure, max = 1.\n'
+                             'uses the demographic time scale, so not with -d or -e')
     parser.add_argument('-z', '--exclude-ghost', action='store_true', dest='excludeghost',
                         help='exclude the ghost population from the figure')
     
@@ -2178,6 +2315,8 @@ def run_imfig(args, cmdstr):
         success = write_image_file(args)
         if success:
             print("Image file created")
+        return success
+    return True
 
 
 def write_image_file(args):
@@ -2228,28 +2367,30 @@ def write_caption(args, cmdstr):
             s += "Figure ?. A representation of an estimated Isolation with Migration model generated by IMa2 and the IMfig program (Hey 2010). "
         s += "The phylogeny is depicted as a series of boxes organized hierarchically, with ancestor boxes positioned in between the corresponding descendants, and the width of boxes proportional to estimated Ne."
         if args.popboxcintervalboxes:
-            s += " 95% confidence intervals for each Ne value are shown as dashed lines to the right of the left side of the corresponding population box. "
+            s += " 95% highest posterior density (HPD) intervals for each Ne value are shown as dashed lines to the right of the left side of the corresponding population box. "
             if args.popboxcintervalarrows:
-                s += " Gray arrows to the 95% Ne intervals are also shown extending to the left and right of the right boundary of each population box.  "
+                s += " Arrows to the 95% HPD interval limits are also shown extending to the left and right of the right boundary of each population box.  "
         elif args.popboxcintervalarrows:
-            s += " 95% confidence intervals for Ne values are shown as gray arrows extending to the left and right of the right boundary of each population box.  "
+            s += " 95% highest posterior density (HPD) intervals for Ne values are shown as arrows extending to the left and right of the right boundary of each population box.  "
         s += "Splitting times"
         if args.eventimes:
             s += ", positioned at even intervals, "
         s += " are depicted as solid horizontal lines, with text values on the left. "
         if not args.eventimes:
-            s += "Confidence intervals for splitting times are shown as vertical gray arrows on the left, and parallel dashed lines. "
-        if args.moption != 'x':
+            s += "95% HPD intervals for splitting times are shown as vertical arrows on the left, and as parallel dashed lines. "
+        if args.nomigarrowsreason and args.moption != 'x':
+            s += "Migration arrows are not shown because " + args.nomigarrowsreason + ". "
+        elif args.moption != 'x':
             s += "Migration arrows (if shown) indicate estimated 2Nm values from one population to another over the time interval when both populations exist. "
-            s += "Arrows are shown only for estimated migration rates  "
+            s += "Arrows are shown only for estimated migration rates "
             if args.moption == 's':
                 s += "that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.05 level (* p < 0.05, ** p< 0.01, *** p < 0.001). "
-            else:
-                if args.moption == 'S':
-                    s += " that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.01 level (** p< 0.01, *** p < 0.001). "
-                else:
-                    if args.moption != 'a':
-                        s += f" that are above {args.moption:.3f}. "
+            elif args.moption == 'S':
+                s += "that are statistically significant (Nielsen and Wakeley, 2001) at or above the 0.01 level (** p< 0.01, *** p < 0.001). "
+            elif args.moption == 'a':
+                s += "that are greater than zero (both m > 0 and 2Nm > 0). "
+            else:  # I4: numeric threshold
+                s += f"with 2Nm values of at least {args.moption:.3f}. "
         if args.useghost and args.excludeghost:
             s += " The ghost population is not shown in this figure. "
         if args.label_a_pops:
@@ -2257,10 +2398,10 @@ def write_caption(args, cmdstr):
         if args.skipdemographicscaling:
             s += " Population size (Ne) and splitting times values are scaled by the geometric mean of the mutation rates of the loci used for the analysis. "
         if args.imaversion == 3:
-            s += "\n\nHey J, Chung Y, Sethuraman A, Lachance J, Tishkoff SA, Soudsa VC, Wang Y. 2018. Phylogeny Estimation by Integration over Isolation with Migration Models. Mol Biol Evol in press.\n"
+            s += "\n\nHey J, Chung Y, Sethuraman A, Lachance J, Tishkoff SA, Sousa VC, Wang Y. 2018. Phylogeny Estimation by Integration over Isolation with Migration Models. Mol Biol Evol 35:2805-2818.\n"
         else:
             s += "\n\nHey J. 2010. The Divergence of Chimpanzee Species and Subspecies as Revealed in Multipopulation Isolation-with-Migration Analyses. Mol Biol Evol 27:921-933.\n"
-        if args.moption.upper() == 'S':
+        if args.moption in ('s', 'S'):  # I4: moption can be a number
             s += "Nielsen R, Wakeley J. 2001. Distinguishing migration from isolation. A Markov chain Monte Carlo approach. Genetics 158:885-896.\n"
         f.write(s)
     print("Caption file written")
@@ -2275,12 +2416,19 @@ if __name__ == "__main__":
     
     # Create configuration object
     args = Config()
-    args.update_from_args(parsed_args)
-    
-    # Process the input file and generate the figure
-    run_imfig(args, cmdstr)
-    
-    # Write caption
-    write_caption(args, cmdstr)
+    try:
+        args.update_from_args(parsed_args)
+        # Process the input file and generate the figure
+        success = run_imfig(args, cmdstr)
+        # Write caption
+        write_caption(args, cmdstr)
+    except IMfigError as e:   # I8: input and option problems exit with status 1
+        if args.epsf is not None and not args.epsf.closed:
+            args.epsf.close()
+        print(f"**IMfig error - {e}")
+        sys.exit(1)
+    if not success:
+        print(f"**IMfig error - the {args.imagefileextension} file was not written; the EPS file {args.outputfilename} was kept")
+        sys.exit(1)
 
 
